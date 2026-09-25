@@ -239,7 +239,7 @@ The v0.1 materializer boundary is a local CATSS parallel directory. That directo
 ```text
 existing local directory ───────┐
                                 ├─> direct child *.par files
-user invokes CCAT downloader ───┘             |
+user invokes CATSS downloader ───┘             |
                                               v
                                   source inspection/fingerprint
                                               |
@@ -520,3 +520,93 @@ is_transposition_stylistic: bool
 ```
 
 Rich `annotations[]` and raw source remain alongside these atoms for losslessness, but materializers should not have to re-parse annotation blobs to obtain common searchable properties.
+
+
+## 14. Validation model
+
+Validation runs on canonical CATSS IR before parent-corpus resolution.
+
+### 14.1 Document accounting
+
+`ParallelDocument` records `data_line_numbers`: every nonblank source line that is not a recognized verse header.
+
+For a valid parse:
+
+```text
+data_line_numbers
+    ==
+alignment source_lines
+    UNION
+parser diagnostic line numbers
+```
+
+A line may both belong to an alignment and carry a diagnostic (for example an unsplit row); that is not loss. A physical source line owned by more than one independent alignment is an error.
+
+### 14.2 Typed findings
+
+`ValidationFinding` contains scalar fields:
+
+```text
+code
+severity = error | unresolved | ignored
+source_name
+line_no?
+alignment_id?
+side?
+raw?
+message
+```
+
+No JSON payload is required to understand a finding.
+
+Initial finding codes include:
+
+- `unaccounted_source_line`
+- `duplicate_source_line_ownership`
+- `alignment_id_mismatch`
+- `duplicate_alignment_id`
+- parser diagnostic codes such as `orphan_line`, `unsplit_row`, and `malformed_continuation`
+- `unknown_annotation`
+- `unknown_mt_strategy_siglum`
+
+### 14.3 Deterministic alignment identity
+
+Validation recomputes every `alignment_id` from the same documented source identity inputs used by the parser. A mismatch is an error.
+
+Duplicate IDs across a validated corpus are errors even if their payloads happen to match.
+
+### 14.4 Policy
+
+Default validation is fail-closed:
+
+- any `error` => invalid;
+- any `unresolved` => invalid;
+- `ignored` is always explicit through an allow-list of finding codes.
+
+Allowing a code never deletes the finding; its severity becomes `ignored`, and `ignored_count` records the policy exception.
+
+### 14.5 Scalar summary
+
+`ValidationSummary` exposes integer counts rather than a compound status blob:
+
+```text
+source_files
+verses
+alignments
+source_data_lines
+accounted_lines
+unaccounted_lines
+parser_diagnostics
+unknown_annotations
+invalid_alignment_ids
+duplicate_alignment_ids
+error_count
+unresolved_count
+ignored_count
+```
+
+This summary is the gate consumed by later mapping/materialization work.
+
+### 14.6 Terminology
+
+CATSS is the dataset/project. CCAT is the current upstream distribution host/institutional infrastructure. Validation and TF feature names use CATSS terminology.
