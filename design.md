@@ -317,6 +317,7 @@ AlignmentRecord
   lxx_raw
   mt_col_a
   mt_col_b?
+  retroversion_kind?
   mt_tokens[]
   lxx_tokens[]
   ratio
@@ -358,6 +359,8 @@ The first `=` in the MT cell separates column A from column B. Both the entire r
 
 Column B is **not** part of `mt_tokens`; it is a reconstruction/annotation layer, not an MT token sequence.
 
+The common column-B introducers are normalized into a short `retroversion_kind` enum (`proper_noun`, `context`, `etymological`, `preposition_difference`, `active_to_passive`, `passive_to_active`, `vocalization`, `vocalization_shin_sin`, `incomplete`, or `plain`). The raw column-B value is still preserved.
+
 ### 12.5 Normalized flags
 
 The initial parser recognizes without deleting source markup:
@@ -379,6 +382,7 @@ The parser may expose additional annotation kinds, but it must not infer a recon
 At minimum:
 
 - known transposition blocks are classified;
+- text-bearing wrappers such as `{c...}`, `{..p...}`, `{..d...}`, and `{..r...}` retain their lexical payload while receiving a stable annotation kind;
 - `{d}`, `{t}`, `{x}`, `{*}`, and `{**}` receive stable descriptive kinds;
 - angle-bracket notes and square-bracket Greek verse references are retained;
 - unrecognized brace blocks become `kind="unknown"`.
