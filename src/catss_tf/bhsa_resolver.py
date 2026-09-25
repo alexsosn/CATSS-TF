@@ -148,9 +148,7 @@ def normalize_catss_hebrew(value: str) -> str:
             continue
         mapped = _CATSS_HEBREW.get(character)
         if mapped is None:
-            raise ValueError(
-                f"unsupported CATSS Hebrew character {character!r} in {value!r}"
-            )
+            raise ValueError(f"unsupported CATSS Hebrew character {character!r} in {value!r}")
         output.extend(mapped)
 
     if not output:
@@ -257,9 +255,7 @@ def resolve_bhsa_document(
             for alignment in verse.alignments
             for mt_index, reading in enumerate(alignment.mt_readings)
         ]
-        plus_alignments = [
-            alignment for alignment in verse.alignments if alignment.is_lxx_plus
-        ]
+        plus_alignments = [alignment for alignment in verse.alignments if alignment.is_lxx_plus]
 
         if len(positions) != len(parent.words):
             mismatched_verses += 1
@@ -435,9 +431,7 @@ def resolve_bhsa_document(
                 bhsa_node=word.node,
                 mapping_kind="ketiv_qere" if reading.qere is not None else "exact",
             )
-            for (alignment_id, mt_index, reading), word in zip(
-                positions, parent.words, strict=True
-            )
+            for (alignment_id, mt_index, reading), word in zip(positions, parent.words, strict=True)
         )
         verse_anchors.extend(
             BhsaVerseAnchor(
