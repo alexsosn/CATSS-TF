@@ -95,7 +95,9 @@ class LxxWordMapping:
     reference_chapter: int
     reference_verse: int
     reference_subverse: str | None
-    mapping_kind: typing.Literal["exact"] = "exact"
+    mapping_kind: typing.Literal[
+        "exact", "transposition_alignment", "transposition_carrier"
+    ] = "exact"
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -558,6 +560,7 @@ def resolve_lxx_documents(
                             reference_chapter=reference.chapter,
                             reference_verse=reference.verse,
                             reference_subverse=reference.subverse,
+                            mapping_kind=_mapping_kind(task.alignment),
                         )
                     )
             resolved_reference_groups += 1
@@ -650,11 +653,11 @@ def _solve_unique_assignment(
     candidates: dict[int, tuple[_Candidate, ...]],
 ) -> list[dict[int, _Candidate]]:
     ordered = sorted(tasks, key=lambda task: (len(candidates[task.order]), task.order))
+    task_by_order = {task.order: task for task in tasks}
     solutions: list[dict[int, _Candidate]] = []
 
     def visit(
         index: int,
-        used_words: frozenset[int],
         assignment: dict[int, _Candidate],
     ) -> None:
         if len(solutions) >= 2:
@@ -665,15 +668,57 @@ def _solve_unique_assignment(
 
         task = ordered[index]
         for candidate in candidates[task.order]:
-            occupied = frozenset(range(candidate.start, candidate.stop))
-            if used_words & occupied:
+            if any(
+                _placements_conflict(
+                    task,
+                    candidate,
+                    task_by_order[existing_order],
+                    existing_candidate,
+                )
+                for existing_order, existing_candidate in assignment.items()
+            ):
                 continue
             assignment[task.order] = candidate
-            visit(index + 1, used_words | occupied, assignment)
+            visit(index + 1, assignment)
             assignment.pop(task.order, None)
 
-    visit(0, frozenset(), {})
+    visit(0, {})
     return solutions
+
+
+def _placements_conflict(
+    left_task: _PlacementTask,
+    left: _Candidate,
+    right_task: _PlacementTask,
+    right: _Candidate,
+) -> bool:
+    overlap = max(left.start, right.start) < min(left.stop, right.stop)
+    if not overlap:
+        return False
+    if left != right:
+        return True
+
+    roles = {_mapping_kind(left_task.alignment), _mapping_kind(right_task.alignment)}
+    return roles != {"transposition_alignment", "transposition_carrier"}
+
+
+def _mapping_kind(
+    alignment: AlignmentRecord,
+) -> typing.Literal["exact", "transposition_alignment", "transposition_carrier"]:
+    if any(
+        annotation.side == "lxx"
+        and annotation.kind in {"transposition_stylistic", "transposition_remote"}
+        for annotation in alignment.annotations
+    ):
+        return "transposition_alignment"
+    if any(
+        annotation.side == "mt_a"
+        and annotation.kind == "transposition_remote"
+        and annotation.raw == "{...}"
+        for annotation in alignment.annotations
+    ):
+        return "transposition_carrier"
+    return "exact"
 
 
 def _reference_sort_key(reference: _ReferenceKey) -> tuple[str, int, int, str]:
