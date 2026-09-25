@@ -38,6 +38,17 @@ class ParseDiagnostic:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class MtReading:
+    """One MT word position with optional Ketiv/Qere alternatives."""
+
+    primary: str
+    ketiv: str | None
+    qere: str | None
+    doubtful: bool
+    aramaic_section: bool
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class AlignmentRecord:
     """Canonical representation of one logical CATSS alignment row."""
 
@@ -49,6 +60,7 @@ class AlignmentRecord:
     mt_col_a: str
     mt_col_b: str | None
     retroversion_kind: str | None
+    mt_readings: tuple[MtReading, ...]
     mt_tokens: tuple[str, ...]
     mt_ketiv_tokens: tuple[str, ...]
     mt_qere_tokens: tuple[str, ...]
@@ -303,7 +315,14 @@ def _build_alignment(
         ]
     )
 
-    mt_tokens, mt_ketiv_tokens, mt_qere_tokens = _mt_lexical_candidates(mt_col_a)
+    mt_readings = _mt_lexical_readings(mt_col_a)
+    mt_tokens = tuple(reading.primary for reading in mt_readings)
+    mt_ketiv_tokens = tuple(
+        reading.ketiv for reading in mt_readings if reading.ketiv is not None
+    )
+    mt_qere_tokens = tuple(
+        reading.qere for reading in mt_readings if reading.qere is not None
+    )
     is_ketiv = bool(mt_ketiv_tokens)
     is_qere = bool(mt_qere_tokens)
 
@@ -319,6 +338,7 @@ def _build_alignment(
 
     retroversion_kind = _retroversion_kind(mt_col_b)
     if is_lxx_plus:
+        mt_readings = ()
         mt_tokens = ()
         mt_ketiv_tokens = ()
         mt_qere_tokens = ()
@@ -343,6 +363,7 @@ def _build_alignment(
             mt_col_a=mt_col_a,
             mt_col_b=mt_col_b,
             retroversion_kind=retroversion_kind,
+            mt_readings=mt_readings,
             mt_tokens=mt_tokens,
             mt_ketiv_tokens=mt_ketiv_tokens,
             mt_qere_tokens=mt_qere_tokens,
@@ -462,32 +483,83 @@ def _brace_kind(raw: str) -> str:
     return "unknown"
 
 
-def _mt_lexical_candidates(
-    cell: str,
-) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
     text = _prepare_lexical_text(cell)
-    main: list[str] = []
-    ketiv: list[str] = []
-    qere: list[str] = []
+    readings: list[MtReading] = []
+    pending_aramaic = False
+    pending_doubt = False
 
     for raw_token in text.split():
         if _is_alignment_marker(raw_token) or raw_token.startswith("."):
             continue
-        if raw_token.startswith("**") and len(raw_token) > 2:
-            qere.append(raw_token[2:])
+
+        token = raw_token
+        if token == ",,a":
+            pending_aramaic = True
             continue
-        if raw_token.startswith("*") and len(raw_token) > 1:
-            token = raw_token[1:]
-            ketiv.append(token)
-            main.append(token)
+        if token.startswith(",,a"):
+            pending_aramaic = True
+            token = token[3:]
+
+        if token == "?":
+            pending_doubt = True
             continue
-        main.append(raw_token)
 
-    if not main and qere:
-        main.extend(qere)
+        doubtful = pending_doubt or token.startswith("?") or token.endswith("?")
+        pending_doubt = False
+        token = token.strip("?")
+        if not token:
+            continue
 
-    return tuple(main), tuple(ketiv), tuple(qere)
+        if token.startswith("**") and len(token) > 2:
+            qere = token[2:]
+            if readings and readings[-1].ketiv is not None and readings[-1].qere is None:
+                previous = readings[-1]
+                readings[-1] = dataclasses.replace(
+                    previous,
+                    qere=qere,
+                    doubtful=previous.doubtful or doubtful,
+                    aramaic_section=previous.aramaic_section or pending_aramaic,
+                )
+            else:
+                readings.append(
+                    MtReading(
+                        primary=qere,
+                        ketiv=None,
+                        qere=qere,
+                        doubtful=doubtful,
+                        aramaic_section=pending_aramaic,
+                    )
+                )
+            pending_aramaic = False
+            continue
 
+        if token.startswith("*") and len(token) > 1:
+            ketiv = token[1:]
+            readings.append(
+                MtReading(
+                    primary=ketiv,
+                    ketiv=ketiv,
+                    qere=None,
+                    doubtful=doubtful,
+                    aramaic_section=pending_aramaic,
+                )
+            )
+            pending_aramaic = False
+            continue
+
+        readings.append(
+            MtReading(
+                primary=token,
+                ketiv=None,
+                qere=None,
+                doubtful=doubtful,
+                aramaic_section=pending_aramaic,
+            )
+        )
+        pending_aramaic = False
+
+    return tuple(readings)
 
 def _lxx_lexical_candidates(cell: str) -> tuple[str, ...]:
     text = _prepare_lexical_text(cell)
