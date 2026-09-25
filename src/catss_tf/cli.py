@@ -2,6 +2,7 @@
 
 import argparse
 import collections.abc
+import pathlib
 
 from catss_tf.parser import parse_parallel_file
 from catss_tf.source import (
@@ -48,9 +49,10 @@ def main(argv: collections.abc.Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "validate":
-        manifest = inspect_parallel_source(args.source)
+        source_root = pathlib.Path(args.source)
+        manifest = inspect_parallel_source(source_root)
         documents = tuple(
-            parse_parallel_file(f"{args.source}/{item.relative_path}") for item in manifest.files
+            parse_parallel_file(source_root / item.relative_path) for item in manifest.files
         )
         report = validate_documents(documents, allowed_codes=set(args.allow))
         _print_validation_summary(report.summary)
