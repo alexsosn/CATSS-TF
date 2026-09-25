@@ -389,7 +389,7 @@ def _parent_snapshot_problem(parent: BhsaVerse) -> str | None:
     nodes = tuple(word.node for word in parent.words)
     if any(node <= 0 for node in nodes):
         return ",".join(str(node) for node in nodes)
-    if any(left >= right for left, right in zip(nodes, nodes[1:])):
+    if any(left >= right for left, right in zip(nodes, nodes[1:], strict=True)):
         return ",".join(str(node) for node in nodes)
     return None
 
