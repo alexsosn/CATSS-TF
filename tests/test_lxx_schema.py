@@ -227,4 +227,4 @@ def test_every_lxx_mapping_target_exists_in_exact_parent_book_universe() -> None
     assert len(LXX_PARENT_BOOKS) == 57
     assert set(LXX_BOOK_BY_CATSS_STEM.values()) <= LXX_PARENT_BOOKS
     assert {"Qoh", "Cant", "Dan", "DanTh", "1Esdr", "2Esdr", "Ps"} <= LXX_PARENT_BOOKS
-    assert {"JoshA", "JudgA"} .isdisjoint(LXX_PARENT_BOOKS)
+    assert {"JoshA", "JudgA"}.isdisjoint(LXX_PARENT_BOOKS)
