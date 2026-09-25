@@ -1263,3 +1263,24 @@ alignment_id starts with "catss:" + source + ":"
 ```
 
 A mismatch is a hard schema error before feature compilation.
+
+
+## R-083 — One alignment identity may occur at most once on one parent word node
+
+Resolver outputs are token/segment-granular, but under both v0.1 mapping contracts one CATSS alignment cannot legitimately map two of its own source-side positions to the same parent word node:
+
+- BHSA maqaf segments map to distinct BHSA word slots;
+- LXX lexical tokens map to distinct CenterBLC word slots;
+- documented transposition overlap uses two different CATSS alignment identities.
+
+If two mapping records with the same `(source, alignment_id)` reach one parent word node, that indicates a materializer/resolver bug rather than true two-lane membership.
+
+**Decision:** schema compilation rejects this as `duplicate_alignment_membership`. `catss_alignment_n` therefore counts distinct CATSS alignment identities, not token-level mapping rows.
+
+## R-084 — TF module writing is clean-target only
+
+A weft-only writer that overwrites only currently generated feature files can leave stale CATSS features from an earlier materialization when the new run no longer emits one of those features.
+
+That creates false query results while all newly written files appear valid.
+
+**Decision:** `write_tf_module()` accepts a new or TF-empty target directory only. Existing warp files remain a specific hard error; any other pre-existing `*.tf` file is also rejected. Materializers that want replacement semantics must build in a clean temporary directory and replace the finished output atomically.
