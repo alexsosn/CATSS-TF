@@ -381,3 +381,45 @@ def test_mt_readings_structure_inline_aramaic_and_doubt_markers() -> None:
     assert second.doubtful is False
     assert second.aramaic_section is True
     assert doc.verses[0].alignments[0].mt_tokens == ("MLK", "DBR")
+
+
+def test_greek_reference_annotations_are_structured_and_removed_from_tokens() -> None:
+    doc = parse_parallel_text(
+        """Gen 23:5
+HB1\tMH/ [6]
+HB2\tLOGOS [[30:11]]
+HB3\tALFA [118.127a]
+""",
+        source_name="01.Genesis.par",
+    )
+
+    first, second, third = doc.verses[0].alignments
+    assert first.lxx_tokens == ("MH/",)
+    assert [(r.raw, r.bracket_kind, r.status, r.chapter, r.verse, r.subverse) for r in first.greek_references] == [
+        ("[6]", "single", "location", None, 6, "")
+    ]
+    assert second.lxx_tokens == ("LOGOS",)
+    assert [(r.raw, r.bracket_kind, r.status, r.chapter, r.verse, r.subverse) for r in second.greek_references] == [
+        ("[[30:11]]", "double", "location", 30, 11, "")
+    ]
+    assert third.lxx_tokens == ("ALFA",)
+    assert [(r.chapter, r.verse, r.subverse) for r in third.greek_references] == [
+        (118, 127, "a")
+    ]
+
+
+def test_complex_greek_references_are_preserved_not_guessed() -> None:
+    doc = parse_parallel_text(
+        """1Kgs 1:1
+HB1\tALFA [e10.31]
+HB2\tBHTA [2.46k,10.26a]
+""",
+        source_name="13.1Kings.par",
+    )
+
+    refs = [alignment.greek_references[0] for alignment in doc.verses[0].alignments]
+    assert [(r.raw, r.status) for r in refs] == [
+        ("[e10.31]", "complex"),
+        ("[2.46k,10.26a]", "complex"),
+    ]
+    assert all(r.chapter is None and r.verse is None and r.subverse is None for r in refs)
