@@ -272,6 +272,21 @@ def test_sidecar_contracts_are_normalized_repeated_row_tables() -> None:
     assert "alignment_id" in SIDECAR_COLUMNS["catss-mappings.tsv"]
     assert "parent_node" in SIDECAR_COLUMNS["catss-mappings.tsv"]
     assert "sha256" in SIDECAR_COLUMNS["catss-sources.tsv"]
+    assert SIDECAR_COLUMNS["catss-diagnostics.tsv"] == (
+        "stage",
+        "severity",
+        "code",
+        "source",
+        "chapter",
+        "verse",
+        "position",
+        "alignment_id",
+        "line_no",
+        "side",
+        "catss_value",
+        "parent_value",
+        "message",
+    )
     assert SIDECAR_COLUMNS["catss-source-lines.tsv"] == (
         "source",
         "alignment_id",
@@ -355,6 +370,8 @@ def test_written_module_loads_over_synthetic_parent_warp(tmp_path: pathlib.Path)
 
     results = api.S.search("word catss_mt_n=1", silent="deep")
     assert (1,) in results
+    lane_two_results = api.S.search("word catss_lxx_n_2=1", silent="deep")
+    assert (1,) in lane_two_results
 
 
 def test_module_writer_rejects_warp_features(tmp_path: pathlib.Path) -> None:
