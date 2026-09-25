@@ -767,7 +767,9 @@ No edit distance, lemma, morphology, nearest position, or â€œsame ordinal tokenâ
 mapped
 hebrew_empty
 unsupported_source
+unknown_source
 verse_missing
+parent_invalid
 sequence_mismatch
 ambiguous_sequence
 unnormalizable
@@ -775,7 +777,9 @@ unnormalizable
 
 A CATSS LXX-plus/Hebrew-empty row receives `hebrew_empty`, no word nodes, and the existing BHSA verse node when the verse itself exists.
 
-If the source has no BHSA book (#6), it receives `unsupported_source` without attempting a verse lookup.
+If the source is one of #6's declared non-BHSA books, it receives `unsupported_source` without attempting a verse lookup. A filename absent from the versioned profile is instead `unknown_source` and is blocking.
+
+Before textual resolution, a returned BHSA verse snapshot must preserve positive, unique, strictly increasing word-slot node IDs and the requested reference. Violations are `parent_invalid`; no node IDs from that snapshot are emitted.
 
 ### 16.6 Row spans and empty BHSA slots
 
