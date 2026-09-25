@@ -5,7 +5,7 @@ import typing
 import unicodedata
 
 from catss_tf.bhsa_schema import BhsaSourceStatus, classify_catss_source
-from catss_tf.parser import ParallelDocument
+from catss_tf.parser import MtReading, ParallelDocument, VerseRecord
 from catss_tf.validation import ValidationFinding, validate_document
 
 _CATSS_HEBREW = {
@@ -43,14 +43,18 @@ _FINAL_FORMS = {
 _SHIN_SIN_DOTS = frozenset({"ׁ", "ׂ"})
 
 
+class HebrewNormalizationError(ValueError):
+    """Raised when a Hebrew source form cannot be normalized without guessing."""
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class BhsaWord:
     """Mapping-relevant view of one BHSA word slot."""
 
     node: int
     g_cons_utf8: str
-    g_word_utf8: str | None
-    qere_utf8: str | None
+    g_word_utf8: str | None = None
+    qere_utf8: str | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -71,12 +75,30 @@ class BhsaVerseProvider(typing.Protocol):
         """Return exactly one BHSA verse view or None when it does not exist."""
 
 
+class InMemoryBhsaVerseProvider:
+    """Small deterministic provider for tests and offline probes."""
+
+    def __init__(self, verses: typing.Iterable[BhsaVerse]) -> None:
+        self._verses: dict[tuple[str, int, int], BhsaVerse] = {}
+        for verse in verses:
+            key = (verse.book, verse.chapter, verse.verse)
+            if key in self._verses:
+                raise ValueError(f"duplicate BHSA verse key: {key!r}")
+            self._verses[key] = verse
+
+    def get_verse(self, book: str, chapter: int, verse: int) -> BhsaVerse | None:
+        """Return the exact configured verse."""
+
+        return self._verses.get((book, chapter, verse))
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class BhsaWordMapping:
-    """A proven CATSS MT position -> BHSA word-node mapping."""
+    """A proven CATSS MT segment -> BHSA word-node mapping."""
 
     alignment_id: str
     mt_index: int
+    segment_index: int
     bhsa_node: int
     mapping_kind: typing.Literal["exact", "ketiv_qere"]
 
@@ -137,14 +159,43 @@ class BhsaMappingReport:
     findings: tuple[MappingFinding, ...]
     validation_findings: tuple[ValidationFinding, ...]
 
+    @property
+    def ok(self) -> bool:
+        """Whether this report contains no blocking mapping finding."""
+
+        return not self.findings and self.summary.validation_failures == 0
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _CatssPosition:
+    alignment_id: str
+    mt_index: int
+    segment_index: int
+    primary: str
+    qere: str | None
+
+
+def split_catss_hebrew_words(value: str) -> tuple[str, ...]:
+    """Split one CATSS MT element at documented maqaf boundaries."""
+
+    parts = tuple(value.split("-"))
+    if not parts or any(not part for part in parts):
+        raise HebrewNormalizationError(f"invalid CATSS maqaf segmentation in {value!r}")
+    return parts
+
 
 def normalize_catss_hebrew(value: str) -> str:
-    """Convert one CATSS Michigan-Claremont MT word to consonantal Unicode.
+    """Convert one CATSS Hebrew word segment to consonantal Unicode.
 
-    The character mapping follows the documented CATSS transcription and the
-    MIT-licensed CATSS_parsers prior art. Slash/backslash morpheme separators
-    are removed. Unknown lexical characters fail closed.
+    Forward and backward slash segmentation markers are removed. Maqaf must be
+    expanded with :func:`split_catss_hebrew_words` before this function.
+    Unknown lexical characters fail closed.
     """
+
+    if "-" in value:
+        raise HebrewNormalizationError(
+            f"CATSS Hebrew segment still contains maqaf boundary '-' in {value!r}"
+        )
 
     output: list[str] = []
     for character in value:
@@ -152,11 +203,13 @@ def normalize_catss_hebrew(value: str) -> str:
             continue
         mapped = _CATSS_HEBREW.get(character)
         if mapped is None:
-            raise ValueError(f"unsupported CATSS Hebrew character {character!r} in {value!r}")
+            raise HebrewNormalizationError(
+                f"unsupported CATSS Hebrew character {character!r} in {value!r}"
+            )
         output.extend(mapped)
 
     if not output:
-        raise ValueError("CATSS Hebrew word is empty after normalization")
+        raise HebrewNormalizationError("CATSS Hebrew word is empty after normalization")
 
     for index in range(len(output) - 1, -1, -1):
         character = output[index]
@@ -180,12 +233,14 @@ def normalize_bhsa_hebrew(value: str) -> str:
         if "א" <= character <= "ת":
             output.append(character)
             continue
-        if unicodedata.combining(character):
+        if unicodedata.category(character) == "Mn":
             continue
-        raise ValueError(f"unsupported BHSA Hebrew character {character!r} in {value!r}")
+        raise HebrewNormalizationError(
+            f"unsupported BHSA Hebrew character {character!r} in {value!r}"
+        )
 
     if not output:
-        raise ValueError("BHSA Hebrew value is empty after normalization")
+        raise HebrewNormalizationError("BHSA Hebrew value is empty after normalization")
     return "".join(output)
 
 
@@ -290,12 +345,20 @@ def resolve_bhsa_document(
             )
             continue
 
-        positions = [
-            (alignment.alignment_id, mt_index, reading)
-            for alignment in verse.alignments
-            for mt_index, reading in enumerate(alignment.mt_readings)
-        ]
-        plus_alignments = [alignment for alignment in verse.alignments if alignment.is_lxx_plus]
+        positions, expansion_finding = _expand_catss_positions(document.source_name, verse)
+        if expansion_finding is not None:
+            mismatched_verses += 1
+            if expansion_finding.code == "qere_segment_count_mismatch":
+                qere_checks += 1
+                qere_mismatches += 1
+            else:
+                normalization_errors += 1
+            findings.append(expansion_finding)
+            continue
+
+        plus_alignments = tuple(
+            alignment for alignment in verse.alignments if alignment.is_lxx_plus
+        )
 
         if len(positions) != len(parent.words):
             mismatched_verses += 1
@@ -309,62 +372,57 @@ def resolve_bhsa_document(
                     alignment_id=None,
                     catss_value=str(len(positions)),
                     bhsa_value=str(len(parent.words)),
-                    message="CATSS MT and BHSA verse have different word counts",
+                    message="expanded CATSS MT and BHSA verse have different word counts",
                 )
             )
             continue
 
         catss_normalized: list[str] = []
         bhsa_normalized: list[str] = []
-        failed = False
+        normalization_finding: MappingFinding | None = None
 
-        for position, ((alignment_id, _mt_index, reading), word) in enumerate(
+        for position_number, (position, word) in enumerate(
             zip(positions, parent.words, strict=True),
             start=1,
         ):
             try:
-                catss_value = normalize_catss_hebrew(reading.primary)
-            except ValueError as exc:
+                catss_value = normalize_catss_hebrew(position.primary)
+            except HebrewNormalizationError as exc:
                 normalization_errors += 1
-                failed = True
-                findings.append(
-                    MappingFinding(
-                        code="catss_hebrew_normalization_error",
-                        source_name=document.source_name,
-                        chapter=verse.chapter,
-                        verse=verse.verse,
-                        position=position,
-                        alignment_id=alignment_id,
-                        catss_value=reading.primary,
-                        bhsa_value=None,
-                        message=str(exc),
-                    )
+                normalization_finding = MappingFinding(
+                    code="catss_hebrew_normalization_error",
+                    source_name=document.source_name,
+                    chapter=verse.chapter,
+                    verse=verse.verse,
+                    position=position_number,
+                    alignment_id=position.alignment_id,
+                    catss_value=position.primary,
+                    bhsa_value=None,
+                    message=str(exc),
                 )
                 break
             try:
                 bhsa_value = normalize_bhsa_hebrew(word.g_cons_utf8)
-            except ValueError as exc:
+            except HebrewNormalizationError as exc:
                 normalization_errors += 1
-                failed = True
-                findings.append(
-                    MappingFinding(
-                        code="bhsa_hebrew_normalization_error",
-                        source_name=document.source_name,
-                        chapter=verse.chapter,
-                        verse=verse.verse,
-                        position=position,
-                        alignment_id=alignment_id,
-                        catss_value=catss_value,
-                        bhsa_value=word.g_cons_utf8,
-                        message=str(exc),
-                    )
+                normalization_finding = MappingFinding(
+                    code="bhsa_hebrew_normalization_error",
+                    source_name=document.source_name,
+                    chapter=verse.chapter,
+                    verse=verse.verse,
+                    position=position_number,
+                    alignment_id=position.alignment_id,
+                    catss_value=catss_value,
+                    bhsa_value=word.g_cons_utf8,
+                    message=str(exc),
                 )
                 break
             catss_normalized.append(catss_value)
             bhsa_normalized.append(bhsa_value)
 
-        if failed:
+        if normalization_finding is not None:
             mismatched_verses += 1
+            findings.append(normalization_finding)
             continue
 
         mismatch_index = next(
@@ -379,7 +437,7 @@ def resolve_bhsa_document(
         )
         if mismatch_index is not None:
             mismatched_verses += 1
-            alignment_id, _mt_index, _reading = positions[mismatch_index]
+            position = positions[mismatch_index]
             findings.append(
                 MappingFinding(
                     code="verse_word_mismatch",
@@ -387,7 +445,7 @@ def resolve_bhsa_document(
                     chapter=verse.chapter,
                     verse=verse.verse,
                     position=mismatch_index + 1,
-                    alignment_id=alignment_id,
+                    alignment_id=position.alignment_id,
                     catss_value=catss_normalized[mismatch_index],
                     bhsa_value=bhsa_normalized[mismatch_index],
                     message="normalized CATSS MT and BHSA word differ",
@@ -395,83 +453,76 @@ def resolve_bhsa_document(
             )
             continue
 
-        qere_failure = False
-        for position, ((alignment_id, _mt_index, reading), word) in enumerate(
+        qere_failure: MappingFinding | None = None
+        for position_number, (position, word) in enumerate(
             zip(positions, parent.words, strict=True),
             start=1,
         ):
-            if reading.qere is None:
+            if position.qere is None:
                 continue
             qere_checks += 1
             if word.qere_utf8 is None or not word.qere_utf8.strip():
                 qere_mismatches += 1
-                qere_failure = True
-                findings.append(
-                    MappingFinding(
-                        code="qere_missing",
-                        source_name=document.source_name,
-                        chapter=verse.chapter,
-                        verse=verse.verse,
-                        position=position,
-                        alignment_id=alignment_id,
-                        catss_value=reading.qere,
-                        bhsa_value=None,
-                        message="CATSS Qere has no BHSA qere_utf8 value on the same word slot",
-                    )
+                qere_failure = MappingFinding(
+                    code="qere_missing",
+                    source_name=document.source_name,
+                    chapter=verse.chapter,
+                    verse=verse.verse,
+                    position=position_number,
+                    alignment_id=position.alignment_id,
+                    catss_value=position.qere,
+                    bhsa_value=None,
+                    message="CATSS Qere has no BHSA qere_utf8 value on the same word slot",
                 )
                 break
             try:
-                catss_qere = normalize_catss_hebrew(reading.qere)
+                catss_qere = normalize_catss_hebrew(position.qere)
                 bhsa_qere = normalize_bhsa_hebrew(word.qere_utf8)
-            except ValueError as exc:
+            except HebrewNormalizationError as exc:
                 normalization_errors += 1
                 qere_mismatches += 1
-                qere_failure = True
-                findings.append(
-                    MappingFinding(
-                        code="qere_normalization_error",
-                        source_name=document.source_name,
-                        chapter=verse.chapter,
-                        verse=verse.verse,
-                        position=position,
-                        alignment_id=alignment_id,
-                        catss_value=reading.qere,
-                        bhsa_value=word.qere_utf8,
-                        message=str(exc),
-                    )
+                qere_failure = MappingFinding(
+                    code="qere_normalization_error",
+                    source_name=document.source_name,
+                    chapter=verse.chapter,
+                    verse=verse.verse,
+                    position=position_number,
+                    alignment_id=position.alignment_id,
+                    catss_value=position.qere,
+                    bhsa_value=word.qere_utf8,
+                    message=str(exc),
                 )
                 break
             if catss_qere != bhsa_qere:
                 qere_mismatches += 1
-                qere_failure = True
-                findings.append(
-                    MappingFinding(
-                        code="qere_mismatch",
-                        source_name=document.source_name,
-                        chapter=verse.chapter,
-                        verse=verse.verse,
-                        position=position,
-                        alignment_id=alignment_id,
-                        catss_value=catss_qere,
-                        bhsa_value=bhsa_qere,
-                        message="CATSS Qere and BHSA qere_utf8 differ on the same word slot",
-                    )
+                qere_failure = MappingFinding(
+                    code="qere_mismatch",
+                    source_name=document.source_name,
+                    chapter=verse.chapter,
+                    verse=verse.verse,
+                    position=position_number,
+                    alignment_id=position.alignment_id,
+                    catss_value=catss_qere,
+                    bhsa_value=bhsa_qere,
+                    message="CATSS Qere and BHSA qere_utf8 differ on the same word slot",
                 )
                 break
 
-        if qere_failure:
+        if qere_failure is not None:
             mismatched_verses += 1
+            findings.append(qere_failure)
             continue
 
         resolved_verses += 1
         word_mappings.extend(
             BhsaWordMapping(
-                alignment_id=alignment_id,
-                mt_index=mt_index,
+                alignment_id=position.alignment_id,
+                mt_index=position.mt_index,
+                segment_index=position.segment_index,
                 bhsa_node=word.node,
-                mapping_kind="ketiv_qere" if reading.qere is not None else "exact",
+                mapping_kind="ketiv_qere" if position.qere is not None else "exact",
             )
-            for (alignment_id, mt_index, reading), word in zip(positions, parent.words, strict=True)
+            for position, word in zip(positions, parent.words, strict=True)
         )
         verse_anchors.extend(
             BhsaVerseAnchor(
@@ -497,6 +548,62 @@ def resolve_bhsa_document(
         findings=tuple(findings),
         validation_findings=validation.findings,
     )
+
+
+def _expand_catss_positions(
+    source_name: str,
+    verse: VerseRecord,
+) -> tuple[tuple[_CatssPosition, ...], MappingFinding | None]:
+    positions: list[_CatssPosition] = []
+
+    for alignment in verse.alignments:
+        for mt_index, reading in enumerate(alignment.mt_readings):
+            try:
+                primary_segments = split_catss_hebrew_words(reading.primary)
+                qere_segments = (
+                    split_catss_hebrew_words(reading.qere)
+                    if reading.qere is not None
+                    else (None,) * len(primary_segments)
+                )
+            except HebrewNormalizationError as exc:
+                return (), MappingFinding(
+                    code="catss_hebrew_normalization_error",
+                    source_name=source_name,
+                    chapter=verse.chapter,
+                    verse=verse.verse,
+                    position=None,
+                    alignment_id=alignment.alignment_id,
+                    catss_value=reading.primary,
+                    bhsa_value=None,
+                    message=str(exc),
+                )
+
+            if reading.qere is not None and len(qere_segments) != len(primary_segments):
+                return (), MappingFinding(
+                    code="qere_segment_count_mismatch",
+                    source_name=source_name,
+                    chapter=verse.chapter,
+                    verse=verse.verse,
+                    position=None,
+                    alignment_id=alignment.alignment_id,
+                    catss_value=str(len(qere_segments)),
+                    bhsa_value=str(len(primary_segments)),
+                    message="CATSS Qere and primary reading have different maqaf segment counts",
+                )
+
+            for segment_index, primary in enumerate(primary_segments):
+                qere = typing.cast(str | None, qere_segments[segment_index])
+                positions.append(
+                    _CatssPosition(
+                        alignment_id=alignment.alignment_id,
+                        mt_index=mt_index,
+                        segment_index=segment_index,
+                        primary=primary,
+                        qere=qere,
+                    )
+                )
+
+    return tuple(positions), None
 
 
 def _report(
