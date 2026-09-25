@@ -525,3 +525,21 @@ HB2\tLOGOS
     assert report.ok is False
     assert report.word_mappings == ()
     assert report.findings[0].code == "surface_placement_conflict"
+
+
+def test_equivalent_relative_and_explicit_greek_references_are_deduplicated() -> None:
+    doc = parse_parallel_text(
+        """Gen 23:5
+HB\tMH/ [6] [[23:6]]
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = FakeProvider(
+        (_span("μή", book="Gen", chapter=23, verse=6, node=960006, start_node=700),)
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is True
+    assert report.summary.reference_overrides == 1
+    assert report.word_mappings[0].lxx_node == 700
