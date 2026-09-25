@@ -84,6 +84,7 @@ class ParallelDocument:
     """Parsed representation of one CATSS parallel file."""
 
     source_name: str
+    data_line_numbers: tuple[int, ...]
     verses: tuple[VerseRecord, ...]
     diagnostics: tuple[ParseDiagnostic, ...]
 
@@ -130,6 +131,7 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
 
     canonical_source = pathlib.Path(source_name).name
     diagnostics: list[ParseDiagnostic] = []
+    data_line_numbers: list[int] = []
     verses: list[VerseRecord] = []
     current: _VerseBuilder | None = None
     pending: list[_PhysicalRow] = []
@@ -192,6 +194,8 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             )
             continue
 
+        data_line_numbers.append(line_no)
+
         if current is None:
             diagnostics.append(
                 ParseDiagnostic(
@@ -229,6 +233,7 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
     flush_verse()
     return ParallelDocument(
         source_name=canonical_source,
+        data_line_numbers=tuple(data_line_numbers),
         verses=tuple(verses),
         diagnostics=tuple(diagnostics),
     )
@@ -321,7 +326,7 @@ def _build_alignment(
 
     source_lines = tuple(row.line_no for row in physical_rows)
     raw_lines = tuple(row.raw for row in physical_rows)
-    alignment_id = _alignment_id(
+    alignment_id = alignment_id_for(
         source_name=source_name,
         header_raw=verse.header_raw,
         source_lines=source_lines,
@@ -537,7 +542,7 @@ def _cell_has_leading_hash(cell: str) -> bool:
     return bool(re.match(r"^#(?:\s|$)", cell))
 
 
-def _alignment_id(
+def alignment_id_for(
     *,
     source_name: str,
     header_raw: str,
