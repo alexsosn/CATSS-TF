@@ -706,3 +706,91 @@ Issue #7 will bind this contract to an actual Text-Fabric API and implement Hebr
 ### 15.7 TF-feature compatibility
 
 The future `catss-bhsa` module remains a normal BHSA enrichment module. CATSS features are attached to resolved BHSA word slots when an MT word exists, and may use existing BHSA verse nodes for query-native aggregate/presence features when the CATSS alignment has no Hebrew word target. Parent BHSA features are not copied into the module; no synthetic word anchor is created.
+
+
+## 16. BHSA Hebrew resolver
+
+### 16.1 Input adapter
+
+Issue #7 keeps Text-Fabric loading separate from the mapping algorithm. The resolver consumes immutable snapshots:
+
+```text
+BhsaWordSlot
+  node
+  g_cons_utf8
+  g_word_utf8
+  qere_utf8?
+
+BhsaVerse
+  book
+  chapter
+  verse
+  verse_node
+  words[]
+```
+
+A `BhsaVerseProvider` supplies exact `(book, chapter, verse)` snapshots from the already validated BHSA 2021 parent. #11 will bind this protocol to the live Text-Fabric API.
+
+### 16.2 CATSS token realizations
+
+For each ordinary `mt_token`:
+
+```text
+B/R)$YT
+  whole:  בראשׁית
+  split:  ב | ראשׁית
+
+BN/YW
+  whole:  בניו
+  split:  בן | יו
+```
+
+The resolver does not prefer a variant by a heuristic score. It keeps every variant that can participate in a complete verse-wide textual match. A unique complete path determines the realization.
+
+### 16.3 Parent sequence
+
+The matching sequence contains every BHSA word slot whose normalized `g_cons_utf8` is non-empty.
+
+Empty-consonant slots remain in the parent snapshot and can be included in a resolved row span, but they do not consume a CATSS consonantal element.
+
+### 16.4 Matching
+
+Primary matching is exact normalized consonantal equality.
+
+The only relaxed character rule in v0.1 is explicit CATSS ambiguous-shin `#`, which may match BHSA shin or sin at that position. This path is recorded as `mapping_kind=ambiguous_shin` if used.
+
+No edit distance, lemma, morphology, nearest position, or “same ordinal token” fallback exists.
+
+### 16.5 Verse resolution states
+
+```text
+mapped
+hebrew_empty
+unsupported_source
+verse_missing
+sequence_mismatch
+ambiguous_sequence
+unnormalizable
+```
+
+A CATSS LXX-plus/Hebrew-empty row receives `hebrew_empty`, no word nodes, and the existing BHSA verse node when the verse itself exists.
+
+If the source has no BHSA book (#6), it receives `unsupported_source` without attempting a verse lookup.
+
+### 16.6 Row spans and empty BHSA slots
+
+After a unique full-verse mapping, each MT-bearing row is assigned the parent nodes consumed by its CATSS tokens. If real BHSA word nodes with empty consonantal form lie strictly between the row's first and last matched node, they are included in `bhsa_word_nodes`.
+
+The resolver does not absorb empty slots before or after a row because ownership would be interpretive.
+
+### 16.7 Ketiv/Qere validation
+
+For a row with both readings, the primary Ketiv establishes the node identity. If exactly one CATSS Qere token and exactly one mapped lexical BHSA target are available, the Qere must match that slot's normalized `qere_utf8`.
+
+Otherwise the row mapping is retained but a blocking typed Qere finding is emitted. Later materialization is fail-closed on such findings.
+
+### 16.8 Reproducibility
+
+Input ordering is source order and BHSA node order. Candidate realizations are generated deterministically. Findings are emitted in source verse/alignment order. No random tie-break exists.
+
+A mapping report is therefore reproducible for the same CATSS source fingerprint and BHSA 2021 parent.
