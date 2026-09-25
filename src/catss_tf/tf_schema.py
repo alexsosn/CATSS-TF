@@ -314,8 +314,7 @@ def compile_tf_features(
                 f"duplicate_membership: parent node {node} repeats one CATSS mapping record"
             )
         alignment_identities = [
-            (membership.source, membership.alignment_id)
-            for membership in node_memberships
+            (membership.source, membership.alignment_id) for membership in node_memberships
         ]
         if len(alignment_identities) != len(set(alignment_identities)):
             raise TfSchemaError(
@@ -350,9 +349,7 @@ def compile_tf_features(
         _validate_alignment_source(anchor.source, anchor.alignment_id)
         anchor_identity = (anchor.source, anchor.alignment_id)
         if anchor_identity in seen_anchors:
-            raise TfSchemaError(
-                f"duplicate_anchor: {anchor.source} {anchor.alignment_id}"
-            )
+            raise TfSchemaError(f"duplicate_anchor: {anchor.source} {anchor.alignment_id}")
         seen_anchors.add(anchor_identity)
         if anchor.kind not in _ANCHOR_KINDS[projection]:
             raise TfSchemaError(
@@ -443,9 +440,7 @@ def _validate_membership(
         ("lxx_i", membership.lxx_i),
     ):
         if optional_index is not None and optional_index < 1:
-            raise TfSchemaError(
-                f"{name} is 1-based and must be positive, got {optional_index}"
-            )
+            raise TfSchemaError(f"{name} is 1-based and must be positive, got {optional_index}")
 
     if membership.mt_i is not None and membership.mt_i > membership.mt_n:
         raise TfSchemaError(f"mt_i {membership.mt_i} exceeds CATSS mt_n {membership.mt_n}")
@@ -540,8 +535,7 @@ def write_tf_module(
     existing_tf = tuple(sorted(path.name for path in directory.glob("*.tf") if path.is_file()))
     if existing_tf:
         raise TfSchemaError(
-            "CATSS module directory already contains TF feature file(s): "
-            + ", ".join(existing_tf)
+            "CATSS module directory already contains TF feature file(s): " + ", ".join(existing_tf)
         )
 
     for feature in sorted(node_features):
