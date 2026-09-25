@@ -6,7 +6,6 @@ import typing
 
 from catss_tf.source import CATSS_PARALLEL_FILENAMES
 
-
 SCHEMA_VERSION = "1"
 WARP_FEATURES = frozenset({"otype", "oslots", "otext"})
 MAX_MEMBERSHIP_LANES = 2
