@@ -391,6 +391,76 @@ HB\tGR
     report = resolve_document_to_bhsa(doc, verse_lookup=_provider())
 
     assert report.ok is False
-    assert report.mappings[0].status is BhsaMapStatus.UNSUPPORTED_SOURCE
+    assert report.mappings[0].status is BhsaMapStatus.UNKNOWN_SOURCE
     assert report.findings[0].code == "unknown_source"
     assert report.findings[0].severity is MappingSeverity.ERROR
+
+
+def test_duplicate_parent_word_nodes_fail_closed() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+B/R)$YT\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    parent = BhsaVerse(
+        book="Genesis",
+        chapter=1,
+        verse=1,
+        verse_node=1_500_000,
+        words=(
+            BhsaWordSlot(node=1, g_cons_utf8="ב", g_word_utf8="ב"),
+            BhsaWordSlot(node=1, g_cons_utf8="ראשׁית", g_word_utf8="ראשׁית"),
+        ),
+    )
+
+    report = resolve_document_to_bhsa(doc, verse_lookup=_provider(parent))
+
+    assert report.ok is False
+    assert report.mappings[0].status is BhsaMapStatus.PARENT_INVALID
+    assert report.mappings[0].bhsa_word_nodes == ()
+    assert report.findings[0].code == "parent_snapshot_invalid"
+
+
+def test_out_of_order_parent_word_nodes_fail_closed() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+B/R)$YT\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    parent = BhsaVerse(
+        book="Genesis",
+        chapter=1,
+        verse=1,
+        verse_node=1_500_000,
+        words=(
+            BhsaWordSlot(node=2, g_cons_utf8="ב", g_word_utf8="ב"),
+            BhsaWordSlot(node=1, g_cons_utf8="ראשׁית", g_word_utf8="ראשׁית"),
+        ),
+    )
+
+    report = resolve_document_to_bhsa(doc, verse_lookup=_provider(parent))
+
+    assert report.ok is False
+    assert report.mappings[0].status is BhsaMapStatus.PARENT_INVALID
+    assert report.findings[0].code == "parent_snapshot_invalid"
+
+
+def test_provider_reference_mismatch_has_distinct_parent_invalid_status() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+BR)\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    wrong = _verse("ברא", book="Exodus")
+
+    def lookup(_book: str, _chapter: int, _verse_no: int) -> BhsaVerse | None:
+        return wrong
+
+    report = resolve_document_to_bhsa(doc, verse_lookup=lookup)
+
+    assert report.ok is False
+    assert report.mappings[0].status is BhsaMapStatus.PARENT_INVALID
+    assert report.findings[0].code == "parent_reference_mismatch"
