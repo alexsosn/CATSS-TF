@@ -304,9 +304,8 @@ def _build_alignment(
     is_transposition_stylistic = any(
         annotation.kind == "transposition_stylistic" for annotation in annotations
     )
-    is_transposition_remote = (
-        "^^^" in joined_raw
-        or any(annotation.kind == "transposition_remote" for annotation in annotations)
+    is_transposition_remote = "^^^" in joined_raw or any(
+        annotation.kind == "transposition_remote" for annotation in annotations
     )
     is_transposition_local = "~" in no_braces or _SINGLE_CARET.search(no_braces) is not None
 
@@ -384,9 +383,7 @@ def _extract_annotations(
             annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
     if side == "lxx":
         for match in _SQUARE_REFERENCE.finditer(cell):
-            annotations.append(
-                Annotation(side=side, kind="verse_reference", raw=match.group(0))
-            )
+            annotations.append(Annotation(side=side, kind="verse_reference", raw=match.group(0)))
     return annotations
 
 
