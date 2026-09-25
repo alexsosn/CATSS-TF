@@ -1019,3 +1019,21 @@ A blanket “one CATSS row per parent word” rule therefore rejects a documente
 and only when both resolve to the **identical complete parent span**. Partial overlaps and unmarked duplicate rows remain conflicts.
 
 Resolver output distinguishes `mapping_kind=transposition_alignment` from `mapping_kind=transposition_carrier`. This preserves both CATSS row identities without pretending they are two printed Greek tokens. Issue #10 must account for this real many-CATSS-rows→one-parent-node case without encoding an opaque list of alignment IDs in TF.
+
+
+## R-070 — Documented Greek strategy sigla must not become lexical tokens
+
+CATSS's published/open parser patterns identify several Greek-side marks whose meaning is known:
+
+- `{p}` — Greek preverb representing a Hebrew preposition;
+- `{s}` — Hebrew `MN` reflected by a Greek comparative/superlative;
+- `{---%}` — asterisked passage in Job;
+- `?` runs — doubt concerning a word or translation-strategy interpretation.
+
+These are annotation, not Greek surface letters. By contrast, the same documentation explicitly labels `{+}` and `{pm}` as unknown.
+
+Source:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/regex_patterns.py
+
+**Decision:** known marks receive structured annotation kinds and are removed from Greek lexical candidates; doubt marks preserve a `doubt` annotation while leaving the underlying word available for exact surface mapping. Explicitly unknown marks remain `kind=unknown` and therefore continue to block default validation rather than being guessed.
