@@ -1499,3 +1499,10 @@ alignment_id = catss:<source>:...
 must hold. A source/ID mismatch is a hard schema error.
 
 Anchor events also remain alignment-identifiable until after duplicate checking. Structural counters are incremented only after a unique `(source, alignment_id)` anchor has been established, preventing accidental double counting while keeping the TF surface aggregate-only.
+
+
+### 19.12 Duplicate-alignment and clean-write invariants
+
+A parent word node may not receive more than one mapping row for the same canonical `(source, alignment_id)`. Token or maqaf-segment indices distinguish provenance inside the alignment, but they do not create additional alignment memberships on the same parent node. Such input is rejected as `duplicate_alignment_membership`.
+
+The generic TF writer is clean-target only. It refuses a target directory containing any existing `*.tf` file, preventing stale feature files from surviving rematerialization. Higher-level materializers should write to a fresh temporary directory and publish the completed module as one replacement operation.
