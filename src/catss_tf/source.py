@@ -13,7 +13,8 @@ CCAT_USER_DECLARATION_URL = (
     "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/00.user-declaration.txt"
 )
 
-# CCAT currently exposes 46 parallel files; preserve both Daniel OG and Theodotion.\nCATSS_PARALLEL_FILENAMES: tuple[str, ...] = (
+# CCAT currently exposes 46 parallel files; preserve both Daniel OG and Theodotion.
+CATSS_PARALLEL_FILENAMES: tuple[str, ...] = (
     "01.Genesis.par",
     "02.Exodus.par",
     "03.Lev.par",
