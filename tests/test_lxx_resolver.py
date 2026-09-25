@@ -483,3 +483,43 @@ def test_text_fabric_provider_excludes_lettered_subverses_from_canonical_span() 
     assert addition is not None
     assert [word.node for word in addition.words] == [2]
     assert addition.node == 910001
+
+
+def test_stylistic_transposition_proxy_and_carrier_may_share_parent_words() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:29
+ZR(\t{..^SPORI/MOU}
+ZR(\tSPE/RMATOS
+{...}\tSPORI/MOU
+L/KM\tU(MI=N
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = FakeProvider((_span("σπέρματος", "σπορίμου", "ὑμῖν"),))
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is True
+    assert [(mapping.lxx_node, mapping.mapping_kind) for mapping in report.word_mappings] == [
+        (2, "transposition_alignment"),
+        (1, "exact"),
+        (2, "transposition_carrier"),
+        (3, "exact"),
+    ]
+
+
+def test_unmarked_duplicate_rows_cannot_share_one_parent_word() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+HB1\tLOGOS
+HB2\tLOGOS
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = FakeProvider((_span("λόγος"),))
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is False
+    assert report.word_mappings == ()
+    assert report.findings[0].code == "surface_placement_conflict"
