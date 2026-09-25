@@ -916,3 +916,134 @@ Source:
 - https://github.com/eliranwong/LXX-Rahlfs-1935/blob/master/08_versification/001_verse_c_book.csv
 
 **Decision:** the LXX schema profile records the full 57-book parent set and tests that every CATSS source mapping target belongs to it. A future typo or accidental OSIS-name substitution therefore fails before resolver work.
+
+
+## R-063 — Greek reference annotations have a small safe core and a larger ambiguous tail
+
+CATSS documentation defines square-bracket material on the Greek side as LXX reference differences from the MT/BHS header. The directly documented example is Gen 23:5:
+
+`MH/ [6]`
+
+where the Greek word belongs to LXX verse 6.
+
+The CATSS regex documentation distinguishes `[[...]]` (“chapter & verse difference”) from `[...]` (“(chapter &) verse difference”). Real source/repair examples include:
+
+- `[6]` — verse-only shift;
+- `[118.127]` — chapter.verse;
+- `[[30:11]]` — chapter:verse;
+- strings such as `[e10.31]` and `[2.46k,10.26a]` that encode richer cross-reference/editorial information and are not safely reducible to one target location without further documentation.
+
+Sources:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/parallel_readme.md
+- https://github.com/codykingham/CATSS_parsers/blob/master/regex_patterns.py
+- https://github.com/codykingham/CATSS_parsers/blob/master/patch_catss.py
+
+**Decision:** the parser exposes a structured `GreekReference` for every square-bracket annotation. The v0.1 resolver supports only unambiguous single locations:
+
+- verse only: `[6]` / `[6a]`;
+- chapter+verse: `[118.127]`, `[[30:11]]`, with optional one-letter subverse suffix.
+
+Comma-separated, prefixed, or otherwise complex strings remain losslessly represented with `status=complex` and produce a typed resolver finding. They are never guessed.
+
+## R-064 — Greek identity can be proven on base surface letters
+
+CATSS parallel Greek is TLG-style BETA code. The MIT CATSS parser prior art uses `greek-utils` to convert full polytonic forms. For node identity against CenterBLC, full diacritic reconstruction is unnecessary: the parent `word` surface can be Unicode-decomposed and reduced to the same Greek base letters.
+
+The BETA alphabet used by CATSS includes:
+
+`A B G D E V Z H Q I K L M N C O P R S J T U F X Y W`
+
+where `C=ξ`, `J=final sigma`, and `V=digamma`. Accent/breathing/iota-subscript markers are orthographic modifiers, not separate surface letters.
+
+Sources:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/regex_patterns.py
+- https://github.com/codykingham/CATSS_parsers/blob/master/dev/generate_parallel.ipynb
+
+**Decision:** #9 implements a small strict identity normalizer rather than importing a full display converter. It:
+
+- maps CATSS BETA Greek letters to lowercase Greek base letters;
+- folds `J` and Unicode final sigma to ordinary sigma for comparison;
+- removes documented accent/breathing/diaeresis/iota-subscript/case markers;
+- ignores apostrophe/elision and ordinary punctuation for identity;
+- rejects unknown lexical characters rather than silently dropping them.
+
+Parent `word` normalization strips combining marks and punctuation but preserves the inflected sequence of Greek letters. Lemma features are never consulted.
+
+## R-065 — Mapping is solved per parent Greek reference, across the whole CATSS document
+
+A single MT/BHS verse can contribute Greek material to a different Rahlfs verse, and the inverse material may occur under the next MT header. Resolving each CATSS `VerseRecord` independently would therefore create artificial partial parent verses.
+
+**Decision:** #9 first assigns every Greek-bearing alignment to a target `LxxTargetReference(book, chapter, verse, subverse)` using:
+
+1. the source profile default;
+2. overridden by one supported structured Greek reference when present.
+
+It then groups Greek readings **across the whole CATSS document** by target reference and proves placement against the complete CenterBLC target span.
+
+## R-066 — Exact sequence is preferred; transposition recovery requires unique surface placement
+
+CATSS explicitly warns that Greek running order may be altered for global alignment differences. Blind CATSS row order is therefore not a reliable node identity.
+
+**Decision:** for each target reference:
+
+1. normalize the complete CATSS Greek token sequence and parent word sequence;
+2. if sequences are exactly equal, map by position;
+3. otherwise require equal cardinality and equal normalized multisets;
+4. permit reordered placement only when every normalized Greek surface has one unambiguous unused parent occurrence;
+5. if repeated surfaces allow more than one possible node assignment, fail with `ambiguous_reordered_surface`.
+
+No nearest-token, edit-distance, lemma, morphology, or nth-occurrence guess is allowed.
+
+This intentionally leaves difficult repeated-token transpositions unresolved until stronger structural evidence is implemented.
+
+## R-067 — LXX-minus has no honest LXX word target
+
+A CATSS LXX-minus row has Hebrew material but no Greek word. Assigning it to a neighboring CenterBLC word would fabricate a correspondence.
+
+**Decision:** after the target parent verse/subverse is identified, such a row yields an `LxxSpanAnchor(kind="lxx_minus")` on the existing parent verse/subverse location, not a word mapping. Issue #10 decides its final scalar TF representation.
+
+## R-068 — Greek correction/edition-difference wrappers are alternatives, not ordinary extra words
+
+CATSS `{c...}` marks a correction to Greek text and `{g...}` a difference between Rahlfs and Göttingen. Treating their payload as an unconditional additional running-text token can inflate cardinality or map the wrong editorial form.
+
+**Decision:** until the parser carries explicit Greek alternative-reading semantics, #9 refuses to resolve an alignment containing `greek_correction` or `greek_edition_difference`. It emits `greek_alternative_reading_unresolved` with provenance. Other text-bearing wrappers whose semantics explicitly describe running translation material (transposition, added preposition, distributive, repetition) remain candidates.
+
+A focused follow-up issue may model alternative Greek readings if the corpus audit shows material coverage impact.
+
+## R-069 — Exact parent release identity is a resolver precondition
+
+Issue #8 defines CenterBLC/LXX v1.0.1 as the only supported parent profile. Unlike the earlier BHSA implementation, #9 makes this precondition explicit in the pure resolver interface.
+
+**Decision:** `LxxWordProvider.parent_probe()` returns a mapping-relevant `LxxParentProbe`. Resolution runs `validate_lxx_parent` before CATSS mapping and emits no mappings on parent mismatch. Raw-file fingerprints may be required by the caller; structural mode still requires repository/version/release/warp/feature identity.
+
+## R-070 — Provider and audit surfaces stay scalar and deterministic
+
+Normal CI must not require the 600k-word parent corpus.
+
+**Decision:** the pure resolver depends on a small provider contract:
+
+```text
+LxxWord
+  node
+  word
+  subverse
+  orig_order
+
+LxxSpan
+  node
+  book
+  chapter
+  verse
+  subverse
+  words[]
+
+LxxWordProvider
+  parent_probe()
+  get_span(book, chapter, verse, subverse) -> LxxSpan?
+```
+
+A thin Text-Fabric adapter can implement this against an already loaded v1.0.1 API.
+
+The mapping report uses scalar counters and typed findings. A later CLI/audit command may aggregate these across all user-acquired CATSS files without committing either corpus.
