@@ -327,18 +327,16 @@ def compile_tf_features(
             if count:
                 _put(features, _AGGREGATE_BY_FLAG[flag], node, count)
 
-    seen_anchors: set[tuple[str, str, str]] = set()
+    seen_anchors: set[tuple[str, str]] = set()
     for anchor in anchors:
         _validate_parent_node(max_node, anchor.node)
         if anchor.source not in _SOURCE_RANK:
             raise TfSchemaError(f"unknown CATSS source {anchor.source!r}")
-        if not anchor.alignment_id.startswith("catss:"):
-            raise TfSchemaError(f"invalid CATSS alignment id {anchor.alignment_id!r}")
-        anchor_identity = (anchor.source, anchor.alignment_id, anchor.kind)
+        _validate_alignment_source(anchor.source, anchor.alignment_id)
+        anchor_identity = (anchor.source, anchor.alignment_id)
         if anchor_identity in seen_anchors:
             raise TfSchemaError(
-                "duplicate_anchor: "
-                f"{anchor.source} {anchor.alignment_id} {anchor.kind}"
+                f"duplicate_anchor: {anchor.source} {anchor.alignment_id}"
             )
         seen_anchors.add(anchor_identity)
         if anchor.kind not in _ANCHOR_KINDS[projection]:
@@ -411,8 +409,7 @@ def _validate_membership(
         raise TfSchemaError(
             f"mapping kind {membership.mapping_kind!r} is invalid for {projection} projection"
         )
-    if not membership.alignment_id.startswith("catss:"):
-        raise TfSchemaError(f"invalid CATSS alignment id {membership.alignment_id!r}")
+    _validate_alignment_source(membership.source, membership.alignment_id)
 
     for name, value in (("mt_n", membership.mt_n), ("lxx_n", membership.lxx_n)):
         if value < 0:
@@ -450,6 +447,17 @@ def _validate_membership(
         raise TfSchemaError("unknown CATSS flag(s): " + ", ".join(sorted(unknown_flags)))
     if "catss_retro" in membership.flags and membership.retro_kind is None:
         raise TfSchemaError("catss_retro requires a structured retro_kind")
+
+
+def _validate_alignment_source(source: str, alignment_id: str) -> None:
+    expected_prefix = f"catss:{source}:"
+    if not alignment_id.startswith("catss:"):
+        raise TfSchemaError(f"invalid CATSS alignment id {alignment_id!r}")
+    if not alignment_id.startswith(expected_prefix):
+        raise TfSchemaError(
+            f"alignment id source mismatch: expected prefix {expected_prefix!r}, "
+            f"got {alignment_id!r}"
+        )
 
 
 def _validate_parent_node(max_node: int, node: int) -> None:
