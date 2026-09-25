@@ -1,9 +1,9 @@
 """Deterministic CATSS Hebrew -> BHSA 2021 word-slot resolver."""
 
-import collections.abc
 import dataclasses
 import enum
 import unicodedata
+from collections.abc import Callable
 
 from catss_tf.bhsa_schema import BhsaSourceStatus, classify_catss_source
 from catss_tf.parser import AlignmentRecord, ParallelDocument, VerseRecord
@@ -230,7 +230,7 @@ def normalize_bhsa_hebrew(text: str) -> str:
 def resolve_document_to_bhsa(
     document: ParallelDocument,
     *,
-    verse_lookup: collections.abc.Callable[[str, int, int], BhsaVerse | None],
+    verse_lookup: Callable[[str, int, int], BhsaVerse | None],
 ) -> BhsaMappingReport:
     """Resolve one canonical CATSS document against BHSA verse snapshots."""
 
@@ -641,7 +641,10 @@ def _resolve_verse(
                     verse=parent.verse,
                     expected=" ".join(row.mt_qere_tokens),
                     actual=",".join(str(node) for node in primary_nodes),
-                    message="paired CATSS Qere cannot be associated uniquely with one BHSA word slot",
+                    message=(
+                        "paired CATSS Qere cannot be associated uniquely "
+                        "with one BHSA word slot"
+                    ),
                 )
             )
             continue
@@ -771,7 +774,11 @@ def _first_sequence_difference(
             expected = variants[0].forms[0]
             if parent_index >= len(parent):
                 return expected, "<end>"
-            actual = parent[parent_index].qere if source.mode == "qere" else parent[parent_index].cons
+            actual = (
+                parent[parent_index].qere
+                if source.mode == "qere"
+                else parent[parent_index].cons
+            )
             return expected, actual or "<missing-qere>"
         chosen = matching[0]
         parent_index += len(chosen.forms)
