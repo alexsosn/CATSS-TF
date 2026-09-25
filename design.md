@@ -859,9 +859,9 @@ Qere-only **Qere             -> BHSA qere_utf8 proves slot
 
 A Qere-only position does **not** make the BHSA written form disappear from the corpus model; it merely uses the Masoretic reading feature as the textual identity witness for that slot.
 
-No empty BHSA slot is transparent or skippable. Verse cardinality remains one CATSS MT position per BHSA word slot in this resolver. A non-Qere CATSS reading facing an empty `g_cons_utf8` is a hard mapping failure.
+No empty BHSA slot is transparent or skippable. After issue #26 maqaf expansion, verse cardinality is one **expanded CATSS segment** per BHSA word slot; one `MtReading` may contribute multiple segments only when it explicitly contains maqaf. A non-Qere CATSS reading facing an empty `g_cons_utf8` is a hard mapping failure.
 
-CATSS `/` remains an intra-word morphological separator and never creates additional BHSA slots.
+CATSS `/` and `\\` remain intra-word segmentation markers and never create additional BHSA slots.
 
 
 ### 16.10 Maqaf-aware post-merge hardening
