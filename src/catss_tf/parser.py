@@ -12,7 +12,6 @@ _BRACE_BLOCK = re.compile(r"\{[^{}]*\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_REFERENCE = re.compile(r"\[[^\[\]]*\]")
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
-_SINGLE_STAR = re.compile(r"(?<!\*)\*(?!\*)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
 _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s]+)")
 
@@ -49,6 +48,8 @@ class AlignmentRecord:
     mt_col_b: str | None
     retroversion_kind: str | None
     mt_tokens: tuple[str, ...]
+    mt_ketiv_tokens: tuple[str, ...]
+    mt_qere_tokens: tuple[str, ...]
     lxx_tokens: tuple[str, ...]
     mt_count: int
     lxx_count: int
@@ -295,9 +296,9 @@ def _build_alignment(
         ]
     )
 
-    mt_probe = _BRACE_BLOCK.sub(" ", mt_col_a)
-    is_qere = "**" in mt_probe
-    is_ketiv = _SINGLE_STAR.search(mt_probe) is not None
+    mt_tokens, mt_ketiv_tokens, mt_qere_tokens = _mt_lexical_candidates(mt_col_a)
+    is_ketiv = bool(mt_ketiv_tokens)
+    is_qere = bool(mt_qere_tokens)
 
     joined_raw = f"{mt_raw}\t{lxx_raw}"
     no_braces = _BRACE_BLOCK.sub(" ", joined_raw)
@@ -310,8 +311,11 @@ def _build_alignment(
     is_transposition_local = "~" in no_braces or _SINGLE_CARET.search(no_braces) is not None
 
     retroversion_kind = _retroversion_kind(mt_col_b)
-    mt_tokens = () if is_lxx_plus else _lexical_candidates(mt_col_a, side="mt")
-    lxx_tokens = () if is_lxx_minus else _lexical_candidates(lxx_raw, side="lxx")
+    if is_lxx_plus:
+        mt_tokens = ()
+        mt_ketiv_tokens = ()
+        mt_qere_tokens = ()
+    lxx_tokens = () if is_lxx_minus else _lxx_lexical_candidates(lxx_raw)
 
     source_lines = tuple(row.line_no for row in physical_rows)
     raw_lines = tuple(row.raw for row in physical_rows)
@@ -333,6 +337,8 @@ def _build_alignment(
             mt_col_b=mt_col_b,
             retroversion_kind=retroversion_kind,
             mt_tokens=mt_tokens,
+            mt_ketiv_tokens=mt_ketiv_tokens,
+            mt_qere_tokens=mt_qere_tokens,
             lxx_tokens=lxx_tokens,
             mt_count=len(mt_tokens),
             lxx_count=len(lxx_tokens),
@@ -449,25 +455,47 @@ def _brace_kind(raw: str) -> str:
     return "unknown"
 
 
-def _lexical_candidates(cell: str, *, side: typing.Literal["mt", "lxx"]) -> tuple[str, ...]:
+def _mt_lexical_candidates(
+    cell: str,
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    text = _prepare_lexical_text(cell)
+    main: list[str] = []
+    ketiv: list[str] = []
+    qere: list[str] = []
+
+    for raw_token in text.split():
+        if _is_alignment_marker(raw_token) or raw_token.startswith("."):
+            continue
+        if raw_token.startswith("**") and len(raw_token) > 2:
+            qere.append(raw_token[2:])
+            continue
+        if raw_token.startswith("*") and len(raw_token) > 1:
+            token = raw_token[1:]
+            ketiv.append(token)
+            main.append(token)
+            continue
+        main.append(raw_token)
+
+    if not main and qere:
+        main.extend(qere)
+
+    return tuple(main), tuple(ketiv), tuple(qere)
+
+
+def _lxx_lexical_candidates(cell: str) -> tuple[str, ...]:
+    text = _prepare_lexical_text(cell)
+    return tuple(token for token in text.split() if not _is_alignment_marker(token))
+
+
+def _prepare_lexical_text(cell: str) -> str:
     text = _BRACE_BLOCK.sub(lambda match: _brace_payload(match.group(0)), cell)
     text = _ANGLE_NOTE.sub(" ", text)
     text = _SQUARE_REFERENCE.sub(" ", text)
-    text = _CONTINUATION_TOKEN.sub(" ", text)
+    return _CONTINUATION_TOKEN.sub(" ", text)
 
-    tokens: list[str] = []
-    for raw_token in text.split():
-        token = raw_token
-        if token in {"--+", "---", "''", "^", "^^^", "~"}:
-            continue
-        if side == "mt" and token.startswith("."):
-            continue
-        token = token.lstrip("*") if side == "mt" else token
-        token = token.strip()
-        if token:
-            tokens.append(token)
-    return tuple(tokens)
 
+def _is_alignment_marker(token: str) -> bool:
+    return token in {"--+", "---", "''", "^", "^^^", "~"}
 
 def _brace_payload(raw: str) -> str:
     inner = raw[1:-1]
