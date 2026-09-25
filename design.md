@@ -969,6 +969,8 @@ Special direct edition mappings:
 
 All other supported sources use the closed source profile defined in code.
 
+The profile also records the exact 57-value parent book universe from the upstream source list. Every CATSS→parent target must be a member of that set; alternate OSIS/export spellings are not accepted implicitly.
+
 ### 17.5 Reference policies
 
 A source profile carries an explicit default reference policy rather than relying on book order or name similarity.
