@@ -1434,8 +1434,14 @@ stage
 severity
 code
 source
+chapter
+verse
+position
 alignment_id
 line_no
+side
+catss_value
+parent_value
 message
 ```
 
