@@ -359,14 +359,8 @@ def _resolve_verse(
     try:
         for index, word in enumerate(parent.words):
             cons = normalize_bhsa_hebrew(word.g_cons_utf8)
-            qere = (
-                normalize_bhsa_hebrew(word.qere_utf8)
-                if word.qere_utf8 is not None
-                else None
-            )
-            parent_words.append(
-                _ParentWord(slot=word, cons=cons, qere=qere, word_index=index)
-            )
+            qere = normalize_bhsa_hebrew(word.qere_utf8) if word.qere_utf8 is not None else None
+            parent_words.append(_ParentWord(slot=word, cons=cons, qere=qere, word_index=index))
     except CatssHebrewNormalizationError as exc:
         findings.append(
             _finding(
@@ -641,8 +635,7 @@ def _resolve_verse(
                     expected=" ".join(row.mt_qere_tokens),
                     actual=",".join(str(node) for node in primary_nodes),
                     message=(
-                        "paired CATSS Qere cannot be associated uniquely "
-                        "with one BHSA word slot"
+                        "paired CATSS Qere cannot be associated uniquely with one BHSA word slot"
                     ),
                 )
             )
@@ -774,9 +767,7 @@ def _first_sequence_difference(
             if parent_index >= len(parent):
                 return expected, "<end>"
             actual = (
-                parent[parent_index].qere
-                if source.mode == "qere"
-                else parent[parent_index].cons
+                parent[parent_index].qere if source.mode == "qere" else parent[parent_index].cons
             )
             return expected, actual or "<missing-qere>"
         chosen = matching[0]
@@ -883,9 +874,7 @@ def _report(
         summary=BhsaMappingSummary(
             total_alignments=len(mappings),
             mapped_alignments=sum(m.status is BhsaMapStatus.MAPPED for m in mappings),
-            hebrew_empty_alignments=sum(
-                m.status is BhsaMapStatus.HEBREW_EMPTY for m in mappings
-            ),
+            hebrew_empty_alignments=sum(m.status is BhsaMapStatus.HEBREW_EMPTY for m in mappings),
             unsupported_alignments=sum(
                 m.status is BhsaMapStatus.UNSUPPORTED_SOURCE for m in mappings
             ),
@@ -895,9 +884,7 @@ def _report(
             qere_mismatches=sum(
                 f.code in {"qere_mismatch", "qere_missing_in_bhsa"} for f in findings
             ),
-            unnormalizable_tokens=sum(
-                f.code == "unnormalizable_token" for f in findings
-            ),
+            unnormalizable_tokens=sum(f.code == "unnormalizable_token" for f in findings),
             finding_count=len(findings),
         ),
     )
