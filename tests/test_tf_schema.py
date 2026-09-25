@@ -526,3 +526,35 @@ def test_anchor_requires_canonical_source_and_alignment_identity() -> None:
                 ),
             ),
         )
+
+
+
+def test_membership_source_must_match_alignment_identity() -> None:
+    mismatched = _membership(
+        source="02.Exodus.par",
+        alignment_id="catss:01.Genesis.par:wrong-source",
+    )
+
+    with pytest.raises(TfSchemaError, match="alignment id source"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(mismatched,),
+            anchors=(),
+        )
+
+
+def test_anchor_source_must_match_alignment_identity() -> None:
+    with pytest.raises(TfSchemaError, match="alignment id source"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(),
+            anchors=(
+                _anchor(
+                    source="02.Exodus.par",
+                    alignment_id="catss:01.Genesis.par:wrong-source",
+                    token_n=1,
+                ),
+            ),
+        )
