@@ -138,7 +138,7 @@ HB {zzUNKNOWN}\tGR
     row = doc.verses[0].alignments[0]
     unknown = [annotation for annotation in row.annotations if annotation.kind == "unknown"]
     assert [(annotation.side, annotation.raw) for annotation in unknown] == [
-        ("mt", "{zzUNKNOWN}")
+        ("mt_a", "{zzUNKNOWN}")
     ]
     assert row.mt_tokens == ("HB",)
 
@@ -268,4 +268,20 @@ HB .m .s .j .w .z .xx\tGR
         "word_division",
         "abbreviation",
         "mt_strategy_siglum",
+    ]
+
+
+def test_annotations_distinguish_mt_a_mt_b_and_lxx() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HBA .m =;ALT .s\tGR {d}
+""",
+        source_name="99.Test.par",
+    )
+
+    row = doc.verses[0].alignments[0]
+    assert [(a.side, a.kind, a.raw) for a in row.annotations] == [
+        ("mt_a", "metathesis", ".m"),
+        ("mt_b", "word_separation", ".s"),
+        ("lxx", "doublet", "{d}"),
     ]
