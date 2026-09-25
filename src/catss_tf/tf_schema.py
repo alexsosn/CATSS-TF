@@ -291,6 +291,21 @@ def compile_tf_features(
 
     for node in sorted(by_node):
         node_memberships = sorted(by_node[node], key=_membership_sort_key)
+        identities = [
+            (
+                membership.source,
+                membership.alignment_id,
+                membership.mapping_kind,
+                membership.mt_i,
+                membership.mt_segment,
+                membership.lxx_i,
+            )
+            for membership in node_memberships
+        ]
+        if len(identities) != len(set(identities)):
+            raise TfSchemaError(
+                f"duplicate_membership: parent node {node} repeats one CATSS mapping record"
+            )
         if len(node_memberships) > MAX_MEMBERSHIP_LANES:
             raise TfSchemaError(
                 "membership_overflow: "
@@ -319,6 +334,10 @@ def compile_tf_features(
             )
         if anchor.token_n < 0:
             raise TfSchemaError(f"anchor token_n must be non-negative, got {anchor.token_n}")
+        if anchor.kind == "lxx_plus" and anchor.token_n < 1:
+            raise TfSchemaError("lxx_plus anchor requires token_n >= 1")
+        if anchor.kind != "lxx_plus" and anchor.token_n != 0:
+            raise TfSchemaError(f"{anchor.kind} anchor requires token_n=0")
 
         if anchor.kind == "lxx_plus":
             _increment(features, "catss_lxx_plus_n", anchor.node, 1)
@@ -382,16 +401,12 @@ def _validate_membership(
     if not membership.alignment_id.startswith("catss:"):
         raise TfSchemaError(f"invalid CATSS alignment id {membership.alignment_id!r}")
 
-    for name, value in (
-        ("mt_n", membership.mt_n),
-        ("lxx_n", membership.lxx_n),
-        ("line_first", membership.line_first),
-        ("line_last", membership.line_last),
-        ("line_n", membership.line_n),
-    ):
+    for name, value in (("mt_n", membership.mt_n), ("lxx_n", membership.lxx_n)):
         if value < 0:
             raise TfSchemaError(f"{name} must be non-negative, got {value}")
 
+    if membership.line_first < 1 or membership.line_last < 1:
+        raise TfSchemaError("CATSS source line numbers are 1-based and must be positive")
     if membership.line_n < 1:
         raise TfSchemaError("line_n must be at least 1")
     if membership.line_last < membership.line_first:
@@ -404,6 +419,24 @@ def _validate_membership(
     ):
         if value is not None and value < 1:
             raise TfSchemaError(f"{name} is 1-based and must be positive, got {value}")
+
+    if membership.mt_i is not None and membership.mt_i > membership.mt_n:
+        raise TfSchemaError(
+            f"mt_i {membership.mt_i} exceeds CATSS mt_n {membership.mt_n}"
+        )
+    if membership.lxx_i is not None and membership.lxx_i > membership.lxx_n:
+        raise TfSchemaError(
+            f"lxx_i {membership.lxx_i} exceeds CATSS lxx_n {membership.lxx_n}"
+        )
+
+    if projection == "bhsa" and (membership.mt_n < 1 or membership.mt_i is None):
+        raise TfSchemaError(
+            "BHSA membership requires a non-empty CATSS MT side and mt_i"
+        )
+    if projection == "lxx" and (membership.lxx_n < 1 or membership.lxx_i is None):
+        raise TfSchemaError(
+            "LXX membership requires a non-empty CATSS Greek side and lxx_i"
+        )
 
     unknown_flags = membership.flags - MEMBERSHIP_FLAGS
     if unknown_flags:
