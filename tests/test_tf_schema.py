@@ -7,9 +7,9 @@ from tf.fabric import Fabric  # type: ignore[import-untyped]
 from catss_tf.tf_schema import (
     FEATURE_SPECS,
     SIDECAR_COLUMNS,
+    Projection,
     TfAnchorEvent,
     TfMembership,
-    Projection,
     TfModuleMetadata,
     TfSchemaError,
     compile_tf_features,
