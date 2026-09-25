@@ -541,7 +541,7 @@ $ שׁ  & שׂ  # ש   T ת
 
 CATSS vowel/pointing codes, dagesh/rafe marks, accent digits, slash boundaries, and maqqeph do not contribute consonants for this resolver.
 
-Final `K M N P C` are rendered as `ך ם ן ף ץ` only when they are actually word-final in the realization being tested.
+The resolver compares in a small internal **consonant key alphabet** rather than rendering CATSS into display Hebrew. BHSA medial/final pairs (`כ/ך`, `מ/ם`, `נ/ן`, `פ/ף`, `צ/ץ`) normalize to the same CATSS consonant key. This avoids inventing word-final behavior before whole-vs-split tokenization has been resolved.
 
 Unknown characters are **not dropped**. A token containing an unrecognized character is unnormalizable and produces a mapping finding.
 
@@ -551,7 +551,7 @@ Sources:
 - BHSA `g_cons_utf8` feature documentation;
 - independent CATSS decoder tests use the same published character assignments.
 
-**Decision:** CATSS-TF implements its own small consonantal normalizer from the published notation. It does not copy or depend on the CC BY-NC `curran-gehring/catss` decoder.
+**Decision:** CATSS-TF implements its own small consonantal key normalizer from the published notation. It does not copy or depend on the CC BY-NC `curran-gehring/catss` decoder.
 
 ## R-041 — Preserve shin/sin information, but permit the historical ambiguous sign explicitly
 
