@@ -170,9 +170,7 @@ def normalize_catss_hebrew(value: str) -> str:
     """
 
     if "-" in value:
-        raise ValueError(
-            f"CATSS Hebrew segment still contains maqaf boundary '-' in {value!r}"
-        )
+        raise ValueError(f"CATSS Hebrew segment still contains maqaf boundary '-' in {value!r}")
 
     output: list[str] = []
     for character in value:
