@@ -615,6 +615,8 @@ mapping_kind
 
 Detailed problems are separate typed findings carrying `code`, source/alignment identity, reference, expected/actual text where relevant, and message.
 
-Corpus/document summaries use integer counters: mapped alignments, Hebrew-empty alignments, unsupported alignments, missing verses, sequence mismatches, ambiguous sequences, Qere mismatches, unnormalizable tokens, and findings.
+Corpus/document summaries use integer counters: mapped alignments, Hebrew-empty alignments, declared-unsupported alignments, unknown-source alignments, missing verses, invalid parent snapshots, sequence mismatches, ambiguous sequences, Qere mismatches, unnormalizable tokens, and findings.
+
+Parent verse snapshots are also fail-closed inputs: word node IDs must be positive, unique, and strictly increasing in BHSA slot order. A malformed adapter result is `parent_invalid`; the resolver never repairs or reorders it.
 
 The in-memory node tuple is not intended to become a packed TF feature; #10 decides the query-native serialization.
