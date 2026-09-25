@@ -484,3 +484,144 @@ A further limitation follows from the no-new-node module model: multiple indepen
 - the BHSA projection may use the existing `verse` node for scalar aggregate/presence features about such rows;
 - exact per-plus-group provenance may remain in the deterministic sidecar unless #10 finds a genuinely query-native representation;
 - the LXX projection remains the natural word-level home for the Greek tokens themselves.
+
+
+## R-038 — CATSS column A and BHSA share the BHS/MT reference sequence
+
+The CATSS parallel alignment uses the Michigan–Claremont BHS text as the Hebrew reference. CATSS column A records MT elements as the formal alignment base, and CATSS verse references follow BHS versification even where the Greek verse numbering differs.
+
+BHSA 2021 is likewise a BHS-derived corpus whose word slots expose consonantal word forms through `g_cons_utf8`.
+
+Sources:
+
+- https://ccat.sas.upenn.edu/~jtreat/rs/rscpuhx.html
+- https://github.com/codykingham/CATSS_parsers/blob/master/parallel_readme.md
+- https://etcbc.github.io/bhsa/features/g_cons_utf8/
+
+**Decision:** the default Hebrew resolver does not use fuzzy sequence alignment. For each supported verse it first proves equality between the complete normalized CATSS MT-column-A word sequence and the complete normalized BHSA word-slot sequence. Node assignment by sequence position happens only **after** this content equality has succeeded.
+
+## R-039 — CATSS morphological separators stay inside one BHSA word slot
+
+The currently distributed CATSS parallel files use `/` as a morphological separator inside the Hebrew word (for example `B/R)$YT`). BHSA's `word` nodes are the slots; morphemes such as preformatives, suffixes, and endings are represented as features of a word slot, not as additional slots.
+
+Sources:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/parallel_readme.md
+- https://etcbc.github.io/bhsa/features/0_home/
+- https://etcbc.github.io/bhsa/features/otype/
+
+**Decision:** `/` is removed for word identity. CATSS-TF never splits a CATSS word at `/` into multiple BHSA nodes.
+
+Examples:
+
+```text
+B/R)$YT  -> בראשׁית -> one BHSA word slot
+W/H/)RC  -> והארץ   -> one BHSA word slot
+```
+
+## R-040 — Hebrew normalization is strict and consonantal
+
+The Michigan–Claremont encoding gives a deterministic consonant map, including `$` for shin and `&` for sin. BHSA `g_cons_utf8` contains consonants and preserves the shin/sin dot distinction (for example `אשׁר`).
+
+BHSA `g_word_utf8` and `qere_utf8` contain pointed forms; their diacritics are not stable identity material for this mapping. BHSA explicitly recommends consonantal features for robust searches.
+
+Sources:
+
+- CATSS BETA documentation distributed from the CCAT host;
+- https://etcbc.github.io/bhsa/features/g_cons_utf8/
+- https://etcbc.github.io/bhsa/features/g_word_utf8/
+- https://etcbc.github.io/bhsa/features/qere_utf8/
+
+**Decision:** CATSS-TF independently implements only the Hebrew normalization needed for MT identity:
+
+- Michigan–Claremont consonants -> Unicode Hebrew;
+- `/` removed;
+- known vowel/dagesh/rafe/accent codes ignored for consonantal comparison;
+- Hebrew final forms applied at orthographic word end;
+- shin/sin dots preserved;
+- Unicode input from BHSA is canonically decomposed and stripped of all combining marks **except** shin/sin dots;
+- whitespace inside one BHSA feature value is ignored as display material, not converted to additional word slots.
+
+Unknown CATSS characters fail explicitly. In particular, an unexpected lexical `#` is not guessed as shin/sin because current CATSS uses `#` for continuation, and an internal `-` is not guessed as a word boundary because the current parallel dump uses whitespace for maqqef-separated words.
+
+## R-041 — Ketiv/Qere needs per-word alternatives, not row-level bags
+
+CATSS marks Ketiv with `*` and Qere with `**`. BHSA stores the divergent Ketiv on the ordinary word slot and the Qere in the sparse `qere_utf8` feature on that same slot.
+
+A row-level pair of tuples such as `mt_ketiv_tokens` and `mt_qere_tokens` loses association if more than one MT reading occurs in a logical CATSS row.
+
+Sources:
+
+- CATSS parser documentation / Michigan–Claremont conventions;
+- https://etcbc.github.io/bhsa/features/g_word_utf8/
+- https://etcbc.github.io/bhsa/features/qere_utf8/
+
+**Decision:** the parser IR gains an immutable per-position `MtReading` structure. Each reading carries one primary CATSS form plus optional Ketiv and Qere alternatives. Existing `mt_tokens`, `mt_ketiv_tokens`, and `mt_qere_tokens` remain derived compatibility fields during this development stage.
+
+For a `*KETIV **QERE` pair:
+
+- primary identity against BHSA `g_cons_utf8` is the Ketiv;
+- CATSS Qere must additionally agree with consonantalized BHSA `qere_utf8` on the **same word node**;
+- missing or disagreeing BHSA Qere is a mapping finding, never silently ignored.
+
+## R-042 — Known CATSS source sigla must not reach the Hebrew decoder as letters
+
+Two source forms are especially relevant before Hebrew normalization:
+
+- `,,a` marks a word in an Aramaic section;
+- leading/trailing question marks mark doubt in the word or interpretation.
+
+They are scholarly annotations, not Hebrew letters.
+
+**Decision:** parser hardening under issue #7 structures these markers before resolution. `,,a` and doubt markers do not contribute to `mt_tokens`; their presence remains explicit in the IR. The Hebrew decoder itself remains strict and does not silently discard arbitrary punctuation.
+
+## R-043 — Whole-verse equality is the mapping proof
+
+A supported CATSS verse is resolved as follows:
+
+1. map the CATSS source filename through the explicit BHSA book profile;
+2. fetch exactly one BHSA verse node for `(book, chapter, verse)`;
+3. flatten the CATSS MT readings in source order, excluding Hebrew-empty/LXX-plus rows and all column-B retroversions;
+4. normalize CATSS primary readings;
+5. normalize each BHSA word slot's `g_cons_utf8`;
+6. require equal sequence lengths and equality at **every** position;
+7. check CATSS Qere alternatives against `qere_utf8` on their already-proven same slot;
+8. only then emit CATSS-token -> BHSA-node mappings.
+
+This is not positional guessing: position is used as an identifier only after the full textual sequence has proven the positional correspondence.
+
+**Decision:** v0.1 has no dynamic-programming, nearest-word, morphology-based, or edit-distance fallback. A mismatch yields a typed verse-level diagnostic with the first differing position and normalized values.
+
+## R-044 — Hebrew-empty rows produce verse anchors, not word mappings
+
+LXX-plus rows are omitted from the MT sequence and therefore do not affect whole-verse word cardinality. After the containing BHSA verse has been identified, the resolver records a `BhsaVerseAnchor` for each Hebrew-empty alignment.
+
+This anchor is provenance for later materialization; it does not claim correspondence to any BHSA word.
+
+**Decision:** resolver output distinguishes word mappings and verse anchors structurally. Issue #10 decides which scalar verse-level aggregates become TF features.
+
+## R-045 — Resolver is pure behind a small BHSA verse-provider contract
+
+Mapping correctness should be testable without downloading BHSA in normal CI.
+
+**Decision:** issue #7 defines:
+
+```text
+BhsaWord
+  node
+  g_cons_utf8
+  g_word_utf8?
+  qere_utf8?
+
+BhsaVerse
+  node
+  book
+  chapter
+  verse
+  words[]
+
+BhsaVerseProvider
+  get_verse(book, chapter, verse) -> BhsaVerse?
+```
+
+The pure resolver consumes this interface. A thin `TextFabricBhsaProvider` adapts an already-loaded BHSA TF API using its section and locality APIs. The adapter has no authority to repair or reinterpret failed mappings.
