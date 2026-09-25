@@ -464,3 +464,27 @@ BR)\tGR
     assert report.ok is False
     assert report.mappings[0].status is BhsaMapStatus.PARENT_INVALID
     assert report.findings[0].code == "parent_reference_mismatch"
+
+
+def test_empty_parent_verse_snapshot_fails_closed_even_for_hebrew_empty_rows() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+--+ '' =;PLUS\tGRPLUS
+""",
+        source_name="01.Genesis.par",
+    )
+    parent = BhsaVerse(
+        book="Genesis",
+        chapter=1,
+        verse=1,
+        verse_node=1_500_000,
+        words=(),
+    )
+
+    report = resolve_document_to_bhsa(doc, verse_lookup=_provider(parent))
+
+    assert report.ok is False
+    assert report.mappings[0].status is BhsaMapStatus.PARENT_INVALID
+    assert report.mappings[0].bhsa_verse_node == 1_500_000
+    assert report.mappings[0].bhsa_word_nodes == ()
+    assert report.findings[0].code == "parent_snapshot_invalid"
