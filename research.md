@@ -291,3 +291,19 @@ The same CATSS logical alignment must receive the same identifier in both future
 - contributing raw source lines.
 
 These components are hashed with SHA-256. The identifier changes when the relevant upstream source bytes or physical provenance change, which is desirable because generated modules must identify the exact source they were materialized from.
+
+
+## R-023 — CATSS should be projected into native Text-Fabric feature shapes
+
+BHSA and CenterBLC/LXX already expose linguistic information as ordinary per-node TF features, with word slots as the main lexical objects and `book/chapter/verse` as section features. A CATSS enrichment module is most useful if CATSS behaves the same way in TF queries.
+
+**Decision:** the materializer schema is scalar-first:
+
+- independent concepts become independent features;
+- alignment cardinalities are integer features (`catss_mt_n`, `catss_lxx_n`) rather than a compound ratio string;
+- stable yes/no concepts become boolean/presence-style integer features;
+- stable closed classifications become short enum strings;
+- same-parent relationships may use TF edge features where they genuinely model a relation;
+- raw markup, arbitrary annotation collections, JSON, and delimited lists are not routine node features.
+
+The parser IR remains lossless but also exposes these future TF atoms explicitly, so the later materializers do not need to deserialize or reinterpret parser blobs.
