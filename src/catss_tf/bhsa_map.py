@@ -51,7 +51,9 @@ class BhsaMapStatus(enum.Enum):
     MAPPED = "mapped"
     HEBREW_EMPTY = "hebrew_empty"
     UNSUPPORTED_SOURCE = "unsupported_source"
+    UNKNOWN_SOURCE = "unknown_source"
     VERSE_MISSING = "verse_missing"
+    PARENT_INVALID = "parent_invalid"
     SEQUENCE_MISMATCH = "sequence_mismatch"
     AMBIGUOUS_SEQUENCE = "ambiguous_sequence"
     UNNORMALIZABLE = "unnormalizable"
@@ -123,7 +125,9 @@ class BhsaMappingSummary:
     mapped_alignments: int
     hebrew_empty_alignments: int
     unsupported_alignments: int
+    unknown_alignments: int
     missing_verses: int
+    parent_invalid_verses: int
     sequence_mismatches: int
     ambiguous_sequences: int
     qere_mismatches: int
@@ -277,7 +281,7 @@ def resolve_document_to_bhsa(
             mappings.extend(
                 _status_mappings(
                     verse,
-                    status=BhsaMapStatus.VERSE_MISSING,
+                    status=BhsaMapStatus.PARENT_INVALID,
                     bhsa_book=classification.bhsa_book,
                     verse_node=None,
                     mapping_kind="none",
@@ -299,6 +303,33 @@ def resolve_document_to_bhsa(
             )
             continue
 
+        invalid_parent = _parent_snapshot_problem(parent)
+        if invalid_parent is not None:
+            mappings.extend(
+                _status_mappings(
+                    verse,
+                    status=BhsaMapStatus.PARENT_INVALID,
+                    bhsa_book=classification.bhsa_book,
+                    verse_node=parent.verse_node,
+                    mapping_kind="none",
+                )
+            )
+            findings.append(
+                _finding(
+                    code="parent_snapshot_invalid",
+                    severity=MappingSeverity.ERROR,
+                    document=document,
+                    alignment_id=None,
+                    bhsa_book=classification.bhsa_book,
+                    chapter=verse.chapter,
+                    verse=verse.verse,
+                    expected="positive strictly increasing unique BHSA word node ids",
+                    actual=invalid_parent,
+                    message="BHSA verse snapshot cannot safely identify parent word slots",
+                )
+            )
+            continue
+
         verse_mappings, verse_findings = _resolve_verse(
             document=document,
             source_verse=verse,
@@ -313,10 +344,16 @@ def resolve_document_to_bhsa(
 def _unsupported_report(
     document: ParallelDocument, source_status: BhsaSourceStatus
 ) -> BhsaMappingReport:
+    declared = source_status is BhsaSourceStatus.UNSUPPORTED
+    status = (
+        BhsaMapStatus.UNSUPPORTED_SOURCE
+        if declared
+        else BhsaMapStatus.UNKNOWN_SOURCE
+    )
     mappings = tuple(
         BhsaAlignmentMapping(
             alignment_id=row.alignment_id,
-            status=BhsaMapStatus.UNSUPPORTED_SOURCE,
+            status=status,
             bhsa_book=None,
             chapter=verse.chapter,
             verse=verse.verse,
@@ -327,7 +364,6 @@ def _unsupported_report(
         for verse in document.verses
         for row in verse.alignments
     )
-    declared = source_status is BhsaSourceStatus.UNSUPPORTED
     finding = BhsaMappingFinding(
         code="unsupported_source" if declared else "unknown_source",
         severity=MappingSeverity.INFO if declared else MappingSeverity.ERROR,
@@ -345,6 +381,17 @@ def _unsupported_report(
         ),
     )
     return _report(mappings, (finding,))
+
+
+def _parent_snapshot_problem(parent: BhsaVerse) -> str | None:
+    if parent.verse_node <= 0:
+        return f"verse_node={parent.verse_node}"
+    nodes = tuple(word.node for word in parent.words)
+    if any(node <= 0 for node in nodes):
+        return ",".join(str(node) for node in nodes)
+    if any(left >= right for left, right in zip(nodes, nodes[1:])):
+        return ",".join(str(node) for node in nodes)
+    return None
 
 
 def _resolve_verse(
@@ -878,7 +925,14 @@ def _report(
             unsupported_alignments=sum(
                 m.status is BhsaMapStatus.UNSUPPORTED_SOURCE for m in mappings
             ),
+            unknown_alignments=sum(
+                m.status is BhsaMapStatus.UNKNOWN_SOURCE for m in mappings
+            ),
             missing_verses=sum(f.code == "verse_missing" for f in findings),
+            parent_invalid_verses=sum(
+                f.code in {"parent_reference_mismatch", "parent_snapshot_invalid"}
+                for f in findings
+            ),
             sequence_mismatches=sum(f.code == "sequence_mismatch" for f in findings),
             ambiguous_sequences=sum(f.code == "ambiguous_sequence" for f in findings),
             qere_mismatches=sum(
