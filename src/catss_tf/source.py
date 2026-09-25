@@ -8,7 +8,6 @@ import pathlib
 import typing
 import urllib.request
 
-
 CCAT_PARALLEL_BASE_URL = "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel"
 CCAT_USER_DECLARATION_URL = (
     "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/00.user-declaration.txt"
