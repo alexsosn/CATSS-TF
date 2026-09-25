@@ -319,6 +319,8 @@ AlignmentRecord
   mt_col_b?
   retroversion_kind?
   mt_tokens[]
+  mt_ketiv_tokens[]
+  mt_qere_tokens[]
   lxx_tokens[]
   ratio
   is_lxx_plus
@@ -368,7 +370,7 @@ The initial parser recognizes without deleting source markup:
 - LXX plus: Hebrew column A begins with `--+`;
 - LXX minus: Greek cell begins with `---`;
 - Ketiv: single-star Hebrew form;
-- Qere: double-star Hebrew form;
+- Qere: double-star Hebrew form; ketiv and qere are alternative readings of one MT position and therefore do not count as two independent MT alignment tokens;
 - local transposition: single `^` or legacy `~`;
 - remote transposition: `^^^` or `{...}`-style reflected-elsewhere markup;
 - stylistic transposition: `{..^...}`.
