@@ -20,7 +20,7 @@ CATSS-TF intentionally does not commit or release:
 - BHSA corpus data;
 - LXX corpus data.
 
-Materializers operate on data acquired separately by the user. A locally generated module is a derivative artifact whose redistribution rights depend on all applicable upstream terms; this repository's MIT license alone is not permission to redistribute that generated data.
+Materializers operate on CATSS and parent-corpus data stored in the user's environment. CATSS may be acquired directly from upstream by the user or by CATSS-TF's explicitly invoked downloader. A locally generated module is a derivative artifact whose redistribution rights depend on all applicable upstream terms; this repository's MIT license alone is not permission to redistribute that generated data.
 
 ## Dependency code
 
