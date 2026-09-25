@@ -11,7 +11,7 @@ from catss_tf.lxx_schema import (
     default_lxx_reference,
     validate_lxx_parent,
 )
-from catss_tf.parser import AlignmentRecord, GreekReference, ParallelDocument
+from catss_tf.parser import AlignmentRecord, ParallelDocument
 from catss_tf.validation import ValidationFinding, validate_document
 
 _CATSS_GREEK = {
