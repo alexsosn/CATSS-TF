@@ -307,6 +307,15 @@ def compile_tf_features(
             raise TfSchemaError(
                 f"duplicate_membership: parent node {node} repeats one CATSS mapping record"
             )
+        alignment_identities = [
+            (membership.source, membership.alignment_id)
+            for membership in node_memberships
+        ]
+        if len(alignment_identities) != len(set(alignment_identities)):
+            raise TfSchemaError(
+                "duplicate_alignment_membership: "
+                f"parent node {node} repeats one CATSS alignment identity"
+            )
         if len(node_memberships) > MAX_MEMBERSHIP_LANES:
             raise TfSchemaError(
                 "membership_overflow: "
@@ -521,6 +530,12 @@ def write_tf_module(
         raise TfSchemaError(
             "CATSS module directory already contains warp feature(s): "
             + ", ".join(sorted(existing_warp))
+        )
+    existing_tf = tuple(sorted(path.name for path in directory.glob("*.tf") if path.is_file()))
+    if existing_tf:
+        raise TfSchemaError(
+            "CATSS module directory already contains TF feature file(s): "
+            + ", ".join(existing_tf)
         )
 
     for feature in sorted(node_features):
