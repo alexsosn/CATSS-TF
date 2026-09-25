@@ -1416,6 +1416,17 @@ size_bytes
 sha256
 ```
 
+`catss-source-lines.tsv`:
+
+```text
+source
+alignment_id
+line_no
+raw
+```
+
+This table preserves exact physical-line provenance as repeated rows; TF word features retain only the query-oriented first/last/count summary.
+
 `catss-diagnostics.tsv`:
 
 ```text
@@ -1428,7 +1439,7 @@ line_no
 message
 ```
 
-Fields not applicable to a row are empty TSV cells, not encoded sentinels.
+Fields not applicable to a row are empty TSV cells, not encoded sentinels. TSV writers use standard quoting for cells containing tabs/newlines; no custom delimiter-packed collection syntax is introduced.
 
 ### 19.8 Feature metadata
 
@@ -1473,3 +1484,18 @@ feature metadata
 ```
 
 BHSA/LXX-specific materializers (#11/#12) translate resolver outputs + canonical parser records into these generic memberships/events and write the TSV sidecars.
+
+
+### 19.11 Provenance invariants
+
+Both `TfMembership` and `TfAnchorEvent` carry canonical CATSS source identity.
+
+For every record:
+
+```text
+alignment_id = catss:<source>:...
+```
+
+must hold. A source/ID mismatch is a hard schema error.
+
+Anchor events also remain alignment-identifiable until after duplicate checking. Structural counters are incremented only after a unique `(source, alignment_id)` anchor has been established, preventing accidental double counting while keeping the TF surface aggregate-only.
