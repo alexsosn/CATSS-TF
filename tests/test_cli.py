@@ -21,3 +21,58 @@ def test_fetch_command_invokes_downloader(
     assert cli.main(["fetch", str(destination)]) == 0
     assert seen == [destination]
     assert "CATSS parallel source ready" in capsys.readouterr().out
+
+
+def test_validate_command_reports_scalar_summary(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "01.First.par").write_text("Test 1:1\nHB\tGR\n", encoding="utf-8")
+    (tmp_path / "02.Second.par").write_text("Test 1:1\nHB2\tGR2\n", encoding="utf-8")
+
+    assert cli.main(["validate", str(tmp_path)]) == 0
+
+    output = capsys.readouterr().out
+    assert "source_files=2" in output
+    assert "alignments=2" in output
+    assert "error_count=0" in output
+    assert "unresolved_count=0" in output
+    assert "ignored_count=0" in output
+
+
+def test_validate_command_fails_on_unresolved_markup(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "01.First.par").write_text(
+        "Test 1:1\nHB {zzUNKNOWN}\tGR\n",
+        encoding="utf-8",
+    )
+
+    assert cli.main(["validate", str(tmp_path)]) == 1
+
+    output = capsys.readouterr().out
+    assert "unresolved_count=1" in output
+    assert "unresolved unknown_annotation 01.First.par:2" in output
+
+
+def test_validate_command_can_explicitly_allow_a_finding_code(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "01.First.par").write_text(
+        "Test 1:1\nHB {zzUNKNOWN}\tGR\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        cli.main(
+            [
+                "validate",
+                str(tmp_path),
+                "--allow",
+                "unknown_annotation",
+            ]
+        )
+        == 0
+    )
+
+    output = capsys.readouterr().out
+    assert "unresolved_count=0" in output
+    assert "ignored_count=1" in output
+    assert "ignored unknown_annotation 01.First.par:2" in output
