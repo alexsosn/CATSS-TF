@@ -224,3 +224,23 @@ HB2\tGR2
     finding = next(f for f in report.findings if f.code == "duplicate_source_name")
     assert finding.source_name == "99.Test.par"
     assert finding.severity == "error"
+
+
+def test_mixed_header_book_tokens_are_hard_errors() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+HB1\tGR1
+Exod 1:2
+HB2\tGR2
+""",
+        source_name="99.Test.par",
+    )
+
+    report = validate_document(doc)
+
+    assert report.summary.inconsistent_header_books == 1
+    assert report.summary.error_count == 1
+    finding = next(f for f in report.findings if f.code == "inconsistent_header_book")
+    assert finding.source_name == "99.Test.par"
+    assert finding.line_no == 3
+    assert finding.severity == "error"
