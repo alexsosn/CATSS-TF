@@ -5,7 +5,6 @@ import pytest
 from catss_tf import source
 from catss_tf.source import SourceInspectionError, inspect_parallel_source
 
-
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "catss_parallel_synthetic"
 
 
