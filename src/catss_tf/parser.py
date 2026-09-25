@@ -6,7 +6,6 @@ import pathlib
 import re
 import typing
 
-
 _VERSE_HEADER = re.compile(r"^\s*([0-9A-Za-z][0-9A-Za-z/]*)\s+(?:(\d+):)?(\d+)\s*$")
 _COLUMN_SPACES = re.compile(r"\s{2,}")
 _BRACE_BLOCK = re.compile(r"\{[^{}]*\}")
@@ -374,12 +373,26 @@ def _extract_annotations(
         annotations.append(Annotation(side=side, kind=_brace_kind(raw), raw=raw))
     for match in _ANGLE_NOTE.finditer(cell):
         annotations.append(Annotation(side=side, kind="note", raw=match.group(0)))
+    if side == "mt":
+        for match in _MT_DOT_SIGLUM.finditer(cell):
+            raw = match.group(1)
+            annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
     if side == "lxx":
         for match in _SQUARE_REFERENCE.finditer(cell):
             annotations.append(
                 Annotation(side=side, kind="verse_reference", raw=match.group(0))
             )
     return annotations
+
+
+def _mt_dot_kind(raw: str) -> str:
+    return {
+        ".m": "metathesis",
+        ".s": "word_separation",
+        ".j": "word_join",
+        ".w": "word_division",
+        ".z": "abbreviation",
+    }.get(raw, "mt_strategy_siglum")
 
 
 def _brace_kind(raw: str) -> str:
@@ -409,6 +422,8 @@ def _lexical_candidates(cell: str, *, side: typing.Literal["mt", "lxx"]) -> tupl
     for raw_token in text.split():
         token = raw_token
         if token in {"--+", "---", "''", "^", "^^^", "~"}:
+            continue
+        if side == "mt" and token.startswith("."):
             continue
         token = token.lstrip("*") if side == "mt" else token
         token = token.strip()
