@@ -624,9 +624,7 @@ def _alignment_reference(
                 chapter=source_chapter,
                 verse=source_verse,
                 alignment_id=alignment.alignment_id,
-                catss_value=" ".join(
-                    reference.raw for reference in alignment.lxx_references
-                ),
+                catss_value=" ".join(reference.raw for reference in alignment.lxx_references),
                 parent_value=None,
                 message="one CATSS alignment carries multiple distinct Greek references",
             ),
