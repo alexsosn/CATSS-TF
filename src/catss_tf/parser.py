@@ -634,9 +634,7 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
 def _lxx_lexical_candidates(cell: str) -> tuple[str, ...]:
     text = _prepare_lexical_text(cell).replace("?", "")
     return tuple(
-        token
-        for token in text.split()
-        if token != "+" and not _is_alignment_marker(token)
+        token for token in text.split() if token != "+" and not _is_alignment_marker(token)
     )
 
 
