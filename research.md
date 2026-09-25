@@ -897,3 +897,22 @@ Evidence actually checked for #8 includes:
 - explicit CATSS documentation that Greek order may be moved.
 
 **Decision:** #9 must include an opt-in full-corpus integration audit when user-acquired CATSS data are available. A release must report mapping coverage and divergence classes; synthetic/unit evidence alone is not enough for v0.1 release confidence.
+
+
+## R-062 — The exact CenterBLC parent book universe is source-verifiable
+
+Eliran Wong's upstream versification source `08_versification/001_verse_c_book.csv` lists the exact 57 Greek book identifiers that feed the CenterBLC conversion layer. This is more authoritative for parent book-name spelling than adjacent OSIS/export maps, which intentionally use different labels for some books.
+
+Examples of those distinctions:
+
+- parent source uses `Qoh`, while an OSIS mapping may call the same source `Eccl`;
+- parent source uses `Cant`, while an OSIS mapping may call it `Song`;
+- parent source uses `Dan` and `DanTh`;
+- parent source contains `1Esdr` and `2Esdr`;
+- it does **not** contain `JoshA` or `JudgA`.
+
+Source:
+
+- https://github.com/eliranwong/LXX-Rahlfs-1935/blob/master/08_versification/001_verse_c_book.csv
+
+**Decision:** the LXX schema profile records the full 57-book parent set and tests that every CATSS source mapping target belongs to it. A future typo or accidental OSIS-name substitution therefore fails before resolver work.
