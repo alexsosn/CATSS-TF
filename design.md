@@ -1056,3 +1056,174 @@ Normal CI remains synthetic/offline.
 When user-acquired CATSS source is available, #9 must provide an opt-in audit that reports scalar coverage counts and typed divergence classes across every supported source. v0.1 release confidence requires that audit; common ancestry is not enough.
 
 The unavailable binary release asset in the current research environment is recorded in R-061 rather than hidden by an unsupported completeness claim.
+
+
+## 18. CenterBLC/LXX resolver
+
+### 18.1 Resolution pipeline
+
+```text
+validate exact LXX parent profile
+          |
+validate CATSS document
+          |
+classify CATSS source
+          |
+alignment -> default target reference
+          |
+structured Greek reference override
+          |
+group all Greek material by target reference
+          |
+normalize CATSS/parent Greek surfaces
+          |
+exact sequence OR unique reordered placement
+          |
+emit word mappings / minus anchors / typed findings
+```
+
+No mapping is emitted for a target reference whose proof fails.
+
+### 18.2 Structured Greek reference
+
+Parser IR gains:
+
+```text
+GreekReference
+  raw
+  bracket_kind = single | double
+  status = location | complex
+  chapter?
+  verse?
+  subverse?
+```
+
+Supported location grammar is intentionally narrow:
+
+```text
+6
+6a
+118.127
+118.127a
+30:11
+30:11a
+```
+
+A verse-only location inherits the default transformed chapter. Chapter+verse replaces both. Parent book never changes from the source profile through this syntax.
+
+Any comma-separated, prefixed, or otherwise nonconforming reference is `complex` and blocks that alignment's mapping.
+
+### 18.3 Parent subverse semantics
+
+`LxxTargetReference.subverse` is a scalar string.
+
+- empty string means the unsuffixed/canonical words of that parent verse;
+- a suffix such as `a` selects only words whose CenterBLC `subverse` feature equals that suffix.
+
+The provider never merges suffixed and unsuffixed words merely because the TF section hierarchy stops at verse.
+
+### 18.4 Greek normalization
+
+`normalize_catss_greek(token)` and `normalize_lxx_greek(word)` both return lowercase base-letter strings.
+
+They preserve inflected letters and fold only orthographic distinctions:
+
+- accents/breathings/diaeresis/iota-subscript removed;
+- case removed;
+- final sigma folded to sigma;
+- elision/punctuation ignored;
+- CATSS BETA `V` preserved as digamma;
+- unknown CATSS lexical characters fail closed.
+
+### 18.5 Mapping result
+
+```text
+LxxWordMapping
+  alignment_id
+  lxx_index
+  lxx_node
+  mapping_kind = exact | reordered
+
+LxxSpanAnchor
+  alignment_id
+  parent_node
+  kind = lxx_minus
+
+LxxMappingFinding
+  code
+  source_name
+  chapter?
+  verse?
+  subverse?
+  alignment_id?
+  position?
+  catss_value?
+  parent_value?
+  message
+
+LxxMappingSummary
+  documents
+  supported_documents
+  unsupported_documents
+  unknown_documents
+  target_spans
+  resolved_spans
+  missing_spans
+  mismatched_spans
+  word_mappings
+  minus_anchors
+  reordered_spans
+  ambiguous_spans
+  reference_overrides
+  complex_references
+  normalization_errors
+  parent_validation_failures
+  catss_validation_failures
+  finding_count
+```
+
+All are implementation/provenance structures. Issue #10 chooses the scalar TF feature projection.
+
+### 18.6 Fail-closed classes
+
+At minimum:
+
+```text
+lxx_parent_schema_mismatch
+catss_validation_*
+unknown_catss_source
+missing_lxx_span
+complex_greek_reference
+multiple_greek_references
+greek_alternative_reading_unresolved
+catss_greek_normalization_error
+parent_greek_normalization_error
+span_word_count_mismatch
+span_surface_mismatch
+ambiguous_reordered_surface
+duplicate_parent_node_assignment
+```
+
+Declared JoshA/JudgA exclusions are coverage skips, not mapping failures.
+
+### 18.7 No partial target-span success
+
+A target reference emits word mappings only when every Greek token assigned to that span is accounted for against the complete parent span. One mismatch or ambiguity emits **zero word mappings for that target span**.
+
+Minus anchors are emitted only after the containing parent location has been successfully identified.
+
+### 18.8 Text-Fabric adapter
+
+A `TextFabricLxxProvider` filters CenterBLC words by:
+
+```text
+T.nodeFromSection((book, chapter, verse))
+L.d(verse_node, otype="word")
+F.subverse.v(word)
+F.word.v(word)
+F.orig_order.v(word)
+```
+
+For the unsuffixed target, only words with empty/None `subverse` participate. A suffixed target uses exact suffix equality.
+
+The adapter supplies an explicit v1.0.1 `LxxParentProbe`; it does not infer compatibility from a floating dataset name.
