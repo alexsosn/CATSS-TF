@@ -2,13 +2,11 @@
 
 **Plan date:** 2026-09-25
 
-The backlog is issue-driven. Each implementation issue follows the repository gates in `AGENTS.md`. GitHub issue numbers are recorded only after the issue actually exists; this plan uses stable task labels for sequencing.
+The backlog is issue-driven. Each implementation issue follows the repository gates in `AGENTS.md`.
 
 ## Phase 0 — Bootstrap
 
-### BOOTSTRAP — Repository for autonomous development
-
-Tracked by issue #1.
+### BOOTSTRAP — Repository for autonomous development (#1)
 
 Deliver:
 
@@ -21,7 +19,7 @@ Deliver:
 
 ## Phase 1 — Prove the source model before TF output
 
-### SOURCE — CATSS acquisition and parser decision
+### SOURCE — CATSS acquisition and parser decision (#3)
 
 Research and decide the v0.1 input contract:
 
@@ -31,7 +29,7 @@ Research and decide the v0.1 input contract:
 
 Acceptance must include license analysis, deterministic fixtures, and no CATSS data redistribution.
 
-### IR — Canonical alignment IR and parallel-file parser
+### IR — Canonical alignment IR and parallel-file parser (#4)
 
 TDD against minimal synthetic fixtures for:
 
@@ -46,7 +44,7 @@ TDD against minimal synthetic fixtures for:
 
 Do not implement TF serialization yet.
 
-### VALIDATE — Alignment validation/reporting
+### VALIDATE — Alignment validation/reporting (#5)
 
 Build diagnostics and invariants around the IR:
 
@@ -58,7 +56,7 @@ Build diagnostics and invariants around the IR:
 
 ## Phase 2 — Parent-corpus mapping
 
-### BHSA-SCHEMA — Select and characterize first supported BHSA warp
+### BHSA-SCHEMA — Select and characterize first supported BHSA warp (#6)
 
 Pin the first supported BHSA version and document:
 
@@ -68,47 +66,47 @@ Pin the first supported BHSA version and document:
 - relevant surface/normalized features;
 - node-version compatibility contract.
 
-### BHSA-MAP — BHSA resolver
+### BHSA-MAP — BHSA resolver (#7)
 
 RED-first mapping tests, then implementation.
 
 The resolver returns parent node IDs plus diagnostics; it does not write TF yet.
 
-### LXX-SCHEMA — Characterize CenterBLC/LXX 1935 mapping
+### LXX-SCHEMA — Characterize CenterBLC/LXX 1935 mapping (#8)
 
 Audit CATSS ancestry versus actual TF token boundaries and references across representative hard cases.
 
-### LXX-MAP — LXX resolver
+### LXX-MAP — LXX resolver (#9)
 
 RED-first mapping tests followed by implementation and drift diagnostics.
 
 ## Phase 3 — Text-Fabric modules
 
-### TF-SCHEMA — TF feature schema
+### TF-SCHEMA — TF feature schema (#10)
 
 Freeze names/types/metadata for shared CATSS features and projection-specific diagnostics.
 
 Verify that output is a true module around the parent warp and contains no new nodes.
 
-### BHSA-MATERIALIZE — `catss-bhsa` materializer
+### BHSA-MATERIALIZE — `catss-bhsa` materializer (#11)
 
 Generate a module against the supported BHSA version; validate loadability together with the parent corpus.
 
-### LXX-MATERIALIZE — `catss-lxx` materializer
+### LXX-MATERIALIZE — `catss-lxx` materializer (#12)
 
 Generate the corresponding module against CenterBLC/LXX 1935.
 
-### CONSISTENCY — Cross-projection consistency
+### CONSISTENCY — Cross-projection consistency (#13)
 
 Given the same CATSS source, prove that shared `catss_alignment_id` values and normalized CATSS semantics agree between BHSA and LXX materializations.
 
 ## Phase 4 — Research ergonomics and release
 
-### TECHNIQUE — Translation-technique derived features
+### TECHNIQUE — Translation-technique derived features (#14)
 
 Only after source-preserving modules are stable, define reproducible derived features such as token ratios, lexical/morphological comparison, plus/minus, and word-order relations. Keep derived analysis distinct from CATSS editorial annotation.
 
-### RELEASE — Standalone v0.1 release
+### RELEASE — Standalone v0.1 release (#15)
 
 - clean install;
 - deterministic offline tests;
@@ -116,9 +114,25 @@ Only after source-preserving modules are stable, define reproducible derived fea
 - documentation and limitations;
 - no bundled corpus/data artifacts.
 
-### AGORA — Agora registration
+### AGORA — Agora registration (#16)
 
 Register the released materializers with Agora without moving CATSS-specific behavior into Agora.
+
+## Dependency summary
+
+```text
+#3 SOURCE ──> #4 IR ──> #5 VALIDATE
+                 │          │
+#6 BHSA-SCHEMA ──┴──────> #7 BHSA-MAP ──┐
+                                           ├─> #10 TF-SCHEMA ─> #11 BHSA-MATERIALIZE ─┐
+#8 LXX-SCHEMA ─────────> #9 LXX-MAP ─────┘                                             ├─> #13 CONSISTENCY
+                                                         #12 LXX-MATERIALIZE <───────────┘
+                                                                                          │
+                                                                                          ├─> #14 TECHNIQUE
+                                                                                          └─> #15 RELEASE ─> #16 AGORA
+```
+
+Issue bodies contain the authoritative acceptance criteria and dependencies.
 
 ## Release principle
 
