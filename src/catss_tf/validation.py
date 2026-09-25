@@ -36,6 +36,7 @@ class ValidationSummary:
     unknown_annotations: int
     invalid_alignment_ids: int
     duplicate_alignment_ids: int
+    duplicate_source_names: int
     error_count: int
     unresolved_count: int
     ignored_count: int
@@ -72,6 +73,7 @@ def validate_documents(
 
     findings: list[ValidationFinding] = []
     seen_alignment_ids: dict[str, tuple[str, int | None]] = {}
+    seen_source_names: set[str] = set()
 
     source_files = len(documents)
     verses = 0
@@ -83,8 +85,24 @@ def validate_documents(
     unknown_annotations = 0
     invalid_alignment_ids = 0
     duplicate_alignment_ids = 0
+    duplicate_source_names = 0
 
     for document in documents:
+        if document.source_name in seen_source_names:
+            duplicate_source_names += 1
+            findings.append(
+                _finding(
+                    code="duplicate_source_name",
+                    base_severity="error",
+                    allowed_codes=allowed_codes,
+                    source_name=document.source_name,
+                    line_no=None,
+                    message="CATSS source basename occurs more than once in the validation set",
+                )
+            )
+        else:
+            seen_source_names.add(document.source_name)
+
         verses += len(document.verses)
         source_lines = set(document.data_line_numbers)
         source_data_lines += len(source_lines)
@@ -238,6 +256,7 @@ def validate_documents(
             unknown_annotations=unknown_annotations,
             invalid_alignment_ids=invalid_alignment_ids,
             duplicate_alignment_ids=duplicate_alignment_ids,
+            duplicate_source_names=duplicate_source_names,
             error_count=error_count,
             unresolved_count=unresolved_count,
             ignored_count=ignored_count,
