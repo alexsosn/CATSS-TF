@@ -1122,7 +1122,10 @@ All non-empty alignment rows targeting the same `book/chapter/verse/subverse` ar
 A valid assignment:
 
 - chooses exactly one candidate span for every row;
-- uses no parent word node twice between independent rows.
+- normally uses no parent word node twice between independent rows;
+- permits an identical-span overlap only for the documented complementary pair of a Greek-side transposition alignment wrapper and an MT-side bare `{...}` printed-position carrier.
+
+Such paired mappings receive distinct scalar mapping kinds (`transposition_alignment` and `transposition_carrier`). Partial overlap, or overlap between ordinary rows, remains a conflict.
 
 If there is exactly one full assignment, emit mappings. If none or more than one exist, emit no word mappings for that reference group and report the failure.
 
