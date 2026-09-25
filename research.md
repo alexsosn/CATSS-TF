@@ -1284,3 +1284,28 @@ A weft-only writer that overwrites only currently generated feature files can le
 That creates false query results while all newly written files appear valid.
 
 **Decision:** `write_tf_module()` accepts a new or TF-empty target directory only. Existing warp files remain a specific hard error; any other pre-existing `*.tf` file is also rejected. Materializers that want replacement semantics must build in a clean temporary directory and replace the finished output atomically.
+
+
+## R-085 — Mapping diagnostics remain structured in sidecars
+
+Resolver findings already distinguish location and compared values; reducing them to `code + message` would force downstream tooling to parse prose and would discard exact mismatch context.
+
+**Decision:** `catss-diagnostics.tsv` uses scalar columns for:
+
+```text
+stage
+severity
+code
+source
+chapter
+verse
+position
+alignment_id
+line_no
+side
+catss_value
+parent_value
+message
+```
+
+Fields unavailable for a particular validation/mapping finding remain empty cells. No mismatch context is embedded as JSON or reconstructed from the human-readable message.
