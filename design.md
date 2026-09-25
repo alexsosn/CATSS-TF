@@ -677,7 +677,7 @@ They are not mapping failures; they are outside the BHSA projection's declared c
 
 ### 15.5 Word-slot identity rules
 
-BHSA word slots are the only target nodes for CATSS word-level annotations.
+BHSA word slots are the target nodes for CATSS alignments that actually contain MT words. Existing BHSA verse nodes are the only permitted non-word anchors for Hebrew-empty/LXX-plus information.
 
 Resolver rules:
 
@@ -687,6 +687,8 @@ Resolver rules:
 - never split one BHSA qere feature into synthetic slots because it contains whitespace/newlines;
 - never use morphology as a fallback identity heuristic;
 - never accept ordinal position alone as a match;
+- never attach an LXX-plus row to a previous/next/nearest word when the CATSS MT side is empty;
+- Hebrew-empty rows may contribute only verse-level scalar aggregate/presence features on the BHSA side until the TF feature schema (#10) defines their final representation;
 - ambiguity remains a mapping diagnostic.
 
 ### 15.6 Parent profile verification
@@ -703,4 +705,4 @@ Issue #7 will bind this contract to an actual Text-Fabric API and implement Hebr
 
 ### 15.7 TF-feature compatibility
 
-The future `catss-bhsa` module remains a normal BHSA enrichment module. CATSS features are attached to the resolved BHSA word slots using scalar native TF values. Parent BHSA features are not copied into the module.
+The future `catss-bhsa` module remains a normal BHSA enrichment module. CATSS features are attached to resolved BHSA word slots when an MT word exists, and may use existing BHSA verse nodes for query-native aggregate/presence features when the CATSS alignment has no Hebrew word target. Parent BHSA features are not copied into the module; no synthetic word anchor is created.
