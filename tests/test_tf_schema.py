@@ -2,13 +2,14 @@ import dataclasses
 import pathlib
 
 import pytest
-from tf.fabric import Fabric
+from tf.fabric import Fabric  # type: ignore[import-untyped]
 
 from catss_tf.tf_schema import (
     FEATURE_SPECS,
     SIDECAR_COLUMNS,
     TfAnchorEvent,
     TfMembership,
+    Projection,
     TfModuleMetadata,
     TfSchemaError,
     compile_tf_features,
@@ -48,7 +49,7 @@ def _membership(
     )
 
 
-def _metadata(projection: str = "bhsa") -> TfModuleMetadata:
+def _metadata(projection: Projection = "bhsa") -> TfModuleMetadata:
     return TfModuleMetadata(
         projection=projection,
         parent_repo="synthetic/parent",
@@ -56,6 +57,24 @@ def _metadata(projection: str = "bhsa") -> TfModuleMetadata:
         parent_release="v1",
         parent_commit="deadbeef",
         software_version="0.0.0",
+    )
+
+
+
+def _anchor(
+    *,
+    node: int = 9,
+    source: str = "01.Genesis.par",
+    alignment_id: str = "catss:01.Genesis.par:anchor",
+    kind: str = "lxx_plus",
+    token_n: int = 0,
+) -> TfAnchorEvent:
+    return TfAnchorEvent(
+        node=node,
+        source=source,
+        alignment_id=alignment_id,
+        kind=kind,  # type: ignore[arg-type]
+        token_n=token_n,
     )
 
 
@@ -213,8 +232,8 @@ def test_bhsa_plus_anchors_aggregate_on_structural_node() -> None:
         max_node=10,
         memberships=(),
         anchors=(
-            TfAnchorEvent(node=9, kind="lxx_plus", token_n=2),
-            TfAnchorEvent(node=9, kind="lxx_plus", token_n=3),
+            _anchor(alignment_id="catss:01.Genesis.par:plus-a", token_n=2),
+            _anchor(alignment_id="catss:01.Genesis.par:plus-b", token_n=3),
         ),
     )
 
@@ -228,9 +247,12 @@ def test_lxx_empty_anchors_aggregate_without_alignment_id_blob() -> None:
         max_node=10,
         memberships=(),
         anchors=(
-            TfAnchorEvent(node=9, kind="lxx_minus"),
-            TfAnchorEvent(node=9, kind="lxx_minus"),
-            TfAnchorEvent(node=9, kind="transposition_placeholder"),
+            _anchor(alignment_id="catss:01.Genesis.par:minus-a", kind="lxx_minus"),
+            _anchor(alignment_id="catss:01.Genesis.par:minus-b", kind="lxx_minus"),
+            _anchor(
+                alignment_id="catss:01.Genesis.par:placeholder",
+                kind="transposition_placeholder",
+            ),
         ),
     )
 
@@ -250,6 +272,12 @@ def test_sidecar_contracts_are_normalized_repeated_row_tables() -> None:
     assert "alignment_id" in SIDECAR_COLUMNS["catss-mappings.tsv"]
     assert "parent_node" in SIDECAR_COLUMNS["catss-mappings.tsv"]
     assert "sha256" in SIDECAR_COLUMNS["catss-sources.tsv"]
+    assert SIDECAR_COLUMNS["catss-source-lines.tsv"] == (
+        "source",
+        "alignment_id",
+        "line_no",
+        "raw",
+    )
 
 
 def _write_synthetic_parent(root: pathlib.Path) -> None:
@@ -290,7 +318,13 @@ def test_written_module_loads_over_synthetic_parent_warp(tmp_path: pathlib.Path)
                 lxx_n=1,
             ),
         ),
-        anchors=(TfAnchorEvent(node=4, kind="lxx_plus", token_n=2),),
+        anchors=(
+            _anchor(
+                node=4,
+                alignment_id="catss:01.Genesis.par:load-plus",
+                token_n=2,
+            ),
+        ),
     )
     write_tf_module(
         module,
@@ -353,7 +387,11 @@ def test_duplicate_membership_record_is_rejected_not_given_two_lanes() -> None:
     ),
 )
 def test_source_line_numbers_are_one_based(field: str, value: int) -> None:
-    membership = dataclasses.replace(_membership(), **{field: value})
+    membership = (
+        dataclasses.replace(_membership(), line_first=value)
+        if field == "line_first"
+        else dataclasses.replace(_membership(), line_last=value)
+    )
 
     with pytest.raises(TfSchemaError, match="source line"):
         compile_tf_features(
@@ -422,7 +460,12 @@ def test_anchor_token_counts_follow_empty_side_semantics() -> None:
             projection="bhsa",
             max_node=10,
             memberships=(),
-            anchors=(TfAnchorEvent(node=9, kind="lxx_plus", token_n=0),),
+            anchors=(
+                _anchor(
+                    alignment_id="catss:01.Genesis.par:bad-plus",
+                    token_n=0,
+                ),
+            ),
         )
 
     with pytest.raises(TfSchemaError, match="lxx_minus"):
@@ -430,5 +473,56 @@ def test_anchor_token_counts_follow_empty_side_semantics() -> None:
             projection="lxx",
             max_node=10,
             memberships=(),
-            anchors=(TfAnchorEvent(node=9, kind="lxx_minus", token_n=1),),
+            anchors=(
+                _anchor(
+                    alignment_id="catss:01.Genesis.par:bad-minus",
+                    kind="lxx_minus",
+                    token_n=1,
+                ),
+            ),
+        )
+
+
+
+def test_duplicate_anchor_event_is_rejected_not_double_counted() -> None:
+    duplicate = _anchor(
+        alignment_id="catss:01.Genesis.par:duplicate-anchor",
+        token_n=2,
+    )
+
+    with pytest.raises(TfSchemaError, match="duplicate_anchor"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(),
+            anchors=(duplicate, duplicate),
+        )
+
+
+def test_anchor_requires_canonical_source_and_alignment_identity() -> None:
+    with pytest.raises(TfSchemaError, match="unknown CATSS source"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(),
+            anchors=(
+                _anchor(
+                    source="99.NotCATSS.par",
+                    alignment_id="catss:99.NotCATSS.par:anchor",
+                    token_n=1,
+                ),
+            ),
+        )
+
+    with pytest.raises(TfSchemaError, match="alignment id"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(),
+            anchors=(
+                _anchor(
+                    alignment_id="not-catss",
+                    token_n=1,
+                ),
+            ),
         )
