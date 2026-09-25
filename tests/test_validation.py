@@ -176,3 +176,28 @@ HB\tGR
     assert report.summary.source_files == 2
     assert report.summary.duplicate_alignment_ids == 1
     assert any(f.code == "duplicate_alignment_id" for f in report.findings)
+
+
+def test_allow_list_cannot_suppress_hard_validation_errors() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB\tGR
+""",
+        source_name="99.Test.par",
+    )
+    verse = doc.verses[0]
+    bad_row = dataclasses.replace(verse.alignments[0], alignment_id="catss:tampered")
+    bad_doc = dataclasses.replace(
+        doc,
+        verses=(dataclasses.replace(verse, alignments=(bad_row,)),),
+    )
+
+    report = validate_document(
+        bad_doc,
+        allowed_codes={"alignment_id_mismatch"},
+    )
+
+    assert report.ok is False
+    assert report.summary.error_count == 1
+    assert report.summary.ignored_count == 0
+    assert report.findings[0].severity == "error"
