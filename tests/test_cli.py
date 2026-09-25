@@ -23,7 +23,9 @@ def test_fetch_command_invokes_downloader(
     assert "CATSS parallel source ready" in capsys.readouterr().out
 
 
-def test_validate_command_reports_scalar_summary(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_validate_command_reports_scalar_summary(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     (tmp_path / "01.First.par").write_text("Test 1:1\nHB\tGR\n", encoding="utf-8")
     (tmp_path / "02.Second.par").write_text("Test 1:1\nHB2\tGR2\n", encoding="utf-8")
 
