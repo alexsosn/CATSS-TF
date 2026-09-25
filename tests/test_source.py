@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from catss_tf import source
 from catss_tf.source import SourceInspectionError, inspect_parallel_source
 
 
@@ -47,3 +48,74 @@ def test_inspect_parallel_source_rejects_directory_without_par_files(tmp_path: P
 
     with pytest.raises(SourceInspectionError, match=r"no direct-child \.par files"):
         inspect_parallel_source(tmp_path)
+
+
+def test_download_parallel_source_fetches_directly_to_user_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen_urls: list[str] = []
+    payloads = {
+        "https://example.invalid/parallel/01.First.par": b"first",
+        "https://example.invalid/parallel/02.Second.par": b"second",
+    }
+
+    def fake_fetch(url: str) -> bytes:
+        seen_urls.append(url)
+        return payloads[url]
+
+    monkeypatch.setattr(source, "_fetch_bytes", fake_fetch)
+
+    manifest = source.download_parallel_source(
+        tmp_path / "parallel",
+        base_url="https://example.invalid/parallel",
+        filenames=("02.Second.par", "01.First.par"),
+    )
+
+    assert seen_urls == [
+        "https://example.invalid/parallel/01.First.par",
+        "https://example.invalid/parallel/02.Second.par",
+    ]
+    assert (tmp_path / "parallel" / "01.First.par").read_bytes() == b"first"
+    assert (tmp_path / "parallel" / "02.Second.par").read_bytes() == b"second"
+    assert [item.relative_path for item in manifest.files] == [
+        "01.First.par",
+        "02.Second.par",
+    ]
+
+
+def test_download_parallel_source_skips_existing_nonempty_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "parallel"
+    destination.mkdir()
+    (destination / "01.First.par").write_bytes(b"existing")
+
+    def unexpected_fetch(url: str) -> bytes:
+        raise AssertionError(f"unexpected network fetch: {url}")
+
+    monkeypatch.setattr(source, "_fetch_bytes", unexpected_fetch)
+
+    manifest = source.download_parallel_source(
+        destination,
+        base_url="https://example.invalid/parallel",
+        filenames=("01.First.par",),
+    )
+
+    assert (destination / "01.First.par").read_bytes() == b"existing"
+    assert manifest.files[0].size_bytes == len(b"existing")
+
+
+def test_download_parallel_source_rejects_empty_response_without_partial_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(source, "_fetch_bytes", lambda url: b"")
+
+    with pytest.raises(source.SourceDownloadError, match="empty response"):
+        source.download_parallel_source(
+            tmp_path / "parallel",
+            base_url="https://example.invalid/parallel",
+            filenames=("01.First.par",),
+        )
+
+    assert not (tmp_path / "parallel" / "01.First.par").exists()
+    assert not (tmp_path / "parallel" / "01.First.par.part").exists()
