@@ -1,14 +1,12 @@
 """Deterministic CATSS Hebrew -> BHSA 2021 word-slot resolver."""
 
-from collections.abc import Callable
-
 import dataclasses
 import enum
 import unicodedata
+from collections.abc import Callable
 
 from catss_tf.bhsa_schema import BhsaSourceStatus, classify_catss_source
 from catss_tf.parser import AlignmentRecord, ParallelDocument, VerseRecord
-
 
 _CATSS_CONSONANTS = frozenset(")BGDHWZX+YKLMNS(PCQR$&#T")
 _CATSS_NONCONSONANTAL = frozenset('AFIE"OU:.,-/')
