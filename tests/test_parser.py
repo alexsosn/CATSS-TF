@@ -285,3 +285,41 @@ HBA .m =;ALT .s\tGR {d}
         ("mt_b", "word_separation", ".s"),
         ("lxx", "doublet", "{d}"),
     ]
+
+
+def test_text_bearing_wrappers_keep_payload_and_annotation_kind() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB\t{cGRCORR} {..pGRPREP} {..dGRDIST} {..rGRREPEAT}
+""",
+        source_name="99.Test.par",
+    )
+
+    row = doc.verses[0].alignments[0]
+    assert row.lxx_tokens == ("GRCORR", "GRPREP", "GRDIST", "GRREPEAT")
+    assert [a.kind for a in row.annotations if a.side == "lxx"] == [
+        "greek_correction",
+        "preposition_added",
+        "distributive",
+        "repetition",
+    ]
+
+
+def test_retroversion_kind_is_structured() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB =:ALT\tGR
+HB =;ALT2\tGR2
+HB =%vpa\tGR3
+HB =PLAIN\tGR4
+""",
+        source_name="99.Test.par",
+    )
+
+    rows = doc.verses[0].alignments
+    assert [row.retroversion_kind for row in rows] == [
+        "proper_noun",
+        "context",
+        "passive_to_active",
+        "plain",
+    ]
