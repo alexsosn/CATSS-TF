@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import urllib.request
 from collections.abc import Iterable
 from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 from typing import Literal
-from urllib.request import Request, urlopen
 
 
 CCAT_PARALLEL_BASE_URL = "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel"
@@ -178,8 +178,8 @@ def _validate_filename(name: str) -> None:
 
 
 def _fetch_bytes(url: str) -> bytes:
-    request = Request(url, headers={"User-Agent": "CATSS-TF/0.0.0"})
-    with urlopen(request, timeout=60) as response:
+    request = urllib.request.Request(url, headers={"User-Agent": "CATSS-TF/0.0.0"})
+    with urllib.request.urlopen(request, timeout=60) as response:
         return response.read()
 
 
