@@ -748,7 +748,7 @@ Compatibility fields such as `mt_tokens` are derived from `mt_readings`; resolve
 
 It:
 
-- removes CATSS `/` morpheme separators;
+- removes CATSS `/` and `\\` intra-word segmentation separators;
 - maps Michigan–Claremont consonants;
 - ignores only documented non-consonantal Hebrew BETA material;
 - applies final kaf/mem/nun/pe/tsade at word end;
@@ -768,8 +768,9 @@ Neither function performs fuzzy folding such as equating shin and sin or final/n
 
 Flatten CATSS readings in alignment/source order:
 
-- ordinary and Ketiv-bearing readings contribute one MT position;
-- Qere is an alternative attached to that position;
+- ordinary and Ketiv-bearing readings contribute one or more MT positions after explicit maqaf (`-`) expansion;
+- `/` and `\\` never create new positions;
+- Qere is an alternative attached to the corresponding expanded position(s);
 - column B contributes zero positions;
 - LXX-plus contributes zero positions.
 
@@ -797,6 +798,7 @@ No failure code triggers a fallback mapping.
 BhsaWordMapping
   alignment_id
   mt_index
+  segment_index
   bhsa_node
   mapping_kind = exact | ketiv_qere
 
@@ -857,6 +859,24 @@ Qere-only **Qere             -> BHSA qere_utf8 proves slot
 
 A Qere-only position does **not** make the BHSA written form disappear from the corpus model; it merely uses the Masoretic reading feature as the textual identity witness for that slot.
 
-No empty BHSA slot is transparent or skippable. Verse cardinality remains one CATSS MT position per BHSA word slot in this resolver. A non-Qere CATSS reading facing an empty `g_cons_utf8` is a hard mapping failure.
+No empty BHSA slot is transparent or skippable. After issue #26 maqaf expansion, verse cardinality is one **expanded CATSS segment** per BHSA word slot; one `MtReading` may contribute multiple segments only when it explicitly contains maqaf. A non-Qere CATSS reading facing an empty `g_cons_utf8` is a hard mapping failure.
 
-CATSS `/` remains an intra-word morphological separator and never creates additional BHSA slots.
+CATSS `/` and `\\` remain intra-word segmentation markers and never create additional BHSA slots.
+
+
+### 16.10 Maqaf-aware post-merge hardening
+
+Issue #26 preserves the #7 whole-verse proof while allowing one CATSS alignment element to span multiple BHSA word slots when CATSS explicitly contains maqaf.
+
+```text
+CATSS element: B\\BYT-LXMM
+segments:      B\\BYT | LXMM
+normalized:    בבית    | לחמם
+BHSA slots:    node A  | node B
+```
+
+The mapping key is therefore `(alignment_id, mt_index, segment_index)`.
+
+This is not an alignment heuristic. Expansion happens only at the documented `-` character, and the final mapping still requires exact equality of the complete expanded CATSS verse sequence with the complete BHSA word-slot sequence.
+
+Qere segmentation must have the same number of maqaf segments as its primary/Ketiv reading. Otherwise the verse emits no word mappings.

@@ -363,3 +363,21 @@ HBMINUS\t-- ''
     assert minus.is_lxx_minus is True
     assert minus.lxx_count == 0
     assert minus.raw_lines == ("HBMINUS\t-- ''",)
+
+
+def test_mt_readings_structure_inline_aramaic_and_doubt_markers() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+??MLK??,,a DBR,,a\tGR
+""",
+        source_name="99.Test.par",
+    )
+
+    first, second = doc.verses[0].alignments[0].mt_readings
+    assert first.primary == "MLK"
+    assert first.doubtful is True
+    assert first.aramaic_section is True
+    assert second.primary == "DBR"
+    assert second.doubtful is False
+    assert second.aramaic_section is True
+    assert doc.verses[0].alignments[0].mt_tokens == ("MLK", "DBR")
