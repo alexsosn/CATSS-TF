@@ -502,7 +502,7 @@ Sources:
 
 ## R-039 — CATSS morphological separators stay inside one BHSA word slot
 
-The currently distributed CATSS parallel files use `/` as a morphological separator inside the Hebrew word (for example `B/R)$YT`). BHSA's `word` nodes are the slots; morphemes such as preformatives, suffixes, and endings are represented as features of a word slot, not as additional slots.
+The currently distributed CATSS parallel files use `/` and `\\` as internal morphological/segmentation separators inside the Hebrew word (for example `B/R)$YT`). BHSA's `word` nodes are the slots; morphemes such as preformatives, suffixes, and endings are represented as features of a word slot, not as additional slots.
 
 Sources:
 
@@ -510,7 +510,7 @@ Sources:
 - https://etcbc.github.io/bhsa/features/0_home/
 - https://etcbc.github.io/bhsa/features/otype/
 
-**Decision:** `/` is removed for word identity. CATSS-TF never splits a CATSS word at `/` into multiple BHSA nodes.
+**Decision:** `/` and `\\` are removed for word identity. CATSS-TF never splits a CATSS word at `/` into multiple BHSA nodes.
 
 Examples:
 
@@ -650,7 +650,7 @@ B\\BYT-LXMM
     -> two BHSA word slots
 ```
 
-`/` remains a morpheme separator **inside** one expanded word segment and is removed during normalization.
+`/` and `\\` remain internal separators **inside** one expanded word segment and is removed during normalization.
 
 The mapping output therefore records both:
 
@@ -658,3 +658,10 @@ The mapping output therefore records both:
 - segment index within that reading.
 
 Whole-verse proof compares the fully expanded CATSS MT word sequence with the BHSA word-slot sequence. This preserves exact textual proof without pretending that CATSS alignment elements and BHSA slots always have the same cardinality.
+
+
+## R-047 — CATSS Hebrew conversion must ignore both slash directions used as segmentation
+
+The MIT CATSS conversion notebook's Hebrew table explicitly maps backslash (`\\`) to the empty string, and its worked example `B\\BYT-LXMM` depends on that behavior. Other CATSS documentation uses forward slash (`/`) for morphological segmentation.
+
+**Decision:** CATSS-TF treats both `/` and `\\` as non-lexical internal segmentation characters for Hebrew identity. Neither creates a BHSA word boundary. Maqaf `-` remains the only supported within-element boundary that expands to multiple BHSA word slots.
