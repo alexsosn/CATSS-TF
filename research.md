@@ -343,3 +343,144 @@ The parser deliberately preserves unrecognized brace markup as `Annotation(kind=
 Validation output should be directly usable by CLI/agents/CI and should not require parsing prose or a nested opaque blob.
 
 **Decision:** summaries expose explicit integer fields including source files, verses, alignments, source data lines, accounted lines, unaccounted lines, parser diagnostics, unknown annotations, invalid IDs, duplicate IDs, errors, unresolved findings, and explicitly ignored/allowed findings.
+
+
+## R-029 — v0.1 targets the immutable BHSA 2021 warp
+
+The ETCBC/BHSA repository explicitly keeps historical data versions side by side and states that data in an existing version directory do not change; newer versions are stored separately.
+
+For the `tf/2021` dataset:
+
+- Git tag `v1.8.1` resolves to commit `b112c161cfd21eae403d51a2733740d8743460e7`;
+- the v1.8.1 release notes state that the TF feature data are identical to the previous release and that the release adds NER specifications/tooling;
+- the mapping-critical TF files at the v1.8.1 commit have the fingerprints recorded below;
+- `otype.tf` declares `@version=2021`;
+- nodes `1-426590` are the `word` slots;
+- there are 39 `book` nodes, 929 `chapter` nodes, and 23,213 `verse` nodes;
+- `otext.tf` declares section types/features `book,chapter,verse`.
+
+Sources:
+
+- https://github.com/ETCBC/bhsa
+- https://github.com/ETCBC/bhsa/releases/tag/v1.8.1
+- https://github.com/ETCBC/bhsa/tree/v1.8.1/tf/2021
+- https://github.com/ETCBC/bhsa/blob/v1.8.1/tf/2021/otype.tf
+- https://github.com/ETCBC/bhsa/blob/v1.8.1/tf/2021/otext.tf
+
+A subtlety: the `__checkout__.txt` stored inside the tagged tree still names the preceding checkout, while the later repository marker names `v1.8.1 / b112...`. CATSS-TF therefore treats the Git tag/ref plus the actual TF feature fingerprints—not the embedded checkout marker alone—as the release identity.
+
+**Decision:** the first `catss-bhsa` materializer supports **ETCBC/BHSA TF 2021 as published at release tag v1.8.1**. It does not resolve against an unversioned/latest BHSA warp.
+
+## R-030 — Parent identity must be verified at the warp and mapping-feature level
+
+A CATSS module is valid only for the exact parent node identities on which it was materialized. Checking the human-readable version string alone is weaker than checking the actual TF files.
+
+GitHub currently reports the following Git blob IDs for the BHSA 2021 files used by CATSS-TF:
+
+- `otype.tf`: `ecc4d0ecd388bd673d0aebfa8ab2a81508bec23c`
+- `oslots.tf`: `b389833f7624bb252dd2cf25cf798d4a6a82cc1b`
+- `book.tf`: `70407385b60568eaeb44dbeb45f3a7dfafd2a6af`
+- `chapter.tf`: `7834c771c0a42fe81b21a8284e95e4226a448108`
+- `verse.tf`: `06046e58967de2a46b6e976584bd29c98fe2fdab`
+- `g_cons_utf8.tf`: `8b1b0513cb7ae061ba180c8d6cdbfdb496aa4d44`
+- `g_word_utf8.tf`: `f78cce06300190ed5c8ef9ca1fa72b16cdfca5eb`
+- `qere_utf8.tf`: `c4540df6d0068776ac4bb4475a28c7a403a8904e`
+
+**Decision:** these files define the v0.1 mapping contract. Parent validation can compare their Git blob hashes when raw TF files are available; an adapter that cannot expose raw files must at minimum verify version, slot type/count, section contract, and feature presence before mapping.
+
+## R-031 — BHSA represents Ketiv/Qere as alternative readings on one word slot
+
+BHSA's default full-text format is:
+
+`{qere_utf8/g_word_utf8}{qere_trailer_utf8/trailer_utf8}`
+
+while the explicit ketiv format uses:
+
+`{g_word_utf8}{trailer_utf8}`.
+
+The sparse `qere_utf8` feature is described as a “word pointed-Hebrew masoretic reading correction”. Real values can contain embedded line breaks and multiple visual orthographic pieces while remaining attached to one BHSA word node.
+
+Sources:
+
+- https://github.com/ETCBC/bhsa/blob/master/tf/2021/otext.tf
+- https://github.com/ETCBC/bhsa/blob/master/tf/2021/qere_utf8.tf
+
+**Decision:** CATSS Ketiv/Qere alternatives resolve to the **same BHSA word slot**. A resolver must normalize a BHSA feature value as one slot value even when its display string contains whitespace/newlines; it must never manufacture additional BHSA token positions from qere display pieces.
+
+## R-032 — Mapping identity uses text-bearing word features, not BHSA morphology
+
+The BHSA parent offers rich morphology and syntax, but those annotations are not needed to establish CATSS token identity and could turn a textual mapping decision into a morphology-dependent heuristic.
+
+**Decision:** v0.1 Hebrew resolution uses only structural location plus text-bearing word features:
+
+- `book`, `chapter`, `verse`;
+- `g_cons_utf8` as the primary consonantal word form;
+- `g_word_utf8` as the pointed/accented ketiv form when needed;
+- `qere_utf8` as the alternate masoretic reading when present.
+
+Morphology may be used after mapping for research queries, but not to rescue a failed identity match.
+
+## R-033 — CATSS-to-BHSA book identity must be explicit
+
+BHSA book values are Latinized ETCBC names such as `Numeri`, `Josua`, `Samuel_I`, `Reges_I`, `Jesaia`, `Psalmi`, `Iob`, and `Chronica_I`. CATSS file stems and verse-header tokens use different conventions.
+
+Some CATSS parallel sources are multiple Greek editions over the same MT book:
+
+- `06.JoshB` and `07.JoshA` → BHSA `Josua`;
+- `08.JudgesB` and `09.JudgesA` → BHSA `Judices`;
+- `45.DanielOG` and `46.DanielTh` → BHSA `Daniel`.
+
+Samuel/Kings CATSS headers may use Kingdoms notation (`1Sam/K`, `2Sam/K`, `1/3Kgs`, `2/4Kgs`), while BHSA uses `Samuel_I`, `Samuel_II`, `Reges_I`, `Reges_II`.
+
+**Decision:** the CATSS source filename stem is mapped through a versioned explicit table to the BHSA `book` value. Book order, numeric position, and header spelling are never used as implicit identity.
+
+## R-034 — Four CATSS parallel sources have no direct BHSA parent book in v0.1
+
+BHSA 2021 contains the 39-book Hebrew canon. The 46 CATSS parallel sources also include:
+
+- `17.1Esdras.par`
+- `22.Ps151.par`
+- `27.Sirach.par`
+- `42.Baruch.par`
+
+BHSA has no corresponding book nodes for these sources.
+
+**Decision:** these four source files are explicitly `unsupported_for_bhsa` in v0.1. They remain available for the LXX projection. CATSS-TF does not try to map them transitively onto similar Hebrew passages.
+
+## R-035 — Verse location narrows the search; it never proves word identity
+
+BHSA 2021 has ordinary `book/chapter/verse` sections. CATSS MT-side references are the natural first filter for candidate BHSA words, but textual corpora can differ in tokenization and exceptional reference conventions.
+
+**Decision:** the future BHSA resolver follows:
+
+1. explicit CATSS source stem → BHSA book;
+2. exact chapter/verse candidate section;
+3. normalization and content agreement against BHSA word-slot forms;
+4. only then assign BHSA node IDs.
+
+“same verse + same ordinal word position” is forbidden as a successful mapping rule. Position may constrain or diagnose a match after textual agreement but cannot replace it.
+
+## R-036 — BHSA licensing remains an upstream data concern
+
+BHSA data are CC BY-NC 4.0 and require attribution; the repository README identifies DOI `10.17026/dans-z6y-skyh` and requires consent for commercial applications.
+
+**Decision:** CATSS-TF's MIT license does not relicense BHSA. Generated `catss-bhsa` modules inherit whatever upstream restrictions apply to their BHSA-derived node association/data and are not bundled in this software repository.
+
+
+## R-037 — LXX-plus alignments have no honest BHSA word target
+
+A CATSS LXX-plus row has `mt_count=0`: the Greek contains material with no corresponding MT word. Therefore there is no BHSA word slot to which that alignment can be truthfully attached.
+
+Assigning such a row to the previous/next/nearest BHSA word would create a synthetic textual claim and violate the project's no-positional-guessing rule.
+
+BHSA does, however, provide existing `verse` nodes. A BHSA-side module can use the containing verse as the structural location for **verse-level aggregate/presence features** about Hebrew-empty CATSS alignments without inventing a word correspondence.
+
+A further limitation follows from the no-new-node module model: multiple independent LXX-plus groups in one verse cannot each be represented as separate first-class BHSA-side alignment entities without packing IDs into a list/blob. That representation decision belongs to the TF feature-schema issue (#10), not to the parent resolver.
+
+**Decision:**
+
+- MT-bearing CATSS alignments target BHSA `word` slots after textual resolution;
+- Hebrew-empty/LXX-plus alignments must never receive an invented word target;
+- the BHSA projection may use the existing `verse` node for scalar aggregate/presence features about such rows;
+- exact per-plus-group provenance may remain in the deterministic sidecar unless #10 finds a genuinely query-native representation;
+- the LXX projection remains the natural word-level home for the Greek tokens themselves.

@@ -395,12 +395,12 @@ At minimum:
 
 `mt_tokens` and `lxx_tokens` are conservative whitespace-level lexical candidates after removing standalone alignment sigla and unwrapping only a small set of well-understood transposition wrappers.
 
-The ratio is `"<mt_count>:<lxx_count>"`.
+`mt_count` and `lxx_count` are independent integer fields.
 
 Special cases naturally produce:
 
-- LXX plus: `0:n` when MT column A has only plus sigla;
-- LXX minus: `n:0`.
+- LXX plus: `mt_count=0` and `lxx_count=n`;
+- LXX minus: `mt_count=n` and `lxx_count=0`.
 
 These counts are parser conveniences, not a claim about Hebrew Vorlage or translation technique.
 
@@ -617,3 +617,92 @@ This summary is the gate consumed by later mapping/materialization work.
 ### 14.6 Terminology
 
 CATSS is the dataset/project. CCAT is the current upstream distribution host/institutional infrastructure. Validation and TF feature names use CATSS terminology.
+
+
+## 15. BHSA 2021 parent contract
+
+### 15.1 Supported parent
+
+```text
+repository      ETCBC/bhsa
+TF version      2021
+checkout tag    v1.8.1
+checkout git    b112c161cfd21eae403d51a2733740d8743460e7
+slot type       word
+max slot        426590
+section types   book, chapter, verse
+```
+
+The materializer must name the parent version explicitly. It does not accept an unqualified `ETCBC/bhsa latest`.
+
+### 15.2 Mapping-critical features
+
+Required v0.1 features:
+
+```text
+otype
+oslots
+book
+chapter
+verse
+g_cons_utf8
+g_word_utf8
+qere_utf8
+```
+
+`g_cons_utf8` is the primary word-form anchor after CATSS Hebrew normalization. `g_word_utf8` and sparse `qere_utf8` provide orthographic/reading alternatives. Morphology and syntax are deliberately outside the identity contract.
+
+`trailer_utf8` and `qere_trailer_utf8` are display/interword material and are not part of lexical identity.
+
+### 15.3 Warp and feature fingerprints
+
+The v0.1 spec records Git blob hashes for every mapping-critical TF file. If the raw parent files are available, materialization should verify them before resolving CATSS data.
+
+A changed `otype` or `oslots` is always incompatible. A changed mapping-critical text/section feature is also rejected until a new parent profile is researched and versioned.
+
+### 15.4 Explicit CATSS source → BHSA book mapping
+
+The parent profile contains a closed table for the 42 supported CATSS parallel sources. It deliberately maps multiple CATSS Greek editions to the same BHSA Hebrew book where appropriate.
+
+Unsupported v0.1 sources:
+
+```text
+17.1Esdras
+22.Ps151
+27.Sirach
+42.Baruch
+```
+
+They are not mapping failures; they are outside the BHSA projection's declared coverage.
+
+### 15.5 Word-slot identity rules
+
+BHSA word slots are the target nodes for CATSS alignments that actually contain MT words. Existing BHSA verse nodes are the only permitted non-word anchors for Hebrew-empty/LXX-plus information.
+
+Resolver rules:
+
+- resolve inside an explicitly identified BHSA book/chapter/verse;
+- compare normalized source content to BHSA word-slot text;
+- represent Ketiv/Qere as alternatives of the same word slot;
+- never split one BHSA qere feature into synthetic slots because it contains whitespace/newlines;
+- never use morphology as a fallback identity heuristic;
+- never accept ordinal position alone as a match;
+- never attach an LXX-plus row to a previous/next/nearest word when the CATSS MT side is empty;
+- Hebrew-empty rows may contribute only verse-level scalar aggregate/presence features on the BHSA side until the TF feature schema (#10) defines their final representation;
+- ambiguity remains a mapping diagnostic.
+
+### 15.6 Parent profile verification
+
+Issue #6 supplies a lightweight schema profile independent of the Text-Fabric runtime. It can verify a parent probe containing:
+
+- repository/version/checkout identity;
+- slot type and slot/node bounds;
+- section types;
+- available feature names;
+- optional raw-file Git blob hashes.
+
+Issue #7 will bind this contract to an actual Text-Fabric API and implement Hebrew resolution.
+
+### 15.7 TF-feature compatibility
+
+The future `catss-bhsa` module remains a normal BHSA enrichment module. CATSS features are attached to resolved BHSA word slots when an MT word exists, and may use existing BHSA verse nodes for query-native aggregate/presence features when the CATSS alignment has no Hebrew word target. Parent BHSA features are not copied into the module; no synthetic word anchor is created.
