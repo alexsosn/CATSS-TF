@@ -95,9 +95,9 @@ class LxxWordMapping:
     reference_chapter: int
     reference_verse: int
     reference_subverse: str | None
-    mapping_kind: typing.Literal[
-        "exact", "transposition_alignment", "transposition_carrier"
-    ] = "exact"
+    mapping_kind: typing.Literal["exact", "transposition_alignment", "transposition_carrier"] = (
+        "exact"
+    )
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
