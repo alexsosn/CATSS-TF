@@ -1,19 +1,17 @@
 """CATSS parallel-source acquisition and deterministic source inspection."""
 
-from __future__ import annotations
-
+import collections.abc
+import dataclasses
 import hashlib
+import os
+import pathlib
+import typing
 import urllib.request
-from collections.abc import Iterable
-from dataclasses import dataclass
-from os import PathLike
-from pathlib import Path
-from typing import Literal
 
 
 CCAT_PARALLEL_BASE_URL = "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel"
 CCAT_USER_DECLARATION_URL = (
-    "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/00.UserDec.txt"
+    "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/00.user-declaration.txt"
 )
 
 CATSS_PARALLEL_FILENAMES: tuple[str, ...] = (
@@ -74,7 +72,7 @@ class SourceDownloadError(RuntimeError):
     """Raised when CATSS source acquisition cannot produce a valid local file."""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class SourceFileFingerprint:
     """Deterministic identity of one CATSS parallel input file."""
 
@@ -83,19 +81,19 @@ class SourceFileFingerprint:
     sha256: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class ParallelSourceManifest:
     """Canonical fingerprint of the CATSS parallel files selected for parsing."""
 
     files: tuple[SourceFileFingerprint, ...]
-    source_kind: Literal["catss-parallel"] = "catss-parallel"
+    source_kind: typing.Literal["catss-parallel"] = "catss-parallel"
 
 
 def download_parallel_source(
-    destination: str | PathLike[str],
+    destination: str | os.PathLike[str],
     *,
     base_url: str = CCAT_PARALLEL_BASE_URL,
-    filenames: Iterable[str] = CATSS_PARALLEL_FILENAMES,
+    filenames: collections.abc.Iterable[str] = CATSS_PARALLEL_FILENAMES,
     overwrite: bool = False,
 ) -> ParallelSourceManifest:
     """Download CATSS parallel files directly from the configured upstream host.
@@ -105,7 +103,7 @@ def download_parallel_source(
     Existing non-empty files are preserved unless overwrite is true.
     """
 
-    root = Path(destination)
+    root = pathlib.Path(destination)
     root.mkdir(parents=True, exist_ok=True)
 
     names = tuple(sorted(filenames))
@@ -139,14 +137,14 @@ def download_parallel_source(
     return inspect_parallel_source(root)
 
 
-def inspect_parallel_source(directory: str | PathLike[str]) -> ParallelSourceManifest:
+def inspect_parallel_source(directory: str | os.PathLike[str]) -> ParallelSourceManifest:
     """Fingerprint direct-child *.par files in a local CATSS parallel directory.
 
     Discovery is deliberately non-recursive so an accidentally broad path does
     not silently pull unrelated CATSS collections into the parser input.
     """
 
-    root = Path(directory)
+    root = pathlib.Path(directory)
     if not root.exists():
         raise SourceInspectionError(f"CATSS parallel source does not exist: {root}")
     if not root.is_dir():
@@ -173,7 +171,7 @@ def inspect_parallel_source(directory: str | PathLike[str]) -> ParallelSourceMan
 
 
 def _validate_filename(name: str) -> None:
-    if not name.endswith(".par") or "/" in name or "\\" in name or Path(name).name != name:
+    if not name.endswith(".par") or "/" in name or "\\" in name or pathlib.Path(name).name != name:
         raise SourceDownloadError(f"invalid CATSS parallel filename: {name!r}")
 
 
@@ -183,7 +181,7 @@ def _fetch_bytes(url: str) -> bytes:
         return response.read()
 
 
-def _sha256(path: Path) -> str:
+def _sha256(path: pathlib.Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
