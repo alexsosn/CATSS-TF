@@ -10,10 +10,12 @@ _VERSE_HEADER = re.compile(r"^\s*([0-9A-Za-z][0-9A-Za-z/]*)\s+(?:(\d+):)?(\d+)\s
 _COLUMN_SPACES = re.compile(r"\s{2,}")
 _BRACE_BLOCK = re.compile(r"\{[^{}]*\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
-_SQUARE_REFERENCE = re.compile(r"\[[^\[\]]*\]")
+_SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
+_GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
 _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s]+)")
+_DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
 
@@ -35,6 +37,16 @@ class ParseDiagnostic:
     line_no: int
     raw_line: str
     message: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class GreekReference:
+    """Structured CATSS Greek-side reference override."""
+
+    chapter: int | None
+    verse: int
+    subverse: str | None
+    raw: str
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -65,6 +77,7 @@ class AlignmentRecord:
     mt_ketiv_tokens: tuple[str, ...]
     mt_qere_tokens: tuple[str, ...]
     lxx_tokens: tuple[str, ...]
+    lxx_references: tuple[GreekReference, ...]
     mt_count: int
     lxx_count: int
     is_lxx_plus: bool
@@ -307,6 +320,13 @@ def _build_alignment(
     is_lxx_plus = _first_token(mt_col_a) in _LXX_PLUS_MARKERS
     is_lxx_minus = _first_token(lxx_raw) in _LXX_MINUS_MARKERS
 
+    lxx_references, reference_diagnostics = _extract_greek_references(
+        lxx_raw,
+        line_no=physical_rows[0].line_no,
+        raw_line=physical_rows[0].raw,
+    )
+    row_diagnostics.extend(reference_diagnostics)
+
     annotations = tuple(
         [
             *_extract_annotations("mt_a", mt_col_a),
@@ -364,6 +384,7 @@ def _build_alignment(
             mt_ketiv_tokens=mt_ketiv_tokens,
             mt_qere_tokens=mt_qere_tokens,
             lxx_tokens=lxx_tokens,
+            lxx_references=lxx_references,
             mt_count=len(mt_tokens),
             lxx_count=len(lxx_tokens),
             is_lxx_plus=is_lxx_plus,
@@ -412,9 +433,50 @@ def _extract_annotations(
             raw = match.group(1)
             annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
     if side == "lxx":
-        for match in _SQUARE_REFERENCE.finditer(cell):
-            annotations.append(Annotation(side=side, kind="verse_reference", raw=match.group(0)))
+        for match in _DOUBT_MARKER.finditer(cell):
+            annotations.append(Annotation(side=side, kind="doubt", raw=match.group(0)))
+        for match in _SQUARE_GROUP.finditer(cell):
+            raw = match.group(0)
+            inner = raw.lstrip("[").rstrip("]")
+            if any(character.isdigit() for character in inner):
+                annotations.append(Annotation(side=side, kind="verse_reference", raw=raw))
     return annotations
+
+
+def _extract_greek_references(
+    cell: str,
+    *,
+    line_no: int,
+    raw_line: str,
+) -> tuple[tuple[GreekReference, ...], tuple[ParseDiagnostic, ...]]:
+    references: list[GreekReference] = []
+    diagnostics: list[ParseDiagnostic] = []
+    for match in _SQUARE_GROUP.finditer(cell):
+        raw = match.group(0)
+        inner = raw.lstrip("[").rstrip("]")
+        if not any(character.isdigit() for character in inner):
+            continue
+        parsed = _GREEK_REFERENCE_VALUE.fullmatch(inner)
+        if parsed is None:
+            diagnostics.append(
+                ParseDiagnostic(
+                    code="invalid_lxx_reference",
+                    line_no=line_no,
+                    raw_line=raw_line,
+                    message=f"unsupported CATSS Greek reference syntax: {raw}",
+                )
+            )
+            continue
+        suffix = parsed.group(3) or None
+        references.append(
+            GreekReference(
+                chapter=int(parsed.group(1)) if parsed.group(1) is not None else None,
+                verse=int(parsed.group(2)),
+                subverse=suffix.lower() if suffix is not None else None,
+                raw=raw,
+            )
+        )
+    return tuple(references), tuple(diagnostics)
 
 
 def _retroversion_kind(mt_col_b: str | None) -> str | None:
@@ -459,6 +521,9 @@ def _brace_kind(raw: str) -> str:
         "{x}": "apparent_plus_minus",
         "{*}": "greek_agrees_ketiv",
         "{**}": "greek_agrees_qere",
+        "{p}": "greek_preverb",
+        "{s}": "comparative_superlative",
+        "{---%}": "asterisked_passage",
     }
     if raw in exact:
         return exact[raw]
@@ -567,15 +632,24 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
 
 
 def _lxx_lexical_candidates(cell: str) -> tuple[str, ...]:
-    text = _prepare_lexical_text(cell)
-    return tuple(token for token in text.split() if not _is_alignment_marker(token))
+    text = _prepare_lexical_text(cell).replace("?", "")
+    return tuple(
+        token for token in text.split() if token != "+" and not _is_alignment_marker(token)
+    )
 
 
 def _prepare_lexical_text(cell: str) -> str:
     text = _BRACE_BLOCK.sub(lambda match: _brace_payload(match.group(0)), cell)
     text = _ANGLE_NOTE.sub(" ", text)
-    text = _SQUARE_REFERENCE.sub(" ", text)
+    text = _SQUARE_GROUP.sub(lambda match: _square_payload(match.group(0)), text)
     return _CONTINUATION_TOKEN.sub(" ", text)
+
+
+def _square_payload(raw: str) -> str:
+    inner = raw.lstrip("[").rstrip("]")
+    if any(character.isdigit() for character in inner):
+        return " "
+    return inner
 
 
 def _first_token(cell: str) -> str:
@@ -606,6 +680,8 @@ def _brace_payload(raw: str) -> str:
     if inner.startswith("..r"):
         return inner[3:]
     if inner.startswith("c"):
+        return inner[1:]
+    if inner.startswith("g"):
         return inner[1:]
     return " "
 

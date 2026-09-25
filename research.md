@@ -916,3 +916,124 @@ Source:
 - https://github.com/eliranwong/LXX-Rahlfs-1935/blob/master/08_versification/001_verse_c_book.csv
 
 **Decision:** the LXX schema profile records the full 57-book parent set and tests that every CATSS source mapping target belongs to it. A future typo or accidental OSIS-name substitution therefore fails before resolver work.
+
+
+## R-063 — Greek identity can be compared in a conservative accent-insensitive surface alphabet
+
+CATSS parallel Greek uses the documented Michigan-Claremont/TLG-style uppercase ASCII alphabet. CenterBLC exposes realized Unicode Greek through the `word` feature.
+
+For node identity the resolver does not need to reproduce typography exactly. It needs a normalization that preserves the inflected surface letters while removing encoding-only differences.
+
+**Decision:** v0.1 normalizes both sides to lowercase Greek surface letters with:
+
+- CATSS BETA letters decoded directly to Greek letters;
+- breathings, accents, diaeresis, and iota-subscript ignored for identity;
+- Unicode Greek decomposed with NFD and combining marks removed;
+- final sigma and medial sigma normalized to one sigma;
+- apostrophe/elision normalized to one apostrophe code;
+- Greek letters and inflection otherwise preserved.
+
+Lemma, morphology, `g_cons_utf8`, edit distance, and transliteration are never identity fallbacks.
+
+Unknown CATSS lexical characters and unsupported parent punctuation fail closed.
+
+## R-064 — Greek reference annotations must become structured parser IR
+
+Issue #8 established that CATSS `[...]` / `[[...]]` Greek references can move a row to a different Rahlfs verse and may include a chapter and/or lettered suffix.
+
+The older parser represented all square-bracket text as a generic `verse_reference` annotation. That is insufficient for #9 and also too broad: CATSS extra-biblical markup can use brackets for reconstruction, while the Greek reference regex is specifically digit-bearing.
+
+**Decision:** the parser exposes `GreekReference` values:
+
+```text
+chapter: int?
+verse: int
+subverse: str?
+raw: str
+```
+
+Only square-bracket groups containing a numeric reference are Greek-reference evidence. Supported v0.1 forms are `[6]`, `[6a]`, `[23:6]`, `[23:6a]` and double-bracket equivalents. An unsupported digit-bearing reference becomes a parser diagnostic rather than being silently ignored.
+
+## R-065 — Alignment placement is a constraint problem, not a row-position lookup
+
+CATSS Greek row order can differ from printed LXX order because the alignment format moves Greek material to express MT↔LXX relationships.
+
+For each CATSS alignment row with Greek lexical material, #9 can nevertheless enumerate exact contiguous parent spans whose normalized surface equals that row's normalized Greek token sequence.
+
+A single token such as `KAI\\` may appear multiple times in a verse and therefore have several local candidates. Neighboring CATSS rows can make only one joint non-overlapping assignment possible.
+
+**Decision:** #9 resolves all CATSS rows targeting the same parent reference as one exact-placement constraint set:
+
+1. enumerate exact surface-span candidates for every non-empty Greek row;
+2. require candidate spans to stay inside the explicit/default parent reference;
+3. solve for assignments with no parent word slot used by two independent ordinary rows;
+4. accept mappings only if exactly one complete assignment exists;
+5. zero solutions => typed `surface_placement_missing`;
+6. multiple solutions => typed `surface_placement_ambiguous`.
+
+No scoring, nearest-position, lemma matching, or edit distance is used.
+
+## R-066 — Greek-empty CATSS rows need reference anchors, not fabricated word mappings
+
+CATSS LXX-minus rows have no Greek word target. Remote-transposition placeholder rows can likewise carry no local Greek lexical material.
+
+**Decision:** Greek-empty rows never receive neighboring CenterBLC word nodes. The resolver emits an existing parent verse/subverse anchor with a scalar kind such as `lxx_minus` or `transposition_placeholder`. Issue #10 decides their final TF aggregate representation.
+
+An unexplained empty Greek row is a mapping finding, not an implicit omission.
+
+## R-067 — Parent version validation belongs before all LXX mapping
+
+Unlike common-ancestry assumptions, the exact CenterBLC v1.0.1 parent contract is machine-checkable.
+
+**Decision:** an `LxxVerseProvider` exposes a `LxxParentProbe`. The resolver calls `validate_lxx_parent` before CATSS validation or token placement. Any parent mismatch suppresses all mappings for that run.
+
+The Text-Fabric adapter is deliberately thin and requires the caller/materializer to supply the observed parent probe; it has no authority to invent release metadata.
+
+## R-068 — Full-corpus audit is an aggregation of the same resolver, not a second algorithm
+
+A production audit must not use a looser path than ordinary materialization.
+
+**Decision:** #9 exposes `resolve_lxx_documents()`, which validates the parent once, resolves every supplied CATSS document through the same pure mapping engine, and returns scalar coverage/divergence counts plus typed findings. Normal CI uses synthetic providers; users with CATSS and CenterBLC installed can run the same resolver over the full source set later without a separate mapping implementation.
+
+
+## R-069 — Some CATSS transposition rows deliberately name the same printed Greek word twice
+
+The CATSS parser research documents Gen 1:29:
+
+```text
+ZR(     {..^SPORI/MOU}
+ZR(     SPE/RMATOS
+{...}   SPORI/MOU
+L/KM    U(MI=N
+```
+
+The first `SPORI/MOU` is wrapped as a stylistic/grammatical transposition aligned with the relevant Hebrew element; the later row with MT `{...}` carries the same Greek surface at its printed position.
+
+A blanket “one CATSS row per parent word” rule therefore rejects a documented valid CATSS structure.
+
+**Decision:** exact parent-word overlap is permitted only for a complementary, explicit pair:
+
+- a Greek-side `transposition_stylistic` or text-bearing `transposition_remote` alignment; and
+- an MT-side bare `{...}` transposition carrier;
+
+and only when both resolve to the **identical complete parent span**. Partial overlaps and unmarked duplicate rows remain conflicts.
+
+Resolver output distinguishes `mapping_kind=transposition_alignment` from `mapping_kind=transposition_carrier`. This preserves both CATSS row identities without pretending they are two printed Greek tokens. Issue #10 must account for this real many-CATSS-rows→one-parent-node case without encoding an opaque list of alignment IDs in TF.
+
+
+## R-070 — Documented Greek strategy sigla must not become lexical tokens
+
+CATSS's published/open parser patterns identify several Greek-side marks whose meaning is known:
+
+- `{p}` — Greek preverb representing a Hebrew preposition;
+- `{s}` — Hebrew `MN` reflected by a Greek comparative/superlative;
+- `{---%}` — asterisked passage in Job;
+- `?` runs — doubt concerning a word or translation-strategy interpretation.
+
+These are annotation, not Greek surface letters. By contrast, the same documentation explicitly labels `{+}` and `{pm}` as unknown.
+
+Source:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/regex_patterns.py
+
+**Decision:** known marks receive structured annotation kinds and are removed from Greek lexical candidates; doubt marks preserve a `doubt` annotation while leaving the underlying word available for exact surface mapping. Explicitly unknown marks remain `kind=unknown` and therefore continue to block default validation rather than being guessed.
