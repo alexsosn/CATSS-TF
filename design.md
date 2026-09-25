@@ -186,7 +186,13 @@ Per-alignment source row/reference should remain available where practical.
 
 Initial package name: `catss-tf`; Python import: `catss_tf`.
 
-Expected future command surface:
+Command surface begins with source acquisition:
+
+```text
+catss-tf fetch <directory>
+```
+
+Future issues may extend the same CLI with:
 
 ```text
 catss-tf materialize bhsa ...
@@ -194,7 +200,7 @@ catss-tf materialize lxx ...
 catss-tf validate ...
 ```
 
-The CLI is not implemented in bootstrap and must be designed/tested issue-by-issue.
+Each new subcommand remains issue-driven and RED-first.
 
 ## 9. Agora integration
 
@@ -224,3 +230,60 @@ Rejected because CATSS parsing/grouping semantics would drift.
 ### Prebuilt generated modules in this repository
 
 Rejected because of upstream data licensing and parent-version coupling.
+
+
+## 11. CATSS source/acquisition contract
+
+The v0.1 materializer boundary is a local CATSS parallel directory. That directory may either already exist or be populated by an explicit user-invoked downloader:
+
+```text
+existing local directory ───────┐
+                                ├─> direct child *.par files
+user invokes CCAT downloader ───┘             |
+                                              v
+                                  source inspection/fingerprint
+                                              |
+                                              v
+                                         CATSS parser (#4)
+```
+
+The downloader retrieves files directly from the upstream CCAT host onto the user's machine. CATSS-TF does not redistribute those files and does not attempt to decide whether a particular user's acquisition/use complies with upstream terms.
+
+### Source directory contract
+
+The configured directory:
+
+- must exist when handed to the parser (the downloader may create it first);
+- must contain at least one direct-child `*.par` file;
+- is not searched recursively;
+- may contain CATSS documentation or unrelated non-`.par` files, which are ignored by the parser input set;
+- is fingerprinted before parsing.
+
+The source inspector returns a deterministic manifest sorted by filename. Each entry contains relative filename, byte size, and SHA-256.
+
+### Acquisition design
+
+The downloader is deliberately small and user-invoked. It fetches only the known CATSS parallel `.par` files required by this project, writes them to a user-chosen local directory, and then runs the same source fingerprinting used for pre-existing local data.
+
+License/usage compliance remains the user's responsibility. CATSS-TF records links to upstream terms but does not implement a click-through, registration database, or other policy enforcement.
+
+### Rejected acquisition designs
+
+**Bundle CATSS data in CATSS-TF releases:** rejected because the repository's MIT license does not relicense CATSS data.
+
+**Depend on `curran-gehring/catss`:** rejected as the production source boundary because its code is CC BY-NC 4.0 and it adds a SQLite/morphology layer CATSS-TF does not require.
+
+**Require the full CATSS tree:** rejected because only the parallel alignment is necessary for the initial modules.
+
+**Recursive source discovery:** rejected because it makes source identity dependent on directory layout and risks silently consuming unrelated datasets.
+
+### Downloader behavior
+
+The downloader must be deterministic and testable without network access:
+
+- the set of expected parallel filenames is explicit;
+- the CCAT base URL is explicit;
+- existing non-empty files are skipped unless overwrite is requested;
+- writes are atomic through a temporary file;
+- empty responses are rejected;
+- tests inject a fake fetch function and never contact CCAT.

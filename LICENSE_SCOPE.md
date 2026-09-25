@@ -20,8 +20,17 @@ CATSS-TF intentionally does not commit or release:
 - BHSA corpus data;
 - LXX corpus data.
 
-Materializers operate on data acquired separately by the user. A locally generated module is a derivative artifact whose redistribution rights depend on all applicable upstream terms; this repository's MIT license alone is not permission to redistribute that generated data.
+Materializers operate on CATSS and parent-corpus data stored in the user's environment. CATSS may be acquired directly from upstream by the user or by CATSS-TF's explicitly invoked downloader. A locally generated module is a derivative artifact whose redistribution rights depend on all applicable upstream terms; this repository's MIT license alone is not permission to redistribute that generated data.
 
 ## Dependency code
 
 Third-party software dependencies retain their own licenses. Copying source from an upstream parser is not permitted merely because CATSS-TF is MIT; any reused source must be compatible with MIT distribution and attributed as required.
+
+
+## CATSS acquisition policy
+
+CATSS-TF may provide software that downloads CATSS parallel files directly from the upstream CCAT host when explicitly invoked by the user. The downloaded files remain upstream CATSS data and are not covered by CATSS-TF's MIT license.
+
+Users are responsible for determining and following the upstream terms applicable to their acquisition, use, and redistribution of CATSS data.
+
+CATSS-TF does not bundle CATSS data, mirror them in this repository, publish prebuilt CATSS databases/modules, or relicense downloaded content. Source inspection records filenames, sizes, and cryptographic checksums only for reproducibility.
