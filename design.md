@@ -287,3 +287,236 @@ The downloader must be deterministic and testable without network access:
 - writes are atomic through a temporary file;
 - empty responses are rejected;
 - tests inject a fake fetch function and never contact CCAT.
+
+
+## 12. Canonical CATSS parser and IR
+
+Issue #4 freezes the parser boundary before any BHSA/LXX resolution.
+
+### 12.1 Parsed document
+
+```text
+ParallelDocument
+  source_name
+  verses[]
+  diagnostics[]
+
+VerseRecord
+  book
+  chapter
+  verse
+  header_raw
+  header_line_no
+  alignments[]
+
+AlignmentRecord
+  alignment_id
+  source_lines[]
+  raw_lines[]
+  mt_raw
+  lxx_raw
+  mt_col_a
+  mt_col_b?
+  retroversion_kind?
+  mt_tokens[]
+  mt_ketiv_tokens[]
+  mt_qere_tokens[]
+  lxx_tokens[]
+  ratio
+  is_lxx_plus
+  is_lxx_minus
+  is_ketiv
+  is_qere
+  transposition_kinds[]
+  annotations[]
+  column_split
+```
+
+All structures are immutable dataclasses.
+
+### 12.2 Source decoding and physical-to-logical line handling
+
+Source files are decoded as strict UTF-8. Invalid byte sequences are a hard parser error; CATSS-TF never substitutes replacement characters into scholarly source data.
+
+Parsing then proceeds in two stages:
+
+1. recognized verse headers partition the file;
+2. physical data lines are conservatively joined when CATSS continuation `#` markers show that they belong to one logical row.
+
+A logical row retains every contributing source line number and raw line. The parser never rewrites the source file.
+
+Blank lines do not terminate a verse. This prevents a known class of raw-CATSS corruption from silently splitting data.
+
+### 12.3 Column splitting
+
+Preference order:
+
+1. first tab separates MT and LXX;
+2. when no tab exists, a run of at least two spaces may separate columns;
+3. otherwise the physical/logical line is retained as an unsplit MT-side cell and a diagnostic is emitted.
+
+An unsplit row remains in the IR.
+
+### 12.4 Column B
+
+The first `=` in the MT cell separates column A from column B. Both the entire raw MT cell and the split values are retained.
+
+Column B is **not** part of `mt_tokens`; it is a reconstruction/annotation layer, not an MT token sequence.
+
+The common column-B introducers are normalized into a short `retroversion_kind` enum (`proper_noun`, `context`, `etymological`, `preposition_difference`, `active_to_passive`, `passive_to_active`, `vocalization`, `vocalization_shin_sin`, `incomplete`, or `plain`). The raw column-B value is still preserved.
+
+### 12.5 Normalized flags
+
+The initial parser recognizes without deleting source markup:
+
+- LXX plus: Hebrew column A begins with `--+`;
+- LXX minus: Greek cell begins with `---`;
+- Ketiv: single-star Hebrew form;
+- Qere: double-star Hebrew form; ketiv and qere are alternative readings of one MT position and therefore do not count as two independent MT alignment tokens;
+- local transposition: single `^` or legacy `~`;
+- remote transposition: `^^^` or `{...}`-style reflected-elsewhere markup;
+- stylistic transposition: `{..^...}`.
+
+The parser may expose additional annotation kinds, but it must not infer a reconstructed sequence or reorder source tokens.
+
+### 12.6 Annotations
+
+`Annotation(side, kind, raw)` is source-preserving.
+
+At minimum:
+
+- known transposition blocks are classified;
+- text-bearing wrappers such as `{c...}`, `{..p...}`, `{..d...}`, and `{..r...}` retain their lexical payload while receiving a stable annotation kind;
+- `{d}`, `{t}`, `{x}`, `{*}`, and `{**}` receive stable descriptive kinds;
+- angle-bracket notes and square-bracket Greek verse references are retained;
+- unrecognized brace blocks become `kind="unknown"`.
+
+### 12.7 Token candidates and ratios
+
+`mt_tokens` and `lxx_tokens` are conservative whitespace-level lexical candidates after removing standalone alignment sigla and unwrapping only a small set of well-understood transposition wrappers.
+
+The ratio is `"<mt_count>:<lxx_count>"`.
+
+Special cases naturally produce:
+
+- LXX plus: `0:n` when MT column A has only plus sigla;
+- LXX minus: `n:0`.
+
+These counts are parser conveniences, not a claim about Hebrew Vorlage or translation technique.
+
+### 12.8 Diagnostics
+
+Issue #4 emits diagnostics for source structures it cannot confidently split or place, including:
+
+- nonblank content before the first verse header;
+- unsplit logical rows;
+- malformed continuation chains.
+
+Unknown sigla are not diagnostics by themselves because they are represented losslessly as annotations.
+
+Issue #5 will add corpus-wide validation/invariant reporting.
+
+### 12.9 Explicit non-goals
+
+Issue #4 does not:
+
+- decode Hebrew/Greek Beta code to Unicode;
+- apply Cody Kingham's historical patch table;
+- map to BHSA or CenterBLC/LXX nodes;
+- reorder transposed Greek/Hebrew material;
+- decide which CATSS textual-critical judgment is correct;
+- compute the later translation-technique feature layer.
+
+
+## 13. TF compatibility and query-native representation
+
+The parser IR may be structurally rich, but the materialized TF modules must look and behave like ordinary Text-Fabric enrichment features on the parent corpus.
+
+### 13.1 Scalar-first feature model
+
+CATSS concepts should be projected into separate scalar features rather than encoded as JSON, delimited lists, or compound strings.
+
+Preferred examples:
+
+```text
+catss_lxx_plus=1
+catss_lxx_minus=1
+catss_mt_n=1
+catss_lxx_n=2
+catss_has_retro=1
+catss_trans_local=1
+catss_trans_remote=1
+catss_trans_style=1
+catss_ketiv=1
+catss_qere=1
+catss_doublet=1
+catss_translit=1
+catss_apparent_pm=1
+catss_agrees_ketiv=1
+catss_agrees_qere=1
+catss_mapping=exact
+```
+
+Avoid:
+
+```text
+catss_ratio=1:2
+catss_flags=plus|remote|doublet
+catss_annotations={...json...}
+catss_notes=d,x,foo
+```
+
+Counts should be integer TF features, booleans integer/presence features, and closed classifications short enumerated strings.
+
+### 13.2 Fit parent-corpus conventions
+
+Both BHSA and CenterBLC/LXX are word-slot corpora with ordinary node features for linguistic properties and standard `book/chapter/verse` sections. CATSS modules should follow the same usage pattern:
+
+- attach word-level CATSS features directly to the corresponding parent word slots;
+- use `@valueType=int` for counts/boolean indicators where appropriate;
+- use short documented enum values for categorical annotations;
+- use edge features only for genuine relations between nodes in the same parent warp;
+- avoid storing foreign-corpus node numbers as feature values.
+
+CATSS-specific feature names keep a `catss_` prefix to avoid collisions with parent features such as `gn`, `nu`, `ps`, `lex`, etc.
+
+### 13.3 Raw evidence stays outside routine query features
+
+Lossless CATSS source strings, source physical lines, arbitrary/unknown sigla, and detailed diagnostics remain available for reproducibility, but should normally be written to a deterministic provenance/diagnostic sidecar rather than copied onto every TF word node.
+
+A raw value becomes a TF feature only when there is a concrete query use case for that value itself.
+
+### 13.4 Alignment groups
+
+`catss_alignment_id` is allowed as a scalar join/provenance key, but it must not become the only representation of an alignment.
+
+Ordinary questions such as:
+
+- “LXX plus?”
+- “1:n alignment?”
+- “remote transposition?”
+- “ketiv/qere?”
+- “CATSS retroversion present?”
+
+must be answerable directly through atomic TF features without parsing `catss_alignment_id` or consulting a sidecar.
+
+If one parent node belongs to multiple independent CATSS groups, issue #10 must choose a query-native representation after measuring the real multiplicity. A delimited list of IDs is explicitly disallowed.
+
+### 13.5 Consequence for parser IR
+
+Even before TF serialization, the IR should expose future TF atoms directly:
+
+```text
+mt_count: int
+lxx_count: int
+is_lxx_plus: bool
+is_lxx_minus: bool
+has_retroversion: bool
+is_ketiv: bool
+is_qere: bool
+is_transposition_local: bool
+is_transposition_remote: bool
+is_transposition_stylistic: bool
+```
+
+Rich `annotations[]` and raw source remain alongside these atoms for losslessness, but materializers should not have to re-parse annotation blobs to obtain common searchable properties.
