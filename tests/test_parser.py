@@ -240,10 +240,7 @@ UNSPLIT
     )
 
     consumed = {
-        line_no
-        for verse in doc.verses
-        for row in verse.alignments
-        for line_no in row.source_lines
+        line_no for verse in doc.verses for row in verse.alignments for line_no in row.source_lines
     }
     diagnosed = {diagnostic.line_no for diagnostic in doc.diagnostics}
 
