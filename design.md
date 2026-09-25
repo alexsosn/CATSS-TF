@@ -736,6 +736,8 @@ MtReading
   qere?
   doubtful
   aramaic_section
+
+A reading may expand to more than one BHSA word position when `primary` contains maqaf (`-`).
 ```
 
 `AlignmentRecord.mt_readings` is the ordered sequence of MT positions represented by that alignment row.
@@ -748,7 +750,7 @@ Compatibility fields such as `mt_tokens` are derived from `mt_readings`; resolve
 
 It:
 
-- removes CATSS `/` morpheme separators;
+- removes CATSS `/` morpheme separators inside the segment;
 - maps Michigan–Claremont consonants;
 - ignores only documented non-consonantal Hebrew BETA material;
 - applies final kaf/mem/nun/pe/tsade at word end;
@@ -768,8 +770,9 @@ Neither function performs fuzzy folding such as equating shin and sin or final/n
 
 Flatten CATSS readings in alignment/source order:
 
-- ordinary and Ketiv-bearing readings contribute one MT position;
-- Qere is an alternative attached to that position;
+- ordinary and Ketiv-bearing readings contribute one or more MT positions after maqaf expansion;
+- `/` never creates a new position;
+- Qere is an alternative attached to the corresponding expanded position(s);
 - column B contributes zero positions;
 - LXX-plus contributes zero positions.
 
@@ -797,6 +800,7 @@ No failure code triggers a fallback mapping.
 BhsaWordMapping
   alignment_id
   mt_index
+  segment_index
   bhsa_node
   mapping_kind = exact | ketiv_qere
 
