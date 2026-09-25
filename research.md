@@ -625,3 +625,31 @@ BhsaVerseProvider
 ```
 
 The pure resolver consumes this interface. A thin `TextFabricBhsaProvider` adapts an already-loaded BHSA TF API using its section and locality APIs. The adapter has no authority to repair or reinterpret failed mappings.
+
+
+## R-046 — BHSA has real empty-consonant slots in Ketiv/Qere processing
+
+Reconciliation of superseded PR #21 exposed a parent-data case that the merged #7 resolver did not support. BHSA 2021's own `programs/ketivQere.py` explicitly does:
+
+```python
+gw = F.g_cons.v(w)
+if gw == "":
+    gw = "."
+```
+
+while constructing the Ketiv/Qere lookup. This is direct evidence that a BHSA word slot participating in the Masoretic reading machinery can have an empty written consonantal value.
+
+Source:
+
+- https://github.com/ETCBC/bhsa/blob/v1.8.1/programs/ketivQere.py
+
+The alternative PR #21 also proposed treating CATSS `/` as an optional BHSA word boundary. That part is rejected: the documentation for the **current CATSS parallel dump** states that `/` is the morphological separator inside the Hebrew word, while maqqeph-separated words are represented with whitespace.
+
+**Decision:**
+
+- a CATSS Qere-only reading (`**QERE`, no paired Ketiv) establishes its textual proof against BHSA `qere_utf8` on that same word slot;
+- this is valid whether the slot's written `g_cons_utf8` is empty or non-empty;
+- ordinary and paired Ketiv/Qere positions continue to prove identity against written `g_cons_utf8` first;
+- an empty written BHSA slot is never skipped to rescue an ordinary CATSS token;
+- `/` remains intra-word normalization and is not a candidate BHSA slot boundary;
+- successful Qere-only resolution is explicitly `mapping_kind=qere`.
