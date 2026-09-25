@@ -230,7 +230,7 @@ def resolve_bhsa_document(
     )
     validation_failures = validation.summary.error_count + validation.summary.unresolved_count
     if not validation.ok:
-        findings = tuple(
+        validation_mapping_findings = tuple(
             MappingFinding(
                 code=f"catss_validation_{finding.code}",
                 source_name=finding.source_name,
@@ -253,7 +253,7 @@ def resolve_bhsa_document(
             verses=len(document.verses),
             validation_failures=validation_failures,
             validation_ignored=validation.summary.ignored_count,
-            findings=findings,
+            findings=validation_mapping_findings,
             validation_findings=validation.findings,
         )
 
