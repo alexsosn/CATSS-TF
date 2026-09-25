@@ -334,9 +334,11 @@ AlignmentRecord
 
 All structures are immutable dataclasses.
 
-### 12.2 Physical-to-logical line handling
+### 12.2 Source decoding and physical-to-logical line handling
 
-Parsing proceeds in two stages:
+Source files are decoded as strict UTF-8. Invalid byte sequences are a hard parser error; CATSS-TF never substitutes replacement characters into scholarly source data.
+
+Parsing then proceeds in two stages:
 
 1. recognized verse headers partition the file;
 2. physical data lines are conservatively joined when CATSS continuation `#` markers show that they belong to one logical row.
