@@ -1,9 +1,11 @@
 
 import dataclasses
+import types
 
 from catss_tf.lxx_resolver import (
     LxxSpan,
     LxxWord,
+    TextFabricLxxProvider,
     normalize_catss_greek,
     normalize_lxx_greek,
     resolve_lxx_document,
@@ -413,3 +415,74 @@ HB\tQEOS
     assert report.summary.supported_documents == 2
     assert report.summary.resolved_reference_groups == 2
     assert report.summary.word_mappings == 2
+
+
+def test_canonical_and_lettered_subverse_groups_coexist_deterministically() -> None:
+    doc = parse_parallel_text(
+        """Esth 1:1
+HB1\tLOGOS
+HB2\tQEOS [1:1a]
+""",
+        source_name="18.Esther.par",
+    )
+    provider = FakeProvider(
+        (
+            _span(
+                "λόγος",
+                book="Esth",
+                chapter=1,
+                verse=1,
+                subverse=None,
+                node=950001,
+                start_node=500,
+            ),
+            _span(
+                "θεός",
+                book="Esth",
+                chapter=1,
+                verse=1,
+                subverse="a",
+                node=950002,
+                start_node=600,
+            ),
+        )
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is True
+    assert report.summary.resolved_reference_groups == 2
+    assert [mapping.lxx_node for mapping in report.word_mappings] == [500, 600]
+
+
+def test_text_fabric_provider_excludes_lettered_subverses_from_canonical_span() -> None:
+    class Feature:
+        def __init__(self, values: dict[int, object]) -> None:
+            self.values = values
+
+        def v(self, node: int) -> object:
+            return self.values[node]
+
+    api = types.SimpleNamespace(
+        T=types.SimpleNamespace(nodeFromSection=lambda section: 900001),
+        L=types.SimpleNamespace(
+            d=lambda node, otype: (1, 2, 3),
+            u=lambda node, otype: (910001,) if node == 2 else (910002,),
+        ),
+        F=types.SimpleNamespace(
+            word=Feature({1: "λόγος", 2: "θεός", 3: "καί"}),
+            subverse=Feature({1: "", 2: "a", 3: ""}),
+            orig_order=Feature({1: "1", 2: "2", 3: "3"}),
+        ),
+    )
+    provider = TextFabricLxxProvider(api, _probe())
+
+    canonical = provider.get_span("Esth", 1, 1)
+    addition = provider.get_span("Esth", 1, 1, "a")
+
+    assert canonical is not None
+    assert [word.node for word in canonical.words] == [1, 3]
+    assert canonical.node == 900001
+    assert addition is not None
+    assert [word.node for word in addition.words] == [2]
+    assert addition.node == 910001
