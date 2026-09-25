@@ -351,7 +351,9 @@ The ETCBC/BHSA repository explicitly keeps historical data versions side by side
 
 For the `tf/2021` dataset:
 
-- `__checkout__.txt` identifies release `v1.8.1` and Git state `b112c161cfd21eae403d51a2733740d8743460e7`;
+- Git tag `v1.8.1` resolves to commit `b112c161cfd21eae403d51a2733740d8743460e7`;
+- the v1.8.1 release notes state that the TF feature data are identical to the previous release and that the release adds NER specifications/tooling;
+- the mapping-critical TF files at the v1.8.1 commit have the fingerprints recorded below;
 - `otype.tf` declares `@version=2021`;
 - nodes `1-426590` are the `word` slots;
 - there are 39 `book` nodes, 929 `chapter` nodes, and 23,213 `verse` nodes;
@@ -360,11 +362,14 @@ For the `tf/2021` dataset:
 Sources:
 
 - https://github.com/ETCBC/bhsa
-- https://github.com/ETCBC/bhsa/blob/master/tf/2021/__checkout__.txt
-- https://github.com/ETCBC/bhsa/blob/master/tf/2021/otype.tf
-- https://github.com/ETCBC/bhsa/blob/master/tf/2021/otext.tf
+- https://github.com/ETCBC/bhsa/releases/tag/v1.8.1
+- https://github.com/ETCBC/bhsa/tree/v1.8.1/tf/2021
+- https://github.com/ETCBC/bhsa/blob/v1.8.1/tf/2021/otype.tf
+- https://github.com/ETCBC/bhsa/blob/v1.8.1/tf/2021/otext.tf
 
-**Decision:** the first `catss-bhsa` materializer supports **ETCBC/BHSA TF 2021 only**. It does not resolve against an unversioned/latest BHSA warp.
+A subtlety: the `__checkout__.txt` stored inside the tagged tree still names the preceding checkout, while the later repository marker names `v1.8.1 / b112...`. CATSS-TF therefore treats the Git tag/ref plus the actual TF feature fingerprints—not the embedded checkout marker alone—as the release identity.
+
+**Decision:** the first `catss-bhsa` materializer supports **ETCBC/BHSA TF 2021 as published at release tag v1.8.1**. It does not resolve against an unversioned/latest BHSA warp.
 
 ## R-030 — Parent identity must be verified at the warp and mapping-feature level
 
