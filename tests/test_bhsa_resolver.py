@@ -7,6 +7,7 @@ from catss_tf.bhsa_resolver import (
     normalize_bhsa_hebrew,
     normalize_catss_hebrew,
     resolve_bhsa_document,
+    split_catss_hebrew_words,
 )
 from catss_tf.parser import parse_parallel_text
 
@@ -36,6 +37,7 @@ def _provider(*words: BhsaWord, verse_node: int = 9001) -> FakeProvider:
 def test_catss_hebrew_normalization_matches_bhsa_consonantal_form() -> None:
     assert normalize_catss_hebrew("B/R)$YT") == "בראשׁית"
     assert normalize_catss_hebrew("W/H/)RC") == "והארץ"
+    assert normalize_catss_hebrew(r"W\\H/)RC") == "והארץ"
     assert normalize_catss_hebrew("$LWM") == "שׁלום"
     assert normalize_catss_hebrew("B/N") == "בן"
 
@@ -320,3 +322,65 @@ BR)\tEPOI
     assert report.word_mappings == ()
     assert report.summary.validation_failures == 1
     assert report.findings[0].code == "catss_validation_alignment_id_mismatch"
+
+
+def test_catss_maqaf_expands_one_alignment_element_to_multiple_bhsa_slots() -> None:
+    assert split_catss_hebrew_words(r"B\BYT-LXMM") == (r"B\BYT", "LXMM")
+
+    doc = parse_parallel_text(
+        """Gen 1:1
+B\\BYT-LXMM\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(
+        BhsaWord(201, "בבית", None, None),
+        BhsaWord(202, "לחמם", None, None),
+    )
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.findings == ()
+    assert [
+        (mapping.bhsa_node, mapping.mt_index, mapping.segment_index)
+        for mapping in report.word_mappings
+    ] == [
+        (201, 0, 0),
+        (202, 0, 1),
+    ]
+
+
+def test_qere_maqaf_segmentation_must_match_primary_segmentation() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+*BYT-LXM **QRY\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(
+        BhsaWord(201, "בית", None, None),
+        BhsaWord(202, "לחם", None, None),
+    )
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.word_mappings == ()
+    assert report.summary.qere_checks == 1
+    assert report.summary.qere_mismatches == 1
+    assert report.findings[0].code == "qere_segment_count_mismatch"
+
+
+def test_invalid_maqaf_segmentation_fails_closed() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+BYT-\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(BhsaWord(201, "בית", None, None))
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.word_mappings == ()
+    assert report.summary.normalization_errors == 1
+    assert report.findings[0].code == "catss_hebrew_normalization_error"
