@@ -6,6 +6,7 @@ from catss_tf.lxx_schema import (
     LXX_MAX_NODE,
     LXX_MAX_SLOT,
     LXX_NODE_COUNTS,
+    LXX_PARENT_BOOKS,
     LXX_RELEASE_COMMIT,
     LXX_RELEASE_TAG,
     LXX_REPOSITORY,
@@ -220,3 +221,10 @@ def test_structural_parent_check_can_run_without_raw_tf_files() -> None:
 
     assert result.ok is True
     assert result.fingerprint_verified is False
+
+
+def test_every_lxx_mapping_target_exists_in_exact_parent_book_universe() -> None:
+    assert len(LXX_PARENT_BOOKS) == 57
+    assert set(LXX_BOOK_BY_CATSS_STEM.values()) <= LXX_PARENT_BOOKS
+    assert {"Qoh", "Cant", "Dan", "DanTh", "1Esdr", "2Esdr", "Ps"} <= LXX_PARENT_BOOKS
+    assert {"JoshA", "JudgA"} .isdisjoint(LXX_PARENT_BOOKS)
