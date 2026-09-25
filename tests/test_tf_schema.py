@@ -1,0 +1,332 @@
+import pathlib
+
+import pytest
+from tf.fabric import Fabric
+
+from catss_tf.tf_schema import (
+    FEATURE_SPECS,
+    SIDECAR_COLUMNS,
+    TfAnchorEvent,
+    TfMembership,
+    TfModuleMetadata,
+    TfSchemaError,
+    compile_tf_features,
+    lane_feature_name,
+    write_tf_module,
+)
+
+
+def _membership(
+    *,
+    node: int = 1,
+    source: str = "01.Genesis.par",
+    alignment_id: str = "catss:01.Genesis.par:aaa",
+    mapping_kind: str = "exact",
+    mt_n: int = 1,
+    lxx_n: int = 2,
+    mt_i: int | None = 1,
+    mt_segment: int | None = 1,
+    lxx_i: int | None = None,
+    flags: frozenset[str] = frozenset(),
+) -> TfMembership:
+    return TfMembership(
+        node=node,
+        source=source,
+        alignment_id=alignment_id,
+        mapping_kind=mapping_kind,
+        mt_n=mt_n,
+        lxx_n=lxx_n,
+        mt_i=mt_i,
+        mt_segment=mt_segment,
+        lxx_i=lxx_i,
+        line_first=10,
+        line_last=11,
+        line_n=2,
+        retro_kind=None,
+        flags=flags,
+    )
+
+
+def _metadata(projection: str = "bhsa") -> TfModuleMetadata:
+    return TfModuleMetadata(
+        projection=projection,
+        parent_repo="synthetic/parent",
+        parent_version="1",
+        parent_release="v1",
+        parent_commit="deadbeef",
+        software_version="0.0.0",
+    )
+
+
+def test_feature_contract_uses_only_scalar_int_and_str_values() -> None:
+    assert FEATURE_SPECS
+    assert {spec.value_type for spec in FEATURE_SPECS.values()} <= {"int", "str"}
+    assert not {"otype", "oslots", "otext"} & set(FEATURE_SPECS)
+    assert all("json" not in name and "list" not in name for name in FEATURE_SPECS)
+
+
+def test_lane_two_feature_names_are_explicit_scalars() -> None:
+    assert lane_feature_name("catss_alignment_id", 1) == "catss_alignment_id"
+    assert lane_feature_name("catss_alignment_id", 2) == "catss_alignment_id_2"
+
+    with pytest.raises(TfSchemaError, match="lane"):
+        lane_feature_name("catss_alignment_id", 3)
+
+
+def test_single_membership_compiles_query_native_features() -> None:
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(
+            _membership(
+                flags=frozenset(
+                    {
+                        "catss_retro",
+                        "catss_trans_style",
+                        "catss_doubt",
+                    }
+                )
+            ),
+        ),
+        anchors=(),
+    )
+
+    assert compiled["catss_alignment_n"] == {1: 1}
+    assert compiled["catss_alignment_id"] == {1: "catss:01.Genesis.par:aaa"}
+    assert compiled["catss_source"] == {1: "01.Genesis.par"}
+    assert compiled["catss_mapping"] == {1: "exact"}
+    assert compiled["catss_mt_n"] == {1: 1}
+    assert compiled["catss_lxx_n"] == {1: 2}
+    assert compiled["catss_mt_i"] == {1: 1}
+    assert compiled["catss_mt_segment"] == {1: 1}
+    assert compiled["catss_line_first"] == {1: 10}
+    assert compiled["catss_line_last"] == {1: 11}
+    assert compiled["catss_line_n"] == {1: 2}
+    assert compiled["catss_retro"] == {1: 1}
+    assert compiled["catss_trans_style"] == {1: 1}
+    assert compiled["catss_doubt"] == {1: 1}
+    assert compiled["catss_retro_members"] == {1: 1}
+    assert compiled["catss_trans_style_members"] == {1: 1}
+    assert compiled["catss_doubt_members"] == {1: 1}
+
+
+def test_two_memberships_use_deterministic_source_ranked_lanes() -> None:
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(
+            _membership(
+                source="07.JoshA.par",
+                alignment_id="catss:07.JoshA.par:zzz",
+                lxx_n=3,
+            ),
+            _membership(
+                source="06.JoshB.par",
+                alignment_id="catss:06.JoshB.par:aaa",
+                lxx_n=1,
+            ),
+        ),
+        anchors=(),
+    )
+
+    assert compiled["catss_alignment_n"] == {1: 2}
+    assert compiled["catss_source"] == {1: "06.JoshB.par"}
+    assert compiled["catss_lxx_n"] == {1: 1}
+    assert compiled["catss_source_2"] == {1: "07.JoshA.par"}
+    assert compiled["catss_lxx_n_2"] == {1: 3}
+
+
+def test_lxx_transposition_alignment_precedes_carrier_in_two_lanes() -> None:
+    compiled = compile_tf_features(
+        projection="lxx",
+        max_node=10,
+        memberships=(
+            _membership(
+                source="01.Genesis.par",
+                alignment_id="catss:01.Genesis.par:carrier",
+                mapping_kind="transposition_carrier",
+                mt_i=None,
+                mt_segment=None,
+                lxx_i=1,
+            ),
+            _membership(
+                source="01.Genesis.par",
+                alignment_id="catss:01.Genesis.par:semantic",
+                mapping_kind="transposition_alignment",
+                mt_i=None,
+                mt_segment=None,
+                lxx_i=1,
+            ),
+        ),
+        anchors=(),
+    )
+
+    assert compiled["catss_mapping"] == {1: "transposition_alignment"}
+    assert compiled["catss_mapping_2"] == {1: "transposition_carrier"}
+
+
+def test_third_membership_is_hard_schema_error() -> None:
+    memberships = tuple(
+        _membership(
+            source=source,
+            alignment_id=f"catss:{source}:{index}",
+        )
+        for index, source in enumerate(
+            ("06.JoshB.par", "07.JoshA.par", "01.Genesis.par"),
+            start=1,
+        )
+    )
+
+    with pytest.raises(TfSchemaError, match="membership_overflow"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=memberships,
+            anchors=(),
+        )
+
+
+def test_membership_nodes_must_belong_to_parent_warp() -> None:
+    with pytest.raises(TfSchemaError, match="parent node"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=3,
+            memberships=(_membership(node=4),),
+            anchors=(),
+        )
+
+
+def test_unknown_membership_flag_is_rejected_not_serialized() -> None:
+    with pytest.raises(TfSchemaError, match="unknown CATSS flag"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(_membership(flags=frozenset({"catss_magic"})),),
+            anchors=(),
+        )
+
+
+def test_bhsa_plus_anchors_aggregate_on_structural_node() -> None:
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(),
+        anchors=(
+            TfAnchorEvent(node=9, kind="lxx_plus", token_n=2),
+            TfAnchorEvent(node=9, kind="lxx_plus", token_n=3),
+        ),
+    )
+
+    assert compiled["catss_lxx_plus_n"] == {9: 2}
+    assert compiled["catss_lxx_plus_token_n"] == {9: 5}
+
+
+def test_lxx_empty_anchors_aggregate_without_alignment_id_blob() -> None:
+    compiled = compile_tf_features(
+        projection="lxx",
+        max_node=10,
+        memberships=(),
+        anchors=(
+            TfAnchorEvent(node=9, kind="lxx_minus"),
+            TfAnchorEvent(node=9, kind="lxx_minus"),
+            TfAnchorEvent(node=9, kind="transposition_placeholder"),
+        ),
+    )
+
+    assert compiled["catss_lxx_minus_n"] == {9: 2}
+    assert compiled["catss_transposition_placeholder_n"] == {9: 1}
+    assert "catss_alignment_id" not in compiled
+
+
+def test_sidecar_contracts_are_normalized_repeated_row_tables() -> None:
+    assert SIDECAR_COLUMNS["catss-annotations.tsv"] == (
+        "source",
+        "alignment_id",
+        "side",
+        "kind",
+        "raw",
+    )
+    assert "alignment_id" in SIDECAR_COLUMNS["catss-mappings.tsv"]
+    assert "parent_node" in SIDECAR_COLUMNS["catss-mappings.tsv"]
+    assert "sha256" in SIDECAR_COLUMNS["catss-sources.tsv"]
+
+
+def _write_synthetic_parent(root: pathlib.Path) -> None:
+    parent = root / "parent"
+    parent.mkdir()
+    (parent / "otype.tf").write_text(
+        """@node
+@valueType=str
+
+1-3\tword
+4\tverse
+""",
+        encoding="utf-8",
+    )
+    (parent / "oslots.tf").write_text(
+        """@edge
+@valueType=str
+
+4\t1-3
+""",
+        encoding="utf-8",
+    )
+
+
+def test_written_module_loads_over_synthetic_parent_warp(tmp_path: pathlib.Path) -> None:
+    _write_synthetic_parent(tmp_path)
+    module = tmp_path / "module"
+
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=4,
+        memberships=(
+            _membership(node=1),
+            _membership(
+                node=1,
+                source="02.Exodus.par",
+                alignment_id="catss:02.Exodus.par:bbb",
+                lxx_n=1,
+            ),
+        ),
+        anchors=(TfAnchorEvent(node=4, kind="lxx_plus", token_n=2),),
+    )
+    write_tf_module(
+        module,
+        compiled,
+        metadata=_metadata(),
+        max_node=4,
+    )
+
+    assert not (module / "otype.tf").exists()
+    assert not (module / "oslots.tf").exists()
+    assert not (module / "otext.tf").exists()
+
+    fabric = Fabric(
+        locations=str(tmp_path),
+        modules=("parent", "module"),
+        silent="deep",
+    )
+    api = fabric.loadAll(silent="deep")
+
+    assert api.F.otype.v(1) == "word"
+    assert api.F.otype.v(4) == "verse"
+    assert api.F.catss_alignment_n.v(1) == 2
+    assert api.F.catss_alignment_id.v(1) == "catss:01.Genesis.par:aaa"
+    assert api.F.catss_alignment_id_2.v(1) == "catss:02.Exodus.par:bbb"
+    assert api.F.catss_mt_n.v(1) == 1
+    assert api.F.catss_lxx_plus_n.v(4) == 1
+    assert api.F.catss_lxx_plus_token_n.v(4) == 2
+
+    results = api.S.search("word catss_mt_n=1", silent="deep")
+    assert (1,) in results
+
+
+def test_module_writer_rejects_warp_features(tmp_path: pathlib.Path) -> None:
+    with pytest.raises(TfSchemaError, match="warp"):
+        write_tf_module(
+            tmp_path,
+            {"otype": {1: "word"}},
+            metadata=_metadata(),
+            max_node=1,
+        )
