@@ -346,11 +346,7 @@ def _unsupported_report(
     document: ParallelDocument, source_status: BhsaSourceStatus
 ) -> BhsaMappingReport:
     declared = source_status is BhsaSourceStatus.UNSUPPORTED
-    status = (
-        BhsaMapStatus.UNSUPPORTED_SOURCE
-        if declared
-        else BhsaMapStatus.UNKNOWN_SOURCE
-    )
+    status = BhsaMapStatus.UNSUPPORTED_SOURCE if declared else BhsaMapStatus.UNKNOWN_SOURCE
     mappings = tuple(
         BhsaAlignmentMapping(
             alignment_id=row.alignment_id,
@@ -926,13 +922,10 @@ def _report(
             unsupported_alignments=sum(
                 m.status is BhsaMapStatus.UNSUPPORTED_SOURCE for m in mappings
             ),
-            unknown_alignments=sum(
-                m.status is BhsaMapStatus.UNKNOWN_SOURCE for m in mappings
-            ),
+            unknown_alignments=sum(m.status is BhsaMapStatus.UNKNOWN_SOURCE for m in mappings),
             missing_verses=sum(f.code == "verse_missing" for f in findings),
             parent_invalid_verses=sum(
-                f.code in {"parent_reference_mismatch", "parent_snapshot_invalid"}
-                for f in findings
+                f.code in {"parent_reference_mismatch", "parent_snapshot_invalid"} for f in findings
             ),
             sequence_mismatches=sum(f.code == "sequence_mismatch" for f in findings),
             ambiguous_sequences=sum(f.code == "ambiguous_sequence" for f in findings),
