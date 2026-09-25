@@ -118,7 +118,7 @@ def parse_parallel_file(path: str | pathlib.Path) -> ParallelDocument:
 
     source_path = pathlib.Path(path)
     return parse_parallel_text(
-        source_path.read_text(encoding="utf-8", errors="replace"),
+        source_path.read_text(encoding="utf-8"),
         source_name=source_path.name,
     )
 
