@@ -212,3 +212,82 @@ Sources:
 - https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/46.DanielTh.par
 
 **Decision:** CATSS-TF's default acquisition set contains **46 parallel files**, including both Daniel OG and Theodotion. CATSS-TF is source-preserving and must not inherit an application-specific canonical-Daniel choice from another consumer.
+
+
+## R-016 — Verse headers are authoritative boundaries; blank lines are not reliable enough
+
+CATSS parallel files normally separate verses with blank lines, but the raw corpus has known corruptions in which blank lines and even stray verse-like strings appear inside data. The MIT `CATSS_parsers` patcher documents concrete cases in Exodus and Psalms where relying on blank-line structure would split a verse incorrectly.
+
+The current `curran-gehring/catss` parser recognizes headers with a book token that may contain digits and slashes and an optional chapter component. Its comments record a previous silent-loss bug when Samuel/Kings headers such as `1Sam/K`, `1/3Kgs`, and `Ps151` were not accepted.
+
+Sources:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/patch_catss.py
+- https://github.com/curran-gehring/catss/blob/main/catss/parse_parallel.py
+
+**Decision:** CATSS-TF treats a recognized verse header as the authoritative verse boundary. Blank lines are ignored as layout. Nonblank content before the first header is not silently discarded; it becomes a parser diagnostic.
+
+## R-017 — A CATSS row may contain MT column A, reconstructed column B, and LXX
+
+CATSS rows are column-oriented. The MT side may split into:
+
+- column A: the MT/BHS element used as the formal alignment base;
+- column B: a selected retroversion or other Hebrew reconstruction, introduced by `=`.
+
+The CATSS transcription alphabet for Hebrew does not use `=` as a letter, while CATSS annotation forms deliberately use it to introduce column-B material (including forms such as `=:`, `=%p`, and `=@...`).
+
+Sources:
+
+- Cody Kingham, `parallel_readme.md`: https://github.com/codykingham/CATSS_parsers/blob/master/parallel_readme.md
+- MIT parser/normalization prior art: https://github.com/codykingham/CATSS_parsers
+- independent current implementation notes: https://github.com/curran-gehring/catss/blob/main/catss/parse_parallel.py
+
+**Decision:** the first `=` on the MT side begins column B. The raw MT cell is always retained, so later research can revise this interpretation without source loss.
+
+## R-018 — Physical lines and logical alignment rows are not the same thing
+
+CATSS uses `#` to continue rows that exceeded historical line-length/export constraints. The continuation may extend either the Hebrew or Greek column. A logical alignment therefore needs provenance over **one or more physical source lines**.
+
+The raw corpus also contains orphan/corrupt physical lines documented by `CATSS_parsers/patch_catss.py`. Those manual patches mix genuine typo repair, normalization, and interpretive repair.
+
+**Decision:** issue #4 performs only conservative `#` continuation joining. It does not import the large historical patch/normalization table. Each logical alignment stores all contributing physical line numbers and raw lines. Other malformed lines remain represented and receive diagnostics rather than being silently rewritten.
+
+## R-019 — Transposition markup has several distinct observable forms
+
+Current raw CATSS differs from older documentation. Cody Kingham documents that ordinary transpositions are predominantly marked with `^` / `^^^` in the downloadable corpus, with legacy `~` still occurring in Joel and Jonah. Other forms include:
+
+- single `^`: local/order transposition indication;
+- `^^^`: counterpart occurs elsewhere/non-local link;
+- `{...}` or `{...TEXT}`: equivalent reflected elsewhere;
+- `{..^TEXT}`: stylistic or grammatical transposition.
+
+Source:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/parallel_readme.md
+
+**Decision:** the initial IR does not reorder either language. It records normalized transposition kinds while preserving the raw sigla. Legacy `~` is recognized as a local transposition marker rather than globally rewriting source bytes.
+
+## R-020 — Alignment ratios are descriptive token counts, not textual-critical judgments
+
+One CATSS logical row can contain multiple whitespace-separated Hebrew and/or Greek lexical elements. A shallow `m:n` ratio is useful downstream, but CATSS inline annotations can wrap lexical text and can also supply placeholders.
+
+**Decision:** issue #4 exposes conservative lexical-candidate token tuples and a derived count ratio for straightforward rows. Raw cells remain authoritative. Translation-technique interpretation of ratios is deferred to issue #14.
+
+## R-021 — Unknown markup must remain first-class evidence
+
+The CATSS format contains documented unknown or ambiguous symbols, and the MIT parser research explicitly lists several. Treating an unrecognized `{...}` block as ignorable would destroy evidence.
+
+**Decision:** every brace-delimited markup block is emitted as an annotation. Known forms receive a normalized kind; unrecognized forms receive `kind="unknown"` with the raw siglum unchanged. Other malformed/unsplit structures receive diagnostics. No nonblank source row is intentionally dropped.
+
+## R-022 — Alignment IDs are source-derived content identities
+
+The same CATSS logical alignment must receive the same identifier in both future TF projections, independent of BHSA/LXX node IDs and materialization order.
+
+**Decision:** `alignment_id` is derived from:
+
+- basename of the CATSS source file;
+- raw verse header;
+- contributing physical source line numbers;
+- contributing raw source lines.
+
+These components are hashed with SHA-256. The identifier changes when the relevant upstream source bytes or physical provenance change, which is desirable because generated modules must identify the exact source they were materialized from.
