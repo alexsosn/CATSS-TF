@@ -242,11 +242,7 @@ def resolve_bhsa_document(
                 bhsa_value=None,
                 message=(
                     f"CATSS validation {finding.severity}: {finding.message}"
-                    + (
-                        f" (source line {finding.line_no})"
-                        if finding.line_no is not None
-                        else ""
-                    )
+                    + (f" (source line {finding.line_no})" if finding.line_no is not None else "")
                 ),
             )
             for finding in validation.findings
