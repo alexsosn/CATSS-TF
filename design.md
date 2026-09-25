@@ -834,8 +834,10 @@ The report is deterministic and contains separate tuples of word mappings, verse
 
 The resolver itself depends only on `BhsaVerseProvider`, so normal CI uses synthetic parent views and remains offline.
 
-### 16.7 Fail-closed rule
+### 16.7 Validation gate and fail-closed rule
 
-A verse emits word mappings only when the complete normalized sequence matches. If one word differs, **no word mapping from that verse is emitted**. This prevents partial success from making a broken verse look trustworthy.
+For supported CATSS sources, the resolver first runs the issue #5 validation gate. Hard validation errors and unresolved findings emit **no BHSA mappings**. Callers may explicitly allow named unresolved validation codes; hard errors remain non-suppressible, and all validation findings remain attached to the mapping report.
+
+After validation, a verse emits word mappings only when the complete normalized sequence matches. If one word or required Qere differs, **no word mapping from that verse is emitted**. This prevents partial success from making a broken verse look trustworthy.
 
 Declared BHSA-unsupported CATSS sources are skipped as known coverage exclusions; unknown source names are findings.
