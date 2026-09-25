@@ -14,6 +14,7 @@ _SQUARE_REFERENCE = re.compile(r"\[[^\[\]]*\]")
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _SINGLE_STAR = re.compile(r"(?<!\*)\*(?!\*)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
+_MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s]+)")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
