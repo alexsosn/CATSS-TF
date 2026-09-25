@@ -47,6 +47,7 @@ class AlignmentRecord:
     lxx_raw: str
     mt_col_a: str
     mt_col_b: str | None
+    retroversion_kind: str | None
     mt_tokens: tuple[str, ...]
     lxx_tokens: tuple[str, ...]
     mt_count: int
@@ -309,6 +310,7 @@ def _build_alignment(
     )
     is_transposition_local = "~" in no_braces or _SINGLE_CARET.search(no_braces) is not None
 
+    retroversion_kind = _retroversion_kind(mt_col_b)
     mt_tokens = () if is_lxx_plus else _lexical_candidates(mt_col_a, side="mt")
     lxx_tokens = () if is_lxx_minus else _lexical_candidates(lxx_raw, side="lxx")
 
@@ -330,6 +332,7 @@ def _build_alignment(
             lxx_raw=lxx_raw,
             mt_col_a=mt_col_a,
             mt_col_b=mt_col_b,
+            retroversion_kind=retroversion_kind,
             mt_tokens=mt_tokens,
             lxx_tokens=lxx_tokens,
             mt_count=len(mt_tokens),
@@ -387,6 +390,31 @@ def _extract_annotations(
     return annotations
 
 
+def _retroversion_kind(mt_col_b: str | None) -> str | None:
+    if mt_col_b is None:
+        return None
+    probe = mt_col_b.lstrip("?")
+    if probe.startswith(":"):
+        return "proper_noun"
+    if probe.startswith(";"):
+        return "context"
+    if probe.startswith("%vap"):
+        return "active_to_passive"
+    if probe.startswith("%vpa"):
+        return "passive_to_active"
+    if probe.startswith("%p"):
+        return "preposition_difference"
+    if probe.startswith("@"):
+        return "etymological"
+    if probe.startswith("vs"):
+        return "vocalization_shin_sin"
+    if probe.startswith("v"):
+        return "vocalization"
+    if probe.startswith("r"):
+        return "incomplete"
+    return "plain"
+
+
 def _mt_dot_kind(raw: str) -> str:
     return {
         ".m": "metathesis",
@@ -411,6 +439,16 @@ def _brace_kind(raw: str) -> str:
         return "transposition_stylistic"
     if raw.startswith("{..."):
         return "transposition_remote"
+    if raw.startswith("{..p"):
+        return "preposition_added"
+    if raw.startswith("{..d"):
+        return "distributive"
+    if raw.startswith("{..r"):
+        return "repetition"
+    if raw.startswith("{c"):
+        return "greek_correction"
+    if raw.startswith("{g"):
+        return "greek_edition_difference"
     return "unknown"
 
 
@@ -442,6 +480,14 @@ def _brace_payload(raw: str) -> str:
         return inner[3:]
     if inner.startswith("..."):
         return inner[3:]
+    if inner.startswith("..p"):
+        return inner[3:]
+    if inner.startswith("..d"):
+        return inner[3:]
+    if inner.startswith("..r"):
+        return inner[3:]
+    if inner.startswith("c"):
+        return inner[1:]
     return " "
 
 
