@@ -673,6 +673,8 @@ def _brace_payload(raw: str) -> str:
         return inner[3:]
     if inner.startswith("c"):
         return inner[1:]
+    if inner.startswith("g"):
+        return inner[1:]
     return " "
 
 
