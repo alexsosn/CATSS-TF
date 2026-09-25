@@ -44,6 +44,7 @@ _CATSS_GREEK = {
 }
 _CATSS_DIACRITICS = frozenset({"(", ")", "/", "\\", "=", "+", "|", "*"})
 _APOSTROPHES = frozenset({"'", "ʼ", "’", "᾽"})
+_EMPTY_ALIGNMENT_MESSAGE = "Greek-empty alignment has no recognized empty-row semantics"
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -384,10 +385,7 @@ def resolve_lxx_documents(
                                 alignment_id=alignment.alignment_id,
                                 catss_value=alignment.lxx_raw,
                                 parent_value=None,
-                                message=(
-                                    "Greek-empty alignment has no recognized "
-                                    "empty-row semantics"
-                                ),
+                                message=_EMPTY_ALIGNMENT_MESSAGE,
                             )
                         )
                         broken_references.add(reference)
@@ -463,11 +461,7 @@ def resolve_lxx_documents(
                         reference_chapter=reference.chapter,
                         reference_verse=reference.verse,
                         reference_subverse=reference.subverse,
-                        kind=(
-                            "lxx_minus"
-                            if alignment.is_lxx_minus
-                            else "transposition_placeholder"
-                        ),
+                        kind="lxx_minus" if alignment.is_lxx_minus else "transposition_placeholder",
                     )
                 )
 
@@ -552,9 +546,8 @@ def resolve_lxx_documents(
             assignment = solutions[0]
             for task in sorted(tasks, key=lambda item: item.order):
                 candidate = assignment[task.order]
-                for lxx_index, word_index in enumerate(
-                    range(candidate.start, candidate.stop)
-                ):
+                word_indexes = range(candidate.start, candidate.stop)
+                for lxx_index, word_index in enumerate(word_indexes):
                     word = span.words[word_index]
                     word_mappings.append(
                         LxxWordMapping(
