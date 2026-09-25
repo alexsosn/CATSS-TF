@@ -542,7 +542,9 @@ Sources:
 - Unicode input from BHSA is canonically decomposed and stripped of all combining marks **except** shin/sin dots;
 - whitespace inside one BHSA feature value is ignored as display material, not converted to additional word slots.
 
-Unknown CATSS characters fail explicitly. In particular, an unexpected lexical `#` is not guessed as shin/sin because current CATSS uses `#` for continuation, and an internal `-` is not guessed as a word boundary because the current parallel dump uses whitespace for maqqef-separated words.
+Unknown CATSS characters fail explicitly. In particular, an unexpected lexical `#` is not guessed as shin/sin because current CATSS uses `#` for continuation.
+
+Maqaf is different: MIT CATSS parser examples include forms such as `B\\BYT-LXMM`, decoded as `בבית־לחמם`. BHSA represents maqaf as inter-word trailer material, so one CATSS MT element may span multiple BHSA word slots. Therefore `-` is a documented orthographic boundary for resolver expansion, not an unknown character.
 
 ## R-041 — Ketiv/Qere needs per-word alternatives, not row-level bags
 
@@ -625,3 +627,34 @@ BhsaVerseProvider
 ```
 
 The pure resolver consumes this interface. A thin `TextFabricBhsaProvider` adapts an already-loaded BHSA TF API using its section and locality APIs. The adapter has no authority to repair or reinterpret failed mappings.
+
+
+## R-046 — Maqaf creates a one-CATSS-element to multiple-BHSA-slot case
+
+The MIT CATSS parser's own Hebrew conversion example contains `B\\BYT-LXMM` and renders it as `בבית־לחמם`. Its Hebrew transcription map explicitly maps `-` to U+05BE HEBREW PUNCTUATION MAQAF, and the Hebrew text regex accepts it inside one CATSS textual element.
+
+BHSA separates lexical word slots from trailer material; maqaf belongs to inter-word display/trailer structure rather than to the lexical `g_cons_utf8` value of one combined slot.
+
+Source:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/dev/generate_parallel.ipynb
+- https://etcbc.github.io/bhsa/features/trailer_utf8/
+- https://etcbc.github.io/bhsa/features/g_cons_utf8/
+
+**Decision:** a CATSS `MtReading.primary` is an alignment element, not necessarily exactly one BHSA slot. The resolver expands each primary form at `-` before consonantal normalization:
+
+```text
+B\\BYT-LXMM
+    -> B\\BYT + LXMM
+    -> בבית + לחמם
+    -> two BHSA word slots
+```
+
+`/` remains a morpheme separator **inside** one expanded word segment and is removed during normalization.
+
+The mapping output therefore records both:
+
+- CATSS reading index within the alignment; and
+- segment index within that reading.
+
+Whole-verse proof compares the fully expanded CATSS MT word sequence with the BHSA word-slot sequence. This preserves exact textual proof without pretending that CATSS alignment elements and BHSA slots always have the same cardinality.
