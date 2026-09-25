@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from catss_tf.parser import parse_parallel_text
 
 
@@ -323,3 +325,17 @@ HB =PLAIN\tGR4
         "passive_to_active",
         "plain",
     ]
+
+
+def test_parse_parallel_file_rejects_invalid_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "99.Test.par"
+    path.write_bytes(b"Test 1:1\nHB\tGR\xff\n")
+
+    try:
+        from catss_tf.parser import parse_parallel_file
+
+        parse_parallel_file(path)
+    except UnicodeDecodeError:
+        pass
+    else:
+        raise AssertionError("invalid UTF-8 must not be silently replaced")
