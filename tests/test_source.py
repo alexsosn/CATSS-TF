@@ -118,3 +118,22 @@ def test_download_parallel_source_rejects_empty_response_without_partial_file(
 
     assert not (tmp_path / "parallel" / "01.First.par").exists()
     assert not (tmp_path / "parallel" / "01.First.par.part").exists()
+
+
+def test_download_parallel_source_manifest_excludes_unrequested_par_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "parallel"
+    destination.mkdir()
+    (destination / "99.Unrelated.par").write_bytes(b"unrelated")
+
+    monkeypatch.setattr(source, "_fetch_bytes", lambda url: b"first")
+
+    manifest = source.download_parallel_source(
+        destination,
+        base_url="https://example.invalid/parallel",
+        filenames=("01.First.par",),
+    )
+
+    assert [item.relative_path for item in manifest.files] == ["01.First.par"]
+    assert (destination / "99.Unrelated.par").exists()
