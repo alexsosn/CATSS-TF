@@ -58,3 +58,46 @@ HB\t{gLOGOS}
     row = doc.verses[0].alignments[0]
     assert row.lxx_tokens == ("LOGOS",)
     assert any(annotation.kind == "greek_edition_difference" for annotation in row.annotations)
+
+
+def test_known_greek_strategy_sigla_are_structured_without_becoming_tokens() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB\tLOGOS {p}+ {s} {---%}
+""",
+        source_name="99.Test.par",
+    )
+
+    row = doc.verses[0].alignments[0]
+    assert row.lxx_tokens == ("LOGOS",)
+    assert [a.kind for a in row.annotations if a.side == "lxx"] == [
+        "greek_preverb",
+        "comparative_superlative",
+        "asterisked_passage",
+    ]
+
+
+def test_greek_doubt_marker_is_structured_and_does_not_change_surface_token() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB\t?LOGOS?? QEOS?
+""",
+        source_name="99.Test.par",
+    )
+
+    row = doc.verses[0].alignments[0]
+    assert row.lxx_tokens == ("LOGOS", "QEOS")
+    assert any(a.side == "lxx" and a.kind == "doubt" for a in row.annotations)
+
+
+def test_genuinely_unknown_greek_sigla_remain_unknown() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB\tLOGOS {pm}
+""",
+        source_name="99.Test.par",
+    )
+
+    row = doc.verses[0].alignments[0]
+    assert row.lxx_tokens == ("LOGOS",)
+    assert any(a.side == "lxx" and a.kind == "unknown" and a.raw == "{pm}" for a in row.annotations)
