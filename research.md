@@ -512,6 +512,8 @@ Sources:
 
 **Decision:** `/` is removed for word identity. CATSS-TF never splits a CATSS word at `/` into multiple BHSA nodes.
 
+Post-merge hardening (#26) extends the same intra-word treatment to backslash (`\\`), which the MIT CATSS converter also explicitly removes.
+
 Examples:
 
 ```text
@@ -542,7 +544,9 @@ Sources:
 - Unicode input from BHSA is canonically decomposed and stripped of all combining marks **except** shin/sin dots;
 - whitespace inside one BHSA feature value is ignored as display material, not converted to additional word slots.
 
-Unknown CATSS characters fail explicitly. In particular, an unexpected lexical `#` is not guessed as shin/sin because current CATSS uses `#` for continuation, and an internal `-` is not guessed as a word boundary because the current parallel dump uses whitespace for maqqef-separated words.
+Unknown CATSS characters fail explicitly. In particular, an unexpected lexical `#` is not guessed as shin/sin because current CATSS uses `#` for continuation.
+
+Post-merge hardening (#26) recognizes ASCII `-` as the documented maqaf representation **when it actually occurs inside a CATSS MT element**. The resolver expands that element into multiple BHSA word positions; it does not infer boundaries from arbitrary punctuation.
 
 ## R-041 — Ketiv/Qere needs per-word alternatives, not row-level bags
 
@@ -653,3 +657,38 @@ The alternative PR #21 also proposed treating CATSS `/` as an optional BHSA word
 - an empty written BHSA slot is never skipped to rescue an ordinary CATSS token;
 - `/` remains intra-word normalization and is not a candidate BHSA slot boundary;
 - successful Qere-only resolution is explicitly `mapping_kind=qere`.
+
+
+## R-047 — CATSS conversion distinguishes internal segmentation from maqaf
+
+The MIT CATSS conversion notebook explicitly maps:
+
+- forward slash `/` as internal morphological segmentation documented by CATSS;
+- backslash `\\` to the empty string in its Hebrew converter;
+- hyphen `-` to U+05BE HEBREW PUNCTUATION MAQAF.
+
+Its worked conversion example includes `B\\BYT-LXMM` and renders `בבית־לחמם`.
+
+Source:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/dev/generate_parallel.ipynb
+
+This evidence does **not** imply that every current CATSS file uses internal hyphens; it establishes the semantics when such a form occurs.
+
+**Decision:** for Hebrew identity, `/` and `\\` are removed inside one CATSS word segment. `-` is different: it is an orthographic word boundary (maqaf) and may expand one CATSS alignment element into multiple BHSA word-slot positions.
+
+## R-048 — Maqaf expansion must preserve whole-verse proof
+
+BHSA word identity lives on word slots, while maqaf is inter-word/trailer material. Treating a maqaf-containing CATSS element as one BHSA slot would create a false word-count mismatch; treating it as fuzzy alignment would weaken the resolver's proof.
+
+**Decision:** before verse equality:
+
+1. split each CATSS `MtReading.primary` at `-`;
+2. normalize each non-empty segment independently;
+3. preserve `alignment_id`, CATSS `mt_index`, and a zero-based `segment_index`;
+4. compare the fully expanded CATSS sequence with all BHSA word slots;
+5. emit mappings only if the complete expanded sequence matches.
+
+Ketiv/Qere alternatives are expanded by the same maqaf rule. If paired primary/Qere readings have different segment counts, the verse fails with a typed `qere_segment_count_mismatch`; no positional rescue is attempted.
+
+Empty maqaf segments (leading, trailing, or doubled `-`) are normalization errors and fail closed.
