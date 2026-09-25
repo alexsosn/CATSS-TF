@@ -307,3 +307,39 @@ BHSA and CenterBLC/LXX already expose linguistic information as ordinary per-nod
 - raw markup, arbitrary annotation collections, JSON, and delimited lists are not routine node features.
 
 The parser IR remains lossless but also exposes these future TF atoms explicitly, so the later materializers do not need to deserialize or reinterpret parser blobs.
+
+
+## R-024 — CATSS names the data; CCAT names the distribution host/infrastructure
+
+The alignment dataset consumed by this project is part of **CATSS** (Computer Assisted Tools for Septuagint Studies), specifically the CATSS parallel Hebrew–Greek alignment. The University of Pennsylvania **CCAT** (Center for Computer Analysis of Texts) is the historical institutional infrastructure/host from which the CATSS files are currently distributed.
+
+**Naming rule:**
+
+- use **CATSS** for the project, dataset, parallel alignment, source files, parser, and generated annotations;
+- use **CCAT** only for the upstream host/distribution location or institutional context.
+
+Thus `source_kind="catss-parallel"` and the repository name `CATSS-TF` are correct, while constants such as `CCAT_PARALLEL_BASE_URL` correctly describe the network host rather than the dataset.
+
+## R-025 — Validation must be independent of future TF serialization
+
+Parser diagnostics and unknown CATSS structures must be measurable before any BHSA/LXX mapping or TF output exists. Otherwise a materializer could silently turn parser uncertainty into apparently authoritative node features.
+
+**Decision:** validation operates on the canonical CATSS IR and produces typed findings plus scalar counts. It does not emit TF and does not require either parent corpus.
+
+## R-026 — Source-line accounting requires the parser to expose its complete data-line set
+
+Alignment rows already retain their contributing physical line numbers and parser diagnostics retain the line that caused them. That is not sufficient to prove absence of silent loss unless the parsed document also records the complete set of nonblank, non-header source data lines.
+
+**Decision:** `ParallelDocument` records `data_line_numbers`. Validation compares that set against the union of alignment-owned lines and diagnostic lines. Any difference is a hard validation error.
+
+## R-027 — Unknown markup remains preserved but unresolved
+
+The parser deliberately preserves unrecognized brace markup as `Annotation(kind="unknown")` and unknown dot strategy sigla as `Annotation(kind="mt_strategy_siglum")`. Preservation prevents data loss, but it does not mean the structure is understood well enough for materialization.
+
+**Decision:** validation emits typed unresolved findings for these annotations. Future explicit policy may allow selected finding codes, but the default validation policy requires zero unresolved findings.
+
+## R-028 — Validation summaries must stay scalar and automation-friendly
+
+Validation output should be directly usable by CLI/agents/CI and should not require parsing prose or a nested opaque blob.
+
+**Decision:** summaries expose explicit integer fields including source files, verses, alignments, source data lines, accounted lines, unaccounted lines, parser diagnostics, unknown annotations, invalid IDs, duplicate IDs, errors, unresolved findings, and explicitly ignored/allowed findings.
