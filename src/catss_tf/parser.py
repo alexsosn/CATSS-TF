@@ -10,7 +10,10 @@ _VERSE_HEADER = re.compile(r"^\s*([0-9A-Za-z][0-9A-Za-z/]*)\s+(?:(\d+):)?(\d+)\s
 _COLUMN_SPACES = re.compile(r"\s{2,}")
 _BRACE_BLOCK = re.compile(r"\{[^{}]*\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
-_SQUARE_REFERENCE = re.compile(r"\[[^\[\]]*\]")
+_GREEK_REFERENCE = re.compile(r"\[\[[^\[\]]*\]\]|\[[^\[\]]*\]")
+_SIMPLE_GREEK_REFERENCE = re.compile(
+    r"^(?:(?P<chapter>\d+)[.:])?(?P<verse>\d+)(?P<subverse>[a-z])?$"
+)
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
 _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s]+)")
@@ -25,6 +28,18 @@ class Annotation:
     side: typing.Literal["mt_a", "mt_b", "lxx"]
     kind: str
     raw: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class GreekReference:
+    """Structured Greek-side CATSS reference evidence."""
+
+    raw: str
+    bracket_kind: typing.Literal["single", "double"]
+    status: typing.Literal["location", "complex"]
+    chapter: int | None
+    verse: int | None
+    subverse: str | None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -65,6 +80,7 @@ class AlignmentRecord:
     mt_ketiv_tokens: tuple[str, ...]
     mt_qere_tokens: tuple[str, ...]
     lxx_tokens: tuple[str, ...]
+    greek_references: tuple[GreekReference, ...]
     mt_count: int
     lxx_count: int
     is_lxx_plus: bool
@@ -314,6 +330,7 @@ def _build_alignment(
             *_extract_annotations("lxx", lxx_raw),
         ]
     )
+    greek_references = _extract_greek_references(lxx_raw)
 
     mt_readings = _mt_lexical_readings(mt_col_a)
     mt_tokens = tuple(reading.primary for reading in mt_readings)
@@ -364,6 +381,7 @@ def _build_alignment(
             mt_ketiv_tokens=mt_ketiv_tokens,
             mt_qere_tokens=mt_qere_tokens,
             lxx_tokens=lxx_tokens,
+            greek_references=greek_references,
             mt_count=len(mt_tokens),
             lxx_count=len(lxx_tokens),
             is_lxx_plus=is_lxx_plus,
@@ -412,9 +430,45 @@ def _extract_annotations(
             raw = match.group(1)
             annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
     if side == "lxx":
-        for match in _SQUARE_REFERENCE.finditer(cell):
-            annotations.append(Annotation(side=side, kind="verse_reference", raw=match.group(0)))
+        for reference in _extract_greek_references(cell):
+            annotations.append(Annotation(side=side, kind="verse_reference", raw=reference.raw))
     return annotations
+
+
+def _extract_greek_references(cell: str) -> tuple[GreekReference, ...]:
+    references: list[GreekReference] = []
+    for match in _GREEK_REFERENCE.finditer(cell):
+        raw = match.group(0)
+        double = raw.startswith("[[")
+        inner = raw[2:-2] if double else raw[1:-1]
+        simple = _SIMPLE_GREEK_REFERENCE.fullmatch(inner)
+        if simple is None:
+            references.append(
+                GreekReference(
+                    raw=raw,
+                    bracket_kind="double" if double else "single",
+                    status="complex",
+                    chapter=None,
+                    verse=None,
+                    subverse=None,
+                )
+            )
+            continue
+        references.append(
+            GreekReference(
+                raw=raw,
+                bracket_kind="double" if double else "single",
+                status="location",
+                chapter=(
+                    int(simple.group("chapter"))
+                    if simple.group("chapter") is not None
+                    else None
+                ),
+                verse=int(simple.group("verse")),
+                subverse=simple.group("subverse") or "",
+            )
+        )
+    return tuple(references)
 
 
 def _retroversion_kind(mt_col_b: str | None) -> str | None:
@@ -574,7 +628,7 @@ def _lxx_lexical_candidates(cell: str) -> tuple[str, ...]:
 def _prepare_lexical_text(cell: str) -> str:
     text = _BRACE_BLOCK.sub(lambda match: _brace_payload(match.group(0)), cell)
     text = _ANGLE_NOTE.sub(" ", text)
-    text = _SQUARE_REFERENCE.sub(" ", text)
+    text = _GREEK_REFERENCE.sub(" ", text)
     return _CONTINUATION_TOKEN.sub(" ", text)
 
 
