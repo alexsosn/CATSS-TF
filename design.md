@@ -841,3 +841,22 @@ For supported CATSS sources, the resolver first runs the issue #5 validation gat
 After validation, a verse emits word mappings only when the complete normalized sequence matches. If one word or required Qere differs, **no word mapping from that verse is emitted**. This prevents partial success from making a broken verse look trustworthy.
 
 Declared BHSA-unsupported CATSS sources are skipped as known coverage exclusions; unknown source names are findings.
+
+
+## 16.9 Qere-only and empty-consonant BHSA slots
+
+BHSA's own Ketiv/Qere generator demonstrates that some parent word slots can have an empty consonantal written form.
+
+Resolver identity therefore depends on the CATSS reading mode:
+
+```text
+ordinary CATSS reading       -> BHSA g_cons_utf8
+paired *Ketiv **Qere         -> g_cons_utf8 proves slot; qere_utf8 validates same slot
+Qere-only **Qere             -> BHSA qere_utf8 proves slot
+```
+
+A Qere-only position does **not** make the BHSA written form disappear from the corpus model; it merely uses the Masoretic reading feature as the textual identity witness for that slot.
+
+No empty BHSA slot is transparent or skippable. Verse cardinality remains one CATSS MT position per BHSA word slot in this resolver. A non-Qere CATSS reading facing an empty `g_cons_utf8` is a hard mapping failure.
+
+CATSS `/` remains an intra-word morphological separator and never creates additional BHSA slots.
