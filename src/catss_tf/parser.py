@@ -497,19 +497,23 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
             else:
                 pending_aramaic = True
             continue
-        if token.startswith(",,a"):
-            pending_aramaic = True
-            token = token[3:]
 
-        if token == "?":
+        aramaic_here = ",,a" in token
+        token = token.replace(",,a", "")
+
+        if token and set(token) == {"?"}:
             pending_doubt = True
+            pending_aramaic = pending_aramaic or aramaic_here
             continue
 
         doubtful = pending_doubt or token.startswith("?") or token.endswith("?")
         pending_doubt = False
         token = token.strip("?")
         if not token:
+            pending_aramaic = pending_aramaic or aramaic_here
             continue
+
+        aramaic_here = aramaic_here or pending_aramaic
 
         if token.startswith("**") and len(token) > 2:
             qere = token[2:]
@@ -519,7 +523,7 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
                     previous,
                     qere=qere,
                     doubtful=previous.doubtful or doubtful,
-                    aramaic_section=previous.aramaic_section or pending_aramaic,
+                    aramaic_section=previous.aramaic_section or aramaic_here,
                 )
             else:
                 readings.append(
@@ -528,7 +532,7 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
                         ketiv=None,
                         qere=qere,
                         doubtful=doubtful,
-                        aramaic_section=pending_aramaic,
+                        aramaic_section=aramaic_here,
                     )
                 )
             pending_aramaic = False
@@ -542,7 +546,7 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
                     ketiv=ketiv,
                     qere=None,
                     doubtful=doubtful,
-                    aramaic_section=pending_aramaic,
+                    aramaic_section=aramaic_here,
                 )
             )
             pending_aramaic = False
@@ -554,7 +558,7 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
                 ketiv=None,
                 qere=None,
                 doubtful=doubtful,
-                aramaic_section=pending_aramaic,
+                aramaic_section=aramaic_here,
             )
         )
         pending_aramaic = False
