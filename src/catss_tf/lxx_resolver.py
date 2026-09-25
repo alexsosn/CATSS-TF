@@ -165,7 +165,7 @@ class LxxMappingReport:
         return not self.findings
 
 
-@dataclasses.dataclass(frozen=True, slots=True, order=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class _ReferenceKey:
     book: str
     chapter: int
@@ -384,7 +384,10 @@ def resolve_lxx_documents(
                                 alignment_id=alignment.alignment_id,
                                 catss_value=alignment.lxx_raw,
                                 parent_value=None,
-                                message="Greek-empty alignment has no recognized empty-row semantics",
+                                message=(
+                                    "Greek-empty alignment has no recognized "
+                                    "empty-row semantics"
+                                ),
                             )
                         )
                         broken_references.add(reference)
@@ -428,7 +431,7 @@ def resolve_lxx_documents(
         all_references = set(tasks_by_reference) | set(empty_by_reference) | broken_references
         reference_groups += len(all_references)
 
-        for reference in sorted(all_references):
+        for reference in sorted(all_references, key=_reference_sort_key):
             span = provider.get_span(
                 reference.book,
                 reference.chapter,
@@ -680,6 +683,15 @@ def _solve_unique_assignment(
     return solutions
 
 
+def _reference_sort_key(reference: _ReferenceKey) -> tuple[str, int, int, str]:
+    return (
+        reference.book,
+        reference.chapter,
+        reference.verse,
+        "" if reference.subverse is None else reference.subverse,
+    )
+
+
 def _reference_text(reference: _ReferenceKey) -> str:
     suffix = "" if reference.subverse is None else reference.subverse
     return f"{reference.book} {reference.chapter}:{reference.verse}{suffix}"
@@ -761,14 +773,20 @@ class TextFabricLxxProvider:
         word_nodes = tuple(
             typing.cast(typing.Iterable[int], self._api.L.d(verse_node, otype="word"))
         )
-        if subverse is not None:
+        if subverse is None:
+            word_nodes = tuple(
+                word
+                for word in word_nodes
+                if not (typing.cast(str | None, self._api.F.subverse.v(word)) or "")
+            )
+        else:
             word_nodes = tuple(
                 word
                 for word in word_nodes
                 if typing.cast(str | None, self._api.F.subverse.v(word)) == subverse
             )
-            if not word_nodes:
-                return None
+        if not word_nodes:
+            return None
 
         span_node = verse_node
         if subverse is not None:
