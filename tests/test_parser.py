@@ -260,7 +260,7 @@ HB .m .s .j .w .z .xx\tGR
 
     row = doc.verses[0].alignments[0]
     assert row.mt_tokens == ("HB",)
-    kinds = [annotation.kind for annotation in row.annotations if annotation.side == "mt"]
+    kinds = [annotation.kind for annotation in row.annotations if annotation.side == "mt_a"]
     assert kinds == [
         "metathesis",
         "word_separation",
