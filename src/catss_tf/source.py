@@ -177,7 +177,7 @@ def _validate_filename(name: str) -> None:
 def _fetch_bytes(url: str) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": "CATSS-TF/0.0.0"})
     with urllib.request.urlopen(request, timeout=60) as response:
-        return response.read()
+        return typing.cast(bytes, response.read())
 
 
 def _sha256(path: pathlib.Path) -> str:
