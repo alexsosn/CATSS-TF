@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="CODE",
-        help="explicitly allow a validation finding code; may be repeated",
+        help="explicitly allow an unresolved finding code; may be repeated",
     )
 
     return parser
