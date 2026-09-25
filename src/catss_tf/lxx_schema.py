@@ -5,7 +5,6 @@ import enum
 import pathlib
 import typing
 
-
 LXX_REPOSITORY = "CenterBLC/LXX"
 LXX_VERSION = "1935"
 LXX_RELEASE_TAG = "v1.0.1"
