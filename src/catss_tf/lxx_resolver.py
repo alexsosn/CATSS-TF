@@ -267,7 +267,7 @@ def resolve_lxx_documents(
 
     parent_validation = validate_lxx_parent(provider.parent_probe)
     if not parent_validation.ok:
-        findings = tuple(
+        parent_findings = tuple(
             LxxMappingFinding(
                 code=f"parent_{finding.code}",
                 source_name="<parent>",
@@ -283,7 +283,7 @@ def resolve_lxx_documents(
         return _report(
             documents=len(documents),
             parent_failures=len(parent_validation.findings),
-            findings=findings,
+            findings=parent_findings,
         )
 
     word_mappings: list[LxxWordMapping] = []
