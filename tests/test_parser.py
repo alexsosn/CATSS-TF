@@ -363,3 +363,39 @@ HBMINUS\t-- ''
     assert minus.is_lxx_minus is True
     assert minus.lxx_count == 0
     assert minus.raw_lines == ("HBMINUS\t-- ''",)
+
+
+def test_mt_readings_preserve_ketiv_qere_pairing_per_position() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+*KT/YB **QR/Y DBR\tGR
+""",
+        source_name="99.Test.par",
+    )
+
+    row = doc.verses[0].alignments[0]
+    assert [(r.primary, r.ketiv, r.qere) for r in row.mt_readings] == [
+        ("KT/YB", "KT/YB", "QR/Y"),
+        ("DBR", None, None),
+    ]
+    assert row.mt_tokens == ("KT/YB", "DBR")
+    assert row.mt_ketiv_tokens == ("KT/YB",)
+    assert row.mt_qere_tokens == ("QR/Y",)
+
+
+def test_mt_readings_structure_aramaic_and_doubt_markers() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+??MLK??,,a DBR,,a\tGR
+""",
+        source_name="99.Test.par",
+    )
+
+    first, second = doc.verses[0].alignments[0].mt_readings
+    assert first.primary == "MLK"
+    assert first.doubtful is True
+    assert first.aramaic_section is True
+    assert second.primary == "DBR"
+    assert second.doubtful is False
+    assert second.aramaic_section is True
+    assert doc.verses[0].alignments[0].mt_tokens == ("MLK", "DBR")
