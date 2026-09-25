@@ -495,9 +495,7 @@ L/KM\tU(MI=N
 """,
         source_name="01.Genesis.par",
     )
-    provider = FakeProvider(
-        (_span("σπέρματος", "σπορίμου", "ὑμῖν", chapter=1, verse=29),)
-    )
+    provider = FakeProvider((_span("σπέρματος", "σπορίμου", "ὑμῖν", chapter=1, verse=29),))
 
     report = resolve_lxx_document(doc, provider)
 
