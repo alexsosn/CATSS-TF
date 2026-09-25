@@ -1056,3 +1056,153 @@ Normal CI remains synthetic/offline.
 When user-acquired CATSS source is available, #9 must provide an opt-in audit that reports scalar coverage counts and typed divergence classes across every supported source. v0.1 release confidence requires that audit; common ancestry is not enough.
 
 The unavailable binary release asset in the current research environment is recorded in R-061 rather than hidden by an unsupported completeness claim.
+
+
+## 18. CenterBLC/LXX resolver
+
+### 18.1 Parent provider contract
+
+```text
+LxxWord
+  node: int
+  word: str
+  subverse: str
+  orig_order: str
+
+LxxSpan
+  node: int
+  book: str
+  chapter: int
+  verse: int
+  subverse: str?
+  words: tuple[LxxWord, ...]
+
+LxxVerseProvider
+  parent_probe: LxxParentProbe
+  get_span(book, chapter, verse, subverse?) -> LxxSpan?
+```
+
+The pure resolver depends only on this interface.
+
+### 18.2 Structured Greek references
+
+`AlignmentRecord.lxx_references` contains zero or more parsed `GreekReference` values.
+
+Resolution rules:
+
+- zero references => use `default_lxx_reference()`;
+- one reference => override verse and optional chapter; a suffix becomes parent subverse;
+- more than one distinct reference on one alignment => fail with `multiple_lxx_references`;
+- relative verse-only references keep the default parent chapter;
+- explicit chapter+verse references replace both default values.
+
+For Ps151 / 2Esdr transforms, the source-level default transform runs first; an explicit CATSS Greek chapter+verse then replaces its chapter/verse inside the already selected parent book.
+
+### 18.3 Surface normalization
+
+CATSS BETA and parent Unicode are reduced to the same conservative lowercase Greek surface alphabet. Diacritics are ignored, letters/inflection are not.
+
+Normalization errors are typed and prevent mapping of the affected reference group.
+
+### 18.4 Candidate spans
+
+For an alignment with `n` Greek tokens targeting one parent span:
+
+1. normalize all `n` CATSS tokens;
+2. slide a window of length `n` across parent `word` slots;
+3. candidate = exact normalized sequence equality;
+4. preserve candidate start/end node IDs and CATSS token indices.
+
+There is no lemma/morphology fallback.
+
+### 18.5 Unique joint assignment
+
+All non-empty alignment rows targeting the same `book/chapter/verse/subverse` are solved together.
+
+A valid assignment:
+
+- chooses exactly one candidate span for every row;
+- uses no parent word node twice between independent rows.
+
+If there is exactly one full assignment, emit mappings. If none or more than one exist, emit no word mappings for that reference group and report the failure.
+
+This is stricter than ordinal alignment and remains valid when CATSS row order differs from printed LXX order.
+
+### 18.6 Empty rows
+
+Known empty-Greek structures produce anchors, not word mappings:
+
+- `is_lxx_minus` -> `lxx_minus`;
+- remote/stylistic transposition placeholder with no Greek tokens -> `transposition_placeholder`.
+
+Anything else -> `empty_lxx_alignment` finding.
+
+### 18.7 Output shapes
+
+```text
+LxxWordMapping
+  alignment_id
+  lxx_index
+  lxx_node
+  reference_book
+  reference_chapter
+  reference_verse
+  reference_subverse?
+  mapping_kind = exact
+
+LxxReferenceAnchor
+  alignment_id
+  lxx_reference_node
+  kind = lxx_minus | transposition_placeholder
+
+LxxMappingFinding
+  code
+  source_name
+  chapter?
+  verse?
+  alignment_id?
+  catss_value?
+  parent_value?
+  message
+
+LxxMappingSummary
+  scalar integer counters only
+```
+
+No resolver output requires JSON/list parsing for later TF schema work.
+
+### 18.8 Fail-closed gates
+
+Before placement:
+
+1. exact CenterBLC parent profile passes;
+2. CATSS IR validation passes except explicitly allowed unresolved codes;
+3. CATSS source is supported by the LXX profile.
+
+Any failed gate yields zero mappings for that document.
+
+### 18.9 Text-Fabric adapter
+
+`TextFabricLxxProvider` adapts an already-loaded CenterBLC API:
+
+- locate a verse with `T.nodeFromSection((book, chapter, verse))`;
+- descend to `word` slots;
+- read `word`, `subverse`, and `orig_order`;
+- optionally filter words by exact `subverse`.
+
+It does not repair references or surfaces.
+
+### 18.10 Corpus audit
+
+`resolve_lxx_documents()` aggregates the same per-document resolver and exposes:
+
+- documents / supported / unsupported / unknown;
+- verses/reference groups;
+- resolved / missing / ambiguous / mismatched groups;
+- word mappings / anchors;
+- reference overrides;
+- normalization errors;
+- parent/validation failures;
+- finding counts by typed code through the findings stream.
+
+The release gate in R-061 can therefore run on user-acquired CATSS without a second mapping path.
