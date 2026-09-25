@@ -46,3 +46,16 @@ HB\tLOGOS [6x7]
     assert doc.verses[0].alignments[0].lxx_tokens == ("LOGOS",)
     assert [d.code for d in doc.diagnostics] == ["invalid_lxx_reference"]
     assert doc.diagnostics[0].raw_line == "HB\tLOGOS [6x7]"
+
+
+def test_greek_edition_difference_wrapper_preserves_lexical_payload() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB\t{gLOGOS}
+""",
+        source_name="99.Test.par",
+    )
+
+    row = doc.verses[0].alignments[0]
+    assert row.lxx_tokens == ("LOGOS",)
+    assert any(annotation.kind == "greek_edition_difference" for annotation in row.annotations)
