@@ -179,3 +179,47 @@ def test_non_strict_parent_check_can_use_structural_contract_without_raw_files()
 
     assert result.ok is True
     assert result.fingerprint_verified is False
+
+
+def test_supported_mapping_covers_all_39_bhsa_books_exactly() -> None:
+    assert set(BHSA_BOOK_BY_CATSS_STEM.values()) == {
+        "Genesis",
+        "Exodus",
+        "Leviticus",
+        "Numeri",
+        "Deuteronomium",
+        "Josua",
+        "Judices",
+        "Samuel_I",
+        "Samuel_II",
+        "Reges_I",
+        "Reges_II",
+        "Jesaia",
+        "Jeremia",
+        "Ezechiel",
+        "Hosea",
+        "Joel",
+        "Amos",
+        "Obadia",
+        "Jona",
+        "Micha",
+        "Nahum",
+        "Habakuk",
+        "Zephania",
+        "Haggai",
+        "Sacharia",
+        "Maleachi",
+        "Psalmi",
+        "Iob",
+        "Proverbia",
+        "Ruth",
+        "Canticum",
+        "Ecclesiastes",
+        "Threni",
+        "Esther",
+        "Daniel",
+        "Esra",
+        "Nehemia",
+        "Chronica_I",
+        "Chronica_II",
+    }
