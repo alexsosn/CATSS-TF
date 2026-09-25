@@ -339,3 +339,27 @@ def test_parse_parallel_file_rejects_invalid_utf8(tmp_path: Path) -> None:
         pass
     else:
         raise AssertionError("invalid UTF-8 must not be silently replaced")
+
+
+def test_legacy_plus_minus_sigla_are_recognized_without_rewriting_raw() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+-+ =HBPLUS\tGRPLUS
+---+ =HBPLUS2\tGRPLUS2
+HBMINUS\t-- ''
+""",
+        source_name="99.Test.par",
+    )
+
+    plus_one, plus_two, minus = doc.verses[0].alignments
+    assert plus_one.is_lxx_plus is True
+    assert plus_one.mt_count == 0
+    assert plus_one.raw_lines == ("-+ =HBPLUS\tGRPLUS",)
+
+    assert plus_two.is_lxx_plus is True
+    assert plus_two.mt_count == 0
+    assert plus_two.raw_lines == ("---+ =HBPLUS2\tGRPLUS2",)
+
+    assert minus.is_lxx_minus is True
+    assert minus.lxx_count == 0
+    assert minus.raw_lines == ("HBMINUS\t-- ''",)
