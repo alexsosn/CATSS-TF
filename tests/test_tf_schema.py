@@ -396,9 +396,7 @@ def test_projection_requires_its_mapped_side_index_and_nonempty_cardinality() ->
         compile_tf_features(
             projection="bhsa",
             max_node=10,
-            memberships=(
-                _membership(mt_n=0, mt_i=None, mt_segment=None),
-            ),
+            memberships=(_membership(mt_n=0, mt_i=None, mt_segment=None),),
             anchors=(),
         )
 
