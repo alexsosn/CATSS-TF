@@ -418,3 +418,97 @@ Issue #4 does not:
 - reorder transposed Greek/Hebrew material;
 - decide which CATSS textual-critical judgment is correct;
 - compute the later translation-technique feature layer.
+
+
+## 13. TF compatibility and query-native representation
+
+The parser IR may be structurally rich, but the materialized TF modules must look and behave like ordinary Text-Fabric enrichment features on the parent corpus.
+
+### 13.1 Scalar-first feature model
+
+CATSS concepts should be projected into separate scalar features rather than encoded as JSON, delimited lists, or compound strings.
+
+Preferred examples:
+
+```text
+catss_lxx_plus=1
+catss_lxx_minus=1
+catss_mt_n=1
+catss_lxx_n=2
+catss_has_retro=1
+catss_trans_local=1
+catss_trans_remote=1
+catss_trans_style=1
+catss_ketiv=1
+catss_qere=1
+catss_doublet=1
+catss_translit=1
+catss_apparent_pm=1
+catss_agrees_ketiv=1
+catss_agrees_qere=1
+catss_mapping=exact
+```
+
+Avoid:
+
+```text
+catss_ratio=1:2
+catss_flags=plus|remote|doublet
+catss_annotations={...json...}
+catss_notes=d,x,foo
+```
+
+Counts should be integer TF features, booleans integer/presence features, and closed classifications short enumerated strings.
+
+### 13.2 Fit parent-corpus conventions
+
+Both BHSA and CenterBLC/LXX are word-slot corpora with ordinary node features for linguistic properties and standard `book/chapter/verse` sections. CATSS modules should follow the same usage pattern:
+
+- attach word-level CATSS features directly to the corresponding parent word slots;
+- use `@valueType=int` for counts/boolean indicators where appropriate;
+- use short documented enum values for categorical annotations;
+- use edge features only for genuine relations between nodes in the same parent warp;
+- avoid storing foreign-corpus node numbers as feature values.
+
+CATSS-specific feature names keep a `catss_` prefix to avoid collisions with parent features such as `gn`, `nu`, `ps`, `lex`, etc.
+
+### 13.3 Raw evidence stays outside routine query features
+
+Lossless CATSS source strings, source physical lines, arbitrary/unknown sigla, and detailed diagnostics remain available for reproducibility, but should normally be written to a deterministic provenance/diagnostic sidecar rather than copied onto every TF word node.
+
+A raw value becomes a TF feature only when there is a concrete query use case for that value itself.
+
+### 13.4 Alignment groups
+
+`catss_alignment_id` is allowed as a scalar join/provenance key, but it must not become the only representation of an alignment.
+
+Ordinary questions such as:
+
+- “LXX plus?”
+- “1:n alignment?”
+- “remote transposition?”
+- “ketiv/qere?”
+- “CATSS retroversion present?”
+
+must be answerable directly through atomic TF features without parsing `catss_alignment_id` or consulting a sidecar.
+
+If one parent node belongs to multiple independent CATSS groups, issue #10 must choose a query-native representation after measuring the real multiplicity. A delimited list of IDs is explicitly disallowed.
+
+### 13.5 Consequence for parser IR
+
+Even before TF serialization, the IR should expose future TF atoms directly:
+
+```text
+mt_count: int
+lxx_count: int
+is_lxx_plus: bool
+is_lxx_minus: bool
+has_retroversion: bool
+is_ketiv: bool
+is_qere: bool
+is_transposition_local: bool
+is_transposition_remote: bool
+is_transposition_stylistic: bool
+```
+
+Rich `annotations[]` and raw source remain alongside these atoms for losslessness, but materializers should not have to re-parse annotation blobs to obtain common searchable properties.
