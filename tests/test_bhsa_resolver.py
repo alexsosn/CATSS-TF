@@ -74,7 +74,11 @@ BR)\tEPOI
 
     assert report.summary.resolved_verses == 1
     assert report.summary.mismatched_verses == 0
-    assert [(m.alignment_id, m.mt_index, m.bhsa_node, m.mapping_kind) for m in report.word_mappings] == [
+    observed = [
+        (m.alignment_id, m.mt_index, m.bhsa_node, m.mapping_kind)
+        for m in report.word_mappings
+    ]
+    assert observed == [
         (doc.verses[0].alignments[0].alignment_id, 0, 101, "exact"),
         (doc.verses[0].alignments[1].alignment_id, 0, 102, "exact"),
         (doc.verses[0].alignments[2].alignment_id, 0, 103, "exact"),
