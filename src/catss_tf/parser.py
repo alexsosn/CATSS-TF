@@ -15,6 +15,7 @@ _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
 _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s]+)")
+_DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
 
@@ -432,6 +433,8 @@ def _extract_annotations(
             raw = match.group(1)
             annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
     if side == "lxx":
+        for match in _DOUBT_MARKER.finditer(cell):
+            annotations.append(Annotation(side=side, kind="doubt", raw=match.group(0)))
         for match in _SQUARE_GROUP.finditer(cell):
             raw = match.group(0)
             inner = raw.lstrip("[").rstrip("]")
@@ -518,6 +521,9 @@ def _brace_kind(raw: str) -> str:
         "{x}": "apparent_plus_minus",
         "{*}": "greek_agrees_ketiv",
         "{**}": "greek_agrees_qere",
+        "{p}": "greek_preverb",
+        "{s}": "comparative_superlative",
+        "{---%}": "asterisked_passage",
     }
     if raw in exact:
         return exact[raw]
@@ -626,8 +632,12 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
 
 
 def _lxx_lexical_candidates(cell: str) -> tuple[str, ...]:
-    text = _prepare_lexical_text(cell)
-    return tuple(token for token in text.split() if not _is_alignment_marker(token))
+    text = _prepare_lexical_text(cell).replace("?", "")
+    return tuple(
+        token
+        for token in text.split()
+        if token != "+" and not _is_alignment_marker(token)
+    )
 
 
 def _prepare_lexical_text(cell: str) -> str:
