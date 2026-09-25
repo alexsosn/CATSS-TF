@@ -880,3 +880,179 @@ The mapping key is therefore `(alignment_id, mt_index, segment_index)`.
 This is not an alignment heuristic. Expansion happens only at the documented `-` character, and the final mapping still requires exact equality of the complete expanded CATSS verse sequence with the complete BHSA word-slot sequence.
 
 Qere segmentation must have the same number of maqaf segments as its primary/Ketiv reading. Otherwise the verse emits no word mappings.
+
+
+## 17. CenterBLC/LXX 1935 parent contract
+
+### 17.1 Supported parent
+
+```text
+repository      CenterBLC/LXX
+TF version      1935
+release tag     v1.0.1
+release git     f32a98eddf7eb239aa73ab863d70381e416d5076
+slot type       word
+max slot        623693
+max node        685732
+section types   book, chapter, verse
+```
+
+The LXX materializer targets this release exactly, not floating `main`.
+
+Expected node counts:
+
+```text
+word       623693
+subverse    30419
+verse       30371
+chapter      1192
+book           57
+```
+
+### 17.2 Mapping-critical features
+
+Required v0.1 features:
+
+```text
+otype
+oslots
+book
+chapter
+verse
+subverse
+word
+orig_order
+```
+
+`word` is the Greek surface identity feature. `lex_utf8`, `g_cons_utf8`, lemma, morphology, and related analysis features are deliberately excluded from the identity contract because they normalize lexical/morphological information and can differ while the printed surface is distinct.
+
+`orig_order` is available for provenance and diagnostics. It is not sufficient by itself to establish a CATSS alignment mapping.
+
+### 17.3 Exact feature fingerprints
+
+The v0.1 profile records the Git blob SHA of every mapping-critical TF file at tag `v1.0.1`:
+
+```text
+otype       2e6480116dfda09f20e8de7c5b9feefa76322a96
+oslots      e95696a6a49f1149f8f6e850f7dfb40a26509931
+book        0bfae94bb312cb7ecd33b102babb9400c554d8be
+chapter     ec64b6bf72a6282e9da5064ca2e895171190208e
+verse       ff8766352d7aff530c6eec4f66366adcc691740e
+subverse    cecfaf2d1ddc4fd1e93958abd674a7e60e676ae5
+word        f88e525991c3d09beac713a91ef8ed41e6308a03
+orig_order  0d0339af8a512a0a59232fbccb309fc229da6ddd
+```
+
+As with BHSA, strict parent verification uses these fingerprints when raw TF files are available. Structural mode still verifies repository/version/release identity, slot/node bounds, section types, node counts, and required features.
+
+### 17.4 CATSS source coverage
+
+The LXX parent supports 44 of the 46 default CATSS parallel sources.
+
+Explicitly unsupported:
+
+```text
+07.JoshA
+09.JudgesA
+```
+
+CenterBLC's single `Josh` and `Judg` books descend from the B traditions; A is an alternate source edition and must not be silently coerced onto the B nodes.
+
+Special direct edition mappings:
+
+```text
+06.JoshB       -> Josh
+08.JudgesB     -> Judg
+45.DanielOG    -> Dan
+46.DanielTh    -> DanTh
+```
+
+All other supported sources use the closed source profile defined in code.
+
+The profile also records the exact 57-value parent book universe from the upstream source list. Every CATSS→parent target must be a member of that set; alternate OSIS/export spellings are not accepted implicitly.
+
+### 17.5 Reference policies
+
+A source profile carries an explicit default reference policy rather than relying on book order or name similarity.
+
+Policies required by v0.1:
+
+```text
+direct
+two_esdr_ezra
+two_esdr_nehemiah
+ps151
+```
+
+Default transforms:
+
+- `18.Ezra` -> `2Esdr`, same chapter and verse;
+- `19.Neh` -> `2Esdr`, parent chapter = CATSS chapter + 10;
+- `22.Ps151` -> `Ps`, parent chapter = 151, parent verse = CATSS verse;
+- other supported books -> mapped parent book, same chapter/verse.
+
+These defaults are only the starting location. Structured CATSS Greek reference evidence overrides the MT-header-derived default on the Greek side.
+
+### 17.6 Greek reference evidence is first-class
+
+CATSS parallel headers use BHS/MT versification. Greek `[...]` / `[[...]]` annotations record Rahlfs reference differences.
+
+Issue #9 therefore cannot resolve a Greek token using only `VerseRecord.chapter/verse`. Before mapping, the parser/resolver boundary must expose a structured Greek reference with at least:
+
+```text
+chapter?
+verse
+subverse?
+raw
+```
+
+A reference may be relative (verse only) or explicit chapter+verse. Lettered suffixes must remain distinct because CenterBLC represents additions through `subverse`.
+
+Where no Greek reference annotation applies, the source profile's default transform supplies the location.
+
+### 17.7 Esther subverses
+
+CenterBLC keeps additions in `Esth` under ordinary chapter/verse sections and marks their words with `subverse` values.
+
+Therefore candidate selection for a suffix-bearing CATSS Greek reference must use:
+
+```text
+book + chapter + verse + subverse
+```
+
+It must never collapse `1:1a` and canonical `1:1` into one candidate sequence merely because Text-Fabric section lookup stops at verse.
+
+### 17.8 Greek surface proof and order
+
+Greek identity is based on normalized parent `word` surface.
+
+Normalization may canonicalize Unicode and remove accent/breathing/iota-subscript distinctions required only for ASCII-BETA-to-Unicode equivalence, but it must preserve Greek letters and inflection. It must not replace surface forms with lemmas.
+
+Unlike the BHSA side, CATSS row order is not guaranteed to be printed LXX order where transpositions/global rearrangements occur. Therefore #9 may not assign nodes solely by flattened CATSS row position.
+
+A successful resolver must establish exact surface placement in the parent reference span. If repeated surface sequences yield multiple possible placements and CATSS structural evidence does not disambiguate them, mapping fails as ambiguous.
+
+### 17.9 Known divergence classes for #9
+
+The first resolver must explicitly cover or diagnose at least:
+
+- Greek reference shift within a BHS verse (e.g. Gen 23:5 `MH/ [6]`);
+- chapter+verse reference shifts;
+- lettered Esther subverses;
+- Psalm 151 source-to-parent chapter transform;
+- Ezra/Nehemiah -> `2Esdr` chapter transform;
+- local/remote/stylistic CATSS transpositions;
+- Greek plus/minus rows;
+- repeated Greek surface tokens causing placement ambiguity;
+- Daniel OG/Theodotion edition separation;
+- A-tradition Joshua/Judges source exclusion.
+
+No divergence class is repaired by nearest-token or lemma matching.
+
+### 17.10 Corpus-level audit gate
+
+Normal CI remains synthetic/offline.
+
+When user-acquired CATSS source is available, #9 must provide an opt-in audit that reports scalar coverage counts and typed divergence classes across every supported source. v0.1 release confidence requires that audit; common ancestry is not enough.
+
+The unavailable binary release asset in the current research environment is recorded in R-061 rather than hidden by an unsupported completeness claim.

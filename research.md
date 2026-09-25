@@ -692,3 +692,227 @@ BHSA word identity lives on word slots, while maqaf is inter-word/trailer materi
 Ketiv/Qere alternatives are expanded by the same maqaf rule. If paired primary/Qere readings have different segment counts, the verse fails with a typed `qere_segment_count_mismatch`; no positional rescue is attempted.
 
 Empty maqaf segments (leading, trailing, or doubled `-`) are normalization errors and fail closed.
+
+
+## R-049 — v0.1 targets CenterBLC/LXX release v1.0.1 exactly
+
+CenterBLC/LXX publishes Rahlfs 1935 as Text-Fabric version `1935`. The repository README marks the corpus WIP, so CATSS-TF must not target floating `main`.
+
+Release tag `v1.0.1` resolves to Git commit:
+
+`f32a98eddf7eb239aa73ab863d70381e416d5076`
+
+At that tag, `otype.tf` declares:
+
+- slot type `word`;
+- 623,693 word slots;
+- 30,419 `subverse` nodes;
+- 30,371 `verse` nodes;
+- 1,192 `chapter` nodes;
+- 57 `book` nodes;
+- max node 685,732.
+
+`otext.tf` declares the standard section hierarchy `book,chapter,verse`; `subverse` is an additional node/word feature, not a section level.
+
+Sources:
+
+- https://github.com/CenterBLC/LXX/releases/tag/v1.0.1
+- https://github.com/CenterBLC/LXX/tree/v1.0.1/tf/1935
+- https://github.com/CenterBLC/LXX/blob/v1.0.1/tf/1935/otype.tf
+- https://github.com/CenterBLC/LXX/blob/v1.0.1/tf/1935/otext.tf
+
+**Decision:** the first `catss-lxx` materializer supports **CenterBLC/LXX 1935 as published at v1.0.1 only**.
+
+## R-050 — CenterBLC shares CATSS ancestry but not the parallel-file representation
+
+CenterBLC's README says its source is Eliran Wong's `LXX-Rahlfs-1935`, itself built on CATSS LXX morphology. The CenterBLC converter does not consume CATSS parallel `.par` files directly: it reads a 26-column intermediate table and constructs TF word slots and sections.
+
+The converter therefore proves lineage, not token/reference identity with CATSS parallel.
+
+Sources:
+
+- https://github.com/CenterBLC/LXX/blob/v1.0.1/README.md
+- https://github.com/CenterBLC/LXX/blob/v1.0.1/programs/TF-converter_LXX.py
+- https://github.com/eliranwong/LXX-Rahlfs-1935
+
+**Decision:** #9 must validate Greek content against parent word slots. Common CATSS/Rahlfs ancestry is never itself a successful mapping rule.
+
+## R-051 — `word`, not `g_cons_utf8`, is the Greek surface identity feature
+
+Direct inspection of CenterBLC v1.0.1 shows:
+
+```text
+word:        ἐν  ἀρχῇ  ἐποίησεν  ὁ  θεὸς  τὸν  οὐρανὸν ...
+lex_utf8:    ἐν  ἀρχή  ποιέω     ὁ  θεός  ὁ    οὐρανός ...
+g_cons_utf8: εν  αρχη  ποιεω      ο  θεος  ο    ουρανος ...
+```
+
+Thus `g_cons_utf8` is normalized lexical/lemma material, not an unaccented inflected surface. Using it for identity would collapse morphology (`ἐποίησεν → ποιεω`, `τὸν → ο`).
+
+**Decision:** Greek node identity is proven against the parent `word` surface after Unicode/diacritic normalization. Lemma and morphology features may be queried after mapping but cannot rescue a failed surface match.
+
+## R-052 — Representative CATSS parallel Greek really matches CenterBLC surface
+
+The MIT CATSS parser documentation reproduces raw `01.Genesis.par` data. For Genesis 1:1, the CATSS Greek running text is:
+
+`E)N A)RXH=| E)POI/HSEN O( QEO\S TO\N OU)RANO\N KAI\ TH\N GH=N`
+
+CenterBLC v1.0.1 `word` slots for Gen 1:1 are:
+
+`ἐν ἀρχῇ ἐποίησεν ὁ θεὸς τὸν οὐρανὸν καὶ τὴν γῆν`
+
+These agree after ordinary Greek accent/breathing normalization.
+
+Source:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/parallel_readme.md
+- CenterBLC/LXX v1.0.1 TF `word.tf`, `book.tf`, `chapter.tf`, `verse.tf`
+
+**Implication:** direct surface mapping is viable for ordinary passages; the remaining problem is reference/order reconstruction, not a fundamentally different Greek edition in ordinary text.
+
+## R-053 — CATSS square-bracket Greek references are required location evidence
+
+CATSS parallel verse headers follow BHS/MT versification. Documentation states that when Rahlfs LXX differs, the Greek line ends with a square-bracket reference.
+
+The documented Gen 23:5 example ends:
+
+`MH/ [6]`
+
+Direct CenterBLC audit confirms:
+
+- CenterBLC Gen 23:5 ends with `λέγοντες`;
+- CenterBLC Gen 23:6 begins with `μή`.
+
+Therefore `[6]` is not ancillary annotation: it moves that Greek token to the next parent verse.
+
+The CATSS regex documentation recognizes both `[...]` and `[[...]]` as "(chapter &) verse difference from Hebrew". Examples elsewhere include chapter+verse and letter suffixes.
+
+Sources:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/parallel_readme.md
+- https://github.com/codykingham/CATSS_parsers/blob/master/regex_patterns.py
+
+**Decision:** #9 must use structured CATSS Greek reference evidence per alignment/token group. The MT verse header is only the default location. A raw `verse_reference` string is not sufficient as the final resolver contract.
+
+## R-054 — CATSS Greek row order is not always printed LXX word order
+
+CATSS documentation explicitly states that only the MT running text is reliably unaltered; LXX running text has been moved in cases of global differences. Local, adjacent, remote, and stylistic transposition sigla are documented.
+
+**Decision:** unlike the BHSA resolver, #9 must not prove mapping by blindly flattening `AlignmentRecord.lxx_tokens` in CATSS row order. It must either reconstruct printed Greek order from structured transposition/reference evidence or solve exact parent placement with uniqueness checks. Duplicate-token ambiguity must fail closed.
+
+## R-055 — CenterBLC v1.0.1 selects the B text of Joshua/Judges
+
+Wong's source mapping distinguishes:
+
+- `07.JoshB.mlxx` / `08.JoshA.mlxx`;
+- `09.JudgesB.mlxx` / `10.JudgesA.mlxx`.
+
+Its "main" book set explicitly uses `JoshB` and `JudgB`; A forms are alternate books. CenterBLC v1.0.1 has only one `Josh` and one `Judg` book, not separate A books.
+
+Sources:
+
+- https://github.com/eliranwong/LXX-Rahlfs-1935/blob/master/08_versification/book_maps.csv
+- https://github.com/eliranwong/LXX-Rahlfs-1935/blob/master/11_end-users_files/MyBible/Bibles/books_main.csv
+- https://github.com/eliranwong/LXX-Rahlfs-1935/blob/master/11_end-users_files/MyBible/Bibles/books_alternate.csv
+
+**Decision:** CATSS `06.JoshB` → CenterBLC `Josh`; `08.JudgesB` → `Judg`. CATSS `07.JoshA` and `09.JudgesA` are explicitly unsupported by the v0.1 LXX projection. They must not be coerced onto the B parent books.
+
+## R-056 — Daniel editions are separate and directly representable
+
+Wong's source has separate `DanielOG.mlxx` and `DanielTh.mlxx`; CenterBLC preserves separate `Dan` and `DanTh` books. Direct TF audit also shows separate `Bel/BelTh` and `Sus/SusTh`.
+
+Wong's main mapping names Old Greek Daniel `DanOG`; CenterBLC shortens that parent book value to `Dan`.
+
+**Decision:**
+
+- CATSS `45.DanielOG` → CenterBLC `Dan`;
+- CATSS `46.DanielTh` → CenterBLC `DanTh`.
+
+No cross-edition fallback is allowed.
+
+## R-057 — Psalm 151 is inside CenterBLC `Ps`
+
+Direct CenterBLC TF audit shows `Ps` has chapters 1 through 151. Chapter 151 contains verses 1–7.
+
+CATSS parallel distributes Psalm 151 separately as `22.Ps151.par`.
+
+The independent modern CATSS registry likewise records that CATSS LXX morphology Psalm 151 is packed at the end of the Psalms morphology source.
+
+**Decision:** `22.Ps151` maps to CenterBLC `Ps`, fixed parent chapter 151. It is not unsupported and does not require a synthetic parent book.
+
+## R-058 — CenterBLC `2Esdr` combines Ezra and Nehemiah
+
+CenterBLC `2Esdr` contains 23 chapters. Independent CATSS morphology handling documents the source convention:
+
+- 2 Esdras chapters 1–10 = Ezra;
+- 2 Esdras chapters 11–23 = Nehemiah;
+- Nehemiah 1 = 2 Esdras 11.
+
+**Decision:**
+
+- CATSS `18.Ezra` → parent `2Esdr`, same chapter;
+- CATSS `19.Neh` → parent `2Esdr`, chapter + 10.
+
+Any explicit Greek reference annotation takes precedence over this default transform once #9 has parsed it structurally.
+
+## R-059 — Esther additions require the parent `subverse` feature
+
+CenterBLC has one `Esth` book. Direct TF/source audit shows addition material represented through the same integer chapter/verse plus `subverse` values, e.g.:
+
+`1:1a ... 1:1s`, `3:13a...`, `4:17a...`, `8:12a...`, `10:3a...`.
+
+The standard TF section hierarchy remains only `book/chapter/verse`; `subverse` must therefore be read on words/nodes inside the verse.
+
+**Decision:** `subverse` is mapping-critical for the LXX parent profile. #9 must preserve suffix-bearing Greek references and filter parent word candidates by subverse where CATSS supplies that evidence.
+
+## R-060 — Parent feature fingerprints define the v0.1 LXX mapping contract
+
+At CenterBLC/LXX tag v1.0.1, Git blob IDs of mapping-critical TF files are:
+
+- `otype.tf`: `2e6480116dfda09f20e8de7c5b9feefa76322a96`
+- `oslots.tf`: `e95696a6a49f1149f8f6e850f7dfb40a26509931`
+- `book.tf`: `0bfae94bb312cb7ecd33b102babb9400c554d8be`
+- `chapter.tf`: `ec64b6bf72a6282e9da5064ca2e895171190208e`
+- `verse.tf`: `ff8766352d7aff530c6eec4f66366adcc691740e`
+- `subverse.tf`: `cecfaf2d1ddc4fd1e93958abd674a7e60e676ae5`
+- `word.tf`: `f88e525991c3d09beac713a91ef8ed41e6308a03`
+- `orig_order.tf`: `0d0339af8a512a0a59232fbccb309fc229da6ddd`
+
+**Decision:** these files and counts define the exact v0.1 parent profile. `word` is the surface identity feature; `orig_order` is provenance/diagnostic support, not a substitute for textual agreement.
+
+## R-061 — Full CATSS-vs-parent corpus diff could not be executed in this runtime
+
+The public modern CATSS project publishes prebuilt SQLite assets containing both parallel alignment and LXX morphology, which would permit a full corpus-level differential audit. This execution environment cannot retrieve GitHub release binary assets, and the CCAT text endpoint timed out.
+
+This limitation is explicit rather than replaced with an assumption.
+
+Evidence actually checked for #8 includes:
+
+- exact CenterBLC v1.0.1 TF structure and feature blobs;
+- Wong/CCAT book and versification maps;
+- modern independent CATSS parallel↔lxxmorph registry/remap logic;
+- documented raw CATSS parallel samples and repair examples;
+- positive Gen 1:1 surface equality;
+- negative/reference-sensitive Gen 23:5→23:6 case;
+- explicit CATSS documentation that Greek order may be moved.
+
+**Decision:** #9 must include an opt-in full-corpus integration audit when user-acquired CATSS data are available. A release must report mapping coverage and divergence classes; synthetic/unit evidence alone is not enough for v0.1 release confidence.
+
+
+## R-062 — The exact CenterBLC parent book universe is source-verifiable
+
+Eliran Wong's upstream versification source `08_versification/001_verse_c_book.csv` lists the exact 57 Greek book identifiers that feed the CenterBLC conversion layer. This is more authoritative for parent book-name spelling than adjacent OSIS/export maps, which intentionally use different labels for some books.
+
+Examples of those distinctions:
+
+- parent source uses `Qoh`, while an OSIS mapping may call the same source `Eccl`;
+- parent source uses `Cant`, while an OSIS mapping may call it `Song`;
+- parent source uses `Dan` and `DanTh`;
+- parent source contains `1Esdr` and `2Esdr`;
+- it does **not** contain `JoshA` or `JudgA`.
+
+Source:
+
+- https://github.com/eliranwong/LXX-Rahlfs-1935/blob/master/08_versification/001_verse_c_book.csv
+
+**Decision:** the LXX schema profile records the full 57-book parent set and tests that every CATSS source mapping target belongs to it. A future typo or accidental OSIS-name substitution therefore fails before resolver work.
