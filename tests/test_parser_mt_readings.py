@@ -51,3 +51,19 @@ def test_aramaic_and_doubt_markers_are_structured_not_lexical() -> None:
     assert row.mt_count == 1
     assert row.mt_readings[0].aramaic_section is True
     assert row.mt_readings[0].doubtful is True
+
+
+def test_postfix_aramaic_marker_applies_to_preceding_reading() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+(L M$KB/Y ,,a\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+
+    readings = doc.verses[0].alignments[0].mt_readings
+    assert len(readings) == 2
+    assert readings[0].primary == "(L"
+    assert readings[0].aramaic_section is False
+    assert readings[1].primary == "M$KB/Y"
+    assert readings[1].aramaic_section is True
