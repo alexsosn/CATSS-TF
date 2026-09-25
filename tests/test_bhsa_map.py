@@ -1,3 +1,5 @@
+import collections.abc
+
 import pytest
 
 from catss_tf.bhsa_map import (
@@ -13,7 +15,9 @@ from catss_tf.bhsa_map import (
 from catss_tf.parser import parse_parallel_text
 
 
-def _provider(*verses: BhsaVerse):
+def _provider(
+    *verses: BhsaVerse,
+) -> collections.abc.Callable[[str, int, int], BhsaVerse | None]:
     by_ref = {(v.book, v.chapter, v.verse): v for v in verses}
 
     def lookup(book: str, chapter: int, verse: int) -> BhsaVerse | None:
