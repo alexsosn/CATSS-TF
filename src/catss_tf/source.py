@@ -134,7 +134,8 @@ def download_parallel_source(
         finally:
             partial.unlink(missing_ok=True)
 
-    return inspect_parallel_source(root)
+    requested_paths = tuple(root / name for name in names)
+    return _manifest_for_paths(root, requested_paths)
 
 
 def inspect_parallel_source(directory: str | os.PathLike[str]) -> ParallelSourceManifest:
@@ -159,9 +160,15 @@ def inspect_parallel_source(directory: str | os.PathLike[str]) -> ParallelSource
             f"CATSS parallel source contains no direct-child .par files: {root}"
         )
 
+    return _manifest_for_paths(root, tuple(paths))
+
+
+def _manifest_for_paths(
+    root: pathlib.Path, paths: tuple[pathlib.Path, ...]
+) -> ParallelSourceManifest:
     files = tuple(
         SourceFileFingerprint(
-            relative_path=path.name,
+            relative_path=path.relative_to(root).as_posix(),
             size_bytes=path.stat().st_size,
             sha256=_sha256(path),
         )
