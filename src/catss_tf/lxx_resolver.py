@@ -597,7 +597,23 @@ def _alignment_reference(
     default_chapter: int,
     default_verse: int,
 ) -> tuple[_ReferenceKey | None, bool, LxxMappingFinding | None]:
-    distinct = tuple(dict.fromkeys(alignment.lxx_references))
+    if not alignment.lxx_references:
+        return (
+            _ReferenceKey(default_book, default_chapter, default_verse, None),
+            False,
+            None,
+        )
+
+    resolved = tuple(
+        _ReferenceKey(
+            default_book,
+            default_chapter if reference.chapter is None else reference.chapter,
+            reference.verse,
+            reference.subverse,
+        )
+        for reference in alignment.lxx_references
+    )
+    distinct = tuple(dict.fromkeys(resolved))
     if len(distinct) > 1:
         return (
             None,
@@ -608,30 +624,15 @@ def _alignment_reference(
                 chapter=source_chapter,
                 verse=source_verse,
                 alignment_id=alignment.alignment_id,
-                catss_value=" ".join(reference.raw for reference in distinct),
+                catss_value=" ".join(
+                    reference.raw for reference in alignment.lxx_references
+                ),
                 parent_value=None,
                 message="one CATSS alignment carries multiple distinct Greek references",
             ),
         )
 
-    if not distinct:
-        return (
-            _ReferenceKey(default_book, default_chapter, default_verse, None),
-            False,
-            None,
-        )
-
-    override: GreekReference = distinct[0]
-    return (
-        _ReferenceKey(
-            default_book,
-            default_chapter if override.chapter is None else override.chapter,
-            override.verse,
-            override.subverse,
-        ),
-        True,
-        None,
-    )
+    return distinct[0], True, None
 
 
 def _find_candidates(
