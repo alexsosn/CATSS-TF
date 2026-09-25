@@ -51,8 +51,8 @@ The software in this repository is MIT licensed. CATSS data and the parent corpo
 
 ## CATSS source contract
 
-The initial release will consume a **local user-supplied directory of CATSS parallel `.par` files**. CATSS-TF does not download CATSS and does not require the CATSS morphology collection.
+The initial release consumes a local directory of CATSS parallel `.par` files. Users may point CATSS-TF at an existing directory or explicitly invoke its downloader to fetch those files directly from the upstream CCAT host. CATSS morphology files are not required.
 
-The source directory is fingerprinted by filename, byte size, and SHA-256 before parsing. Real CATSS files are never committed to this repository; tests use synthetic fixtures.
+The user is responsible for the upstream CATSS/CCAT terms that apply to acquisition and use. CATSS-TF does not redistribute the downloaded corpus. The local source directory is fingerprinted by filename, byte size, and SHA-256 before parsing, and repository tests use synthetic fixtures only.
 
 See [research.md](research.md), [design.md](design.md), and [LICENSE_SCOPE.md](LICENSE_SCOPE.md) for the rationale and data-license boundary.

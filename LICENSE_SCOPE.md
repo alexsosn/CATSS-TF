@@ -29,8 +29,8 @@ Third-party software dependencies retain their own licenses. Copying source from
 
 ## CATSS acquisition policy
 
-CATSS-TF v0.1 does not download CATSS data. Users provide a local directory containing CATSS parallel `.par` files that they obtained under the applicable upstream terms.
+CATSS-TF may provide software that downloads CATSS parallel files directly from the upstream CCAT host when explicitly invoked by the user. The downloaded files remain upstream CATSS data and are not covered by CATSS-TF's MIT license.
 
-The source-inspection code computes filenames, sizes, and cryptographic checksums for reproducibility; those fingerprints do not relicense or redistribute the underlying CATSS content.
+Users are responsible for determining and following the upstream terms applicable to their acquisition, use, and redistribution of CATSS data.
 
-Do not add a CATSS downloader, mirror, bundled sample from the real corpus, or prebuilt derived database without a separately reviewed licensing/acquisition decision.
+CATSS-TF does not bundle CATSS data, mirror them in this repository, publish prebuilt CATSS databases/modules, or relicense downloaded content. Source inspection records filenames, sizes, and cryptographic checksums only for reproducibility.

@@ -140,20 +140,24 @@ The modern `curran-gehring/catss` README independently describes the CATSS data 
 
 - https://github.com/curran-gehring/catss
 
-**Implication:** public availability of the raw files is not equivalent to a permissive data license. CATSS-TF must not treat an HTTP GET as sufficient evidence that downstream redistribution or automated third-party acquisition is authorized.
+**Implication:** public availability of the raw files is not equivalent to a permissive data license. CATSS-TF must not redistribute the CATSS corpus as if it were MIT-licensed; users remain responsible for the upstream terms that apply to their own acquisition and use.
 
-## R-011 — v0.1 should not automate CATSS acquisition
+## R-011 — v0.1 may automate direct user acquisition from CCAT
 
-Both examined parser projects can fetch CCAT files directly over HTTP. Cody Kingham's MIT-licensed downloader downloads the parallel and morphology collections; `curran-gehring/catss` similarly fetches CCAT documentation, parallel files, and morphology files.
-
-However, an automated downloader in CATSS-TF cannot itself satisfy the declaration's recipient-registration requirement, and CATSS-TF cannot verify that a user has completed whatever registration/permission process applies to their copy. The lack of an active CCAT maintainer makes inventing a replacement click-through particularly inappropriate.
+Both examined parser projects fetch CCAT files directly over HTTP. Cody Kingham's MIT-licensed downloader downloads the CATSS collections; `curran-gehring/catss` likewise downloads raw CCAT files at build time while keeping the data out of its own repository.
 
 Sources:
 
 - https://github.com/codykingham/CATSS_parsers/blob/master/download_catss.py
 - https://github.com/curran-gehring/catss/blob/main/catss/download.py
 
-**Decision:** v0.1 accepts only a **user-supplied local CATSS parallel directory**. CATSS-TF does not download CATSS data. Acquisition remains the user's responsibility under upstream terms. A downloader may be reconsidered only after a separate issue establishes a valid contemporary acquisition/acceptance mechanism.
+The important distribution boundary is between **CATSS-TF redistributing CATSS data** and **software run by the user downloading data directly from the upstream CCAT host**. CATSS-TF does not need to police or simulate the user's compliance workflow.
+
+**Decision:** v0.1 supports both:
+- an already existing local CATSS parallel directory; and
+- an explicit user-invoked downloader that retrieves the parallel `.par` files directly from CCAT into a local directory.
+
+CATSS-TF documents the upstream terms and leaves compliance to the user. It does not bundle CATSS data, cache them in releases, or relicense downloaded files.
 
 ## R-012 — v0.1 needs only the CATSS parallel files, not the LXX morphology collection
 

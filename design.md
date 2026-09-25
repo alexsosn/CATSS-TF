@@ -228,20 +228,20 @@ Rejected because of upstream data licensing and parent-version coupling.
 
 ## 11. CATSS source/acquisition contract
 
-The v0.1 materializer boundary is an explicit local path supplied by the user:
+The v0.1 materializer boundary is a local CATSS parallel directory. That directory may either already exist or be populated by an explicit user-invoked downloader:
 
 ```text
-user-acquired CATSS parallel directory
-            |
-            | direct child *.par files only
-            v
-    source inspection/fingerprint
-            |
-            v
-       CATSS parser (#4)
+existing local directory ───────┐
+                                ├─> direct child *.par files
+user invokes CCAT downloader ───┘             |
+                                              v
+                                  source inspection/fingerprint
+                                              |
+                                              v
+                                         CATSS parser (#4)
 ```
 
-CATSS-TF does not fetch CATSS over the network and does not treat installation of the Python package as acceptance of CATSS data terms.
+The downloader retrieves files directly from the upstream CCAT host onto the user's machine. CATSS-TF does not redistribute those files and does not attempt to decide whether a particular user's acquisition/use complies with upstream terms.
 
 ### Source directory contract
 
@@ -255,9 +255,15 @@ The configured directory:
 
 The source inspector returns a deterministic manifest sorted by filename. Each entry contains relative filename, byte size, and SHA-256.
 
+### Acquisition design
+
+The downloader is deliberately small and user-invoked. It fetches only the known CATSS parallel `.par` files required by this project, writes them to a user-chosen local directory, and then runs the same source fingerprinting used for pre-existing local data.
+
+License/usage compliance remains the user's responsibility. CATSS-TF records links to upstream terms but does not implement a click-through, registration database, or other policy enforcement.
+
 ### Rejected acquisition designs
 
-**Built-in downloader for v0.1:** rejected because CATSS-TF cannot satisfy or verify the CCAT declaration/registration requirements on the user's behalf.
+**Bundle CATSS data in CATSS-TF releases:** rejected because the repository's MIT license does not relicense CATSS data.
 
 **Depend on `curran-gehring/catss`:** rejected as the production source boundary because its code is CC BY-NC 4.0 and it adds a SQLite/morphology layer CATSS-TF does not require.
 
@@ -265,6 +271,13 @@ The source inspector returns a deterministic manifest sorted by filename. Each e
 
 **Recursive source discovery:** rejected because it makes source identity dependent on directory layout and risks silently consuming unrelated datasets.
 
-### Future acquisition work
+### Downloader behavior
 
-A future explicit acquisition command is not prohibited, but it requires a separate reviewed decision documenting a contemporary way to satisfy the applicable upstream terms. It must not be introduced opportunistically inside parser/materializer work.
+The downloader must be deterministic and testable without network access:
+
+- the set of expected parallel filenames is explicit;
+- the CCAT base URL is explicit;
+- existing non-empty files are skipped unless overwrite is requested;
+- writes are atomic through a temporary file;
+- empty responses are rejected;
+- tests inject a fake fetch function and never contact CCAT.
