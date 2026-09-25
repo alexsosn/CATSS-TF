@@ -750,7 +750,7 @@ Compatibility fields such as `mt_tokens` are derived from `mt_readings`; resolve
 
 It:
 
-- removes CATSS `/` morpheme separators inside the segment;
+- removes CATSS `/` and `\\` internal segmentation separators inside the segment;
 - maps Michigan–Claremont consonants;
 - ignores only documented non-consonantal Hebrew BETA material;
 - applies final kaf/mem/nun/pe/tsade at word end;
@@ -771,7 +771,7 @@ Neither function performs fuzzy folding such as equating shin and sin or final/n
 Flatten CATSS readings in alignment/source order:
 
 - ordinary and Ketiv-bearing readings contribute one or more MT positions after maqaf expansion;
-- `/` never creates a new position;
+- `/` and `\\` never create a new position;
 - Qere is an alternative attached to the corresponding expanded position(s);
 - column B contributes zero positions;
 - LXX-plus contributes zero positions.
