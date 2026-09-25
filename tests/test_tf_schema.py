@@ -330,3 +330,106 @@ def test_module_writer_rejects_warp_features(tmp_path: pathlib.Path) -> None:
             metadata=_metadata(),
             max_node=1,
         )
+
+
+def test_duplicate_membership_record_is_rejected_not_given_two_lanes() -> None:
+    duplicate = _membership()
+
+    with pytest.raises(TfSchemaError, match="duplicate_membership"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(duplicate, duplicate),
+            anchors=(),
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("line_first", 0),
+        ("line_last", 0),
+    ),
+)
+def test_source_line_numbers_are_one_based(field: str, value: int) -> None:
+    membership = dataclasses.replace(_membership(), **{field: value})
+
+    with pytest.raises(TfSchemaError, match="source line"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(membership,),
+            anchors=(),
+        )
+
+
+def test_source_side_indices_cannot_exceed_alignment_cardinality() -> None:
+    bad_mt = dataclasses.replace(_membership(mt_n=1, mt_i=2), mt_i=2)
+    bad_lxx = _membership(
+        mt_i=None,
+        mt_segment=None,
+        lxx_n=1,
+        lxx_i=2,
+        mapping_kind="exact",
+    )
+
+    with pytest.raises(TfSchemaError, match="mt_i"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(bad_mt,),
+            anchors=(),
+        )
+
+    with pytest.raises(TfSchemaError, match="lxx_i"):
+        compile_tf_features(
+            projection="lxx",
+            max_node=10,
+            memberships=(bad_lxx,),
+            anchors=(),
+        )
+
+
+def test_projection_requires_its_mapped_side_index_and_nonempty_cardinality() -> None:
+    with pytest.raises(TfSchemaError, match="BHSA membership"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(
+                _membership(mt_n=0, mt_i=None, mt_segment=None),
+            ),
+            anchors=(),
+        )
+
+    with pytest.raises(TfSchemaError, match="LXX membership"):
+        compile_tf_features(
+            projection="lxx",
+            max_node=10,
+            memberships=(
+                _membership(
+                    mt_i=None,
+                    mt_segment=None,
+                    lxx_n=0,
+                    lxx_i=None,
+                ),
+            ),
+            anchors=(),
+        )
+
+
+def test_anchor_token_counts_follow_empty_side_semantics() -> None:
+    with pytest.raises(TfSchemaError, match="lxx_plus"):
+        compile_tf_features(
+            projection="bhsa",
+            max_node=10,
+            memberships=(),
+            anchors=(TfAnchorEvent(node=9, kind="lxx_plus", token_n=0),),
+        )
+
+    with pytest.raises(TfSchemaError, match="lxx_minus"):
+        compile_tf_features(
+            projection="lxx",
+            max_node=10,
+            memberships=(),
+            anchors=(TfAnchorEvent(node=9, kind="lxx_minus", token_n=1),),
+        )
