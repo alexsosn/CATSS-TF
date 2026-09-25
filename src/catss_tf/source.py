@@ -1,16 +1,77 @@
-"""Inspection of user-supplied CATSS parallel source directories."""
+"""CATSS parallel-source acquisition and deterministic source inspection."""
 
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable
 from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 from typing import Literal
+from urllib.request import Request, urlopen
+
+
+CCAT_PARALLEL_BASE_URL = "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel"
+CCAT_USER_DECLARATION_URL = (
+    "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/00.UserDec.txt"
+)
+
+CATSS_PARALLEL_FILENAMES: tuple[str, ...] = (
+    "01.Genesis.par",
+    "02.Exodus.par",
+    "03.Lev.par",
+    "04.Num.par",
+    "05.Deut.par",
+    "06.JoshB.par",
+    "07.JoshA.par",
+    "08.JudgesB.par",
+    "09.JudgesA.par",
+    "10.Ruth.par",
+    "11.1Sam.par",
+    "12.2Sam.par",
+    "13.1Kings.par",
+    "14.2Kings.par",
+    "15.1Chron.par",
+    "16.2Chron.par",
+    "17.1Esdras.par",
+    "18.Esther.par",
+    "18.Ezra.par",
+    "19.Neh.par",
+    "20.Psalms.par",
+    "22.Ps151.par",
+    "23.Prov.par",
+    "24.Qoh.par",
+    "25.Cant.par",
+    "26.Job.par",
+    "27.Sirach.par",
+    "28.Hosea.par",
+    "29.Micah.par",
+    "30.Amos.par",
+    "31.Joel.par",
+    "32.Jonah.par",
+    "33.Obadiah.par",
+    "34.Nahum.par",
+    "35.Hab.par",
+    "36.Zeph.par",
+    "37.Haggai.par",
+    "38.Zech.par",
+    "39.Malachi.par",
+    "40.Isaiah.par",
+    "41.Jer.par",
+    "42.Baruch.par",
+    "43.Lam.par",
+    "44.Ezekiel.par",
+    "45.DanielOG.par",
+    "46.DanielTh.par",
+)
 
 
 class SourceInspectionError(ValueError):
     """Raised when a configured CATSS source cannot satisfy the source contract."""
+
+
+class SourceDownloadError(RuntimeError):
+    """Raised when CATSS source acquisition cannot produce a valid local file."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,11 +91,59 @@ class ParallelSourceManifest:
     source_kind: Literal["catss-parallel"] = "catss-parallel"
 
 
-def inspect_parallel_source(directory: str | PathLike[str]) -> ParallelSourceManifest:
-    """Fingerprint direct-child *.par files in a user-supplied directory.
+def download_parallel_source(
+    destination: str | PathLike[str],
+    *,
+    base_url: str = CCAT_PARALLEL_BASE_URL,
+    filenames: Iterable[str] = CATSS_PARALLEL_FILENAMES,
+    overwrite: bool = False,
+) -> ParallelSourceManifest:
+    """Download CATSS parallel files directly from the configured upstream host.
 
-    Discovery is deliberately non-recursive. CATSS-TF does not acquire data and
-    does not infer a broader CATSS installation from the supplied path.
+    The caller is responsible for any upstream terms governing CATSS data.
+    CATSS-TF supplies acquisition software but does not redistribute the corpus.
+    Existing non-empty files are preserved unless overwrite is true.
+    """
+
+    root = Path(destination)
+    root.mkdir(parents=True, exist_ok=True)
+
+    names = tuple(sorted(filenames))
+    if not names:
+        raise SourceDownloadError("no CATSS parallel filenames were requested")
+    if len(names) != len(set(names)):
+        raise SourceDownloadError("duplicate CATSS parallel filenames were requested")
+
+    upstream = base_url.rstrip("/")
+    for name in names:
+        _validate_filename(name)
+        target = root / name
+        if target.is_file() and target.stat().st_size > 0 and not overwrite:
+            continue
+
+        url = f"{upstream}/{name}"
+        try:
+            payload = _fetch_bytes(url)
+        except Exception as exc:
+            raise SourceDownloadError(f"failed to download {url}: {exc}") from exc
+        if not payload:
+            raise SourceDownloadError(f"empty response while downloading {url}")
+
+        partial = target.with_name(f"{target.name}.part")
+        try:
+            partial.write_bytes(payload)
+            partial.replace(target)
+        finally:
+            partial.unlink(missing_ok=True)
+
+    return inspect_parallel_source(root)
+
+
+def inspect_parallel_source(directory: str | PathLike[str]) -> ParallelSourceManifest:
+    """Fingerprint direct-child *.par files in a local CATSS parallel directory.
+
+    Discovery is deliberately non-recursive so an accidentally broad path does
+    not silently pull unrelated CATSS collections into the parser input.
     """
 
     root = Path(directory)
@@ -61,6 +170,17 @@ def inspect_parallel_source(directory: str | PathLike[str]) -> ParallelSourceMan
         for path in paths
     )
     return ParallelSourceManifest(files=files)
+
+
+def _validate_filename(name: str) -> None:
+    if not name.endswith(".par") or "/" in name or "\\" in name or Path(name).name != name:
+        raise SourceDownloadError(f"invalid CATSS parallel filename: {name!r}")
+
+
+def _fetch_bytes(url: str) -> bytes:
+    request = Request(url, headers={"User-Agent": "CATSS-TF/0.0.0"})
+    with urlopen(request, timeout=60) as response:
+        return response.read()
 
 
 def _sha256(path: Path) -> str:
