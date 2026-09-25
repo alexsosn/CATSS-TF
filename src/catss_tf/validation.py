@@ -37,6 +37,7 @@ class ValidationSummary:
     invalid_alignment_ids: int
     duplicate_alignment_ids: int
     duplicate_source_names: int
+    inconsistent_header_books: int
     error_count: int
     unresolved_count: int
     ignored_count: int
@@ -86,6 +87,7 @@ def validate_documents(
     invalid_alignment_ids = 0
     duplicate_alignment_ids = 0
     duplicate_source_names = 0
+    inconsistent_header_books = 0
 
     for document in documents:
         if document.source_name in seen_source_names:
@@ -104,6 +106,25 @@ def validate_documents(
             seen_source_names.add(document.source_name)
 
         verses += len(document.verses)
+        if document.verses:
+            expected_book = document.verses[0].book
+            for verse in document.verses[1:]:
+                if verse.book != expected_book:
+                    inconsistent_header_books += 1
+                    findings.append(
+                        _finding(
+                            code="inconsistent_header_book",
+                            base_severity="error",
+                            allowed_codes=allowed_codes,
+                            source_name=document.source_name,
+                            line_no=verse.header_line_no,
+                            message=(
+                                f"expected CATSS header book {expected_book!r}, "
+                                f"found {verse.book!r}"
+                            ),
+                        )
+                    )
+
         source_lines = set(document.data_line_numbers)
         source_data_lines += len(source_lines)
         owned_lines: dict[int, str] = {}
@@ -257,6 +278,7 @@ def validate_documents(
             invalid_alignment_ids=invalid_alignment_ids,
             duplicate_alignment_ids=duplicate_alignment_ids,
             duplicate_source_names=duplicate_source_names,
+            inconsistent_header_books=inconsistent_header_books,
             error_count=error_count,
             unresolved_count=unresolved_count,
             ignored_count=ignored_count,
