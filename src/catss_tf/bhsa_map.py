@@ -383,6 +383,8 @@ def _unsupported_report(
 def _parent_snapshot_problem(parent: BhsaVerse) -> str | None:
     if parent.verse_node <= 0:
         return f"verse_node={parent.verse_node}"
+    if not parent.words:
+        return "no word slots"
     nodes = tuple(word.node for word in parent.words)
     if any(node <= 0 for node in nodes):
         return ",".join(str(node) for node in nodes)
