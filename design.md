@@ -186,7 +186,13 @@ Per-alignment source row/reference should remain available where practical.
 
 Initial package name: `catss-tf`; Python import: `catss_tf`.
 
-Expected future command surface:
+Command surface begins with source acquisition:
+
+```text
+catss-tf fetch <directory>
+```
+
+Future issues may extend the same CLI with:
 
 ```text
 catss-tf materialize bhsa ...
@@ -194,7 +200,7 @@ catss-tf materialize lxx ...
 catss-tf validate ...
 ```
 
-The CLI is not implemented in bootstrap and must be designed/tested issue-by-issue.
+Each new subcommand remains issue-driven and RED-first.
 
 ## 9. Agora integration
 
