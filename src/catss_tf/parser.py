@@ -20,7 +20,7 @@ _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
 class Annotation:
     """One source annotation preserved from a CATSS alignment cell."""
 
-    side: typing.Literal["mt", "lxx"]
+    side: typing.Literal["mt_a", "mt_b", "lxx"]
     kind: str
     raw: str
 
@@ -287,7 +287,8 @@ def _build_alignment(
 
     annotations = tuple(
         [
-            *_extract_annotations("mt", mt_raw),
+            *_extract_annotations("mt_a", mt_col_a),
+            *(_extract_annotations("mt_b", mt_col_b) if mt_col_b is not None else []),
             *_extract_annotations("lxx", lxx_raw),
         ]
     )
@@ -365,7 +366,7 @@ def _join_continued_cells(cells: typing.Iterable[str]) -> str:
 
 
 def _extract_annotations(
-    side: typing.Literal["mt", "lxx"], cell: str
+    side: typing.Literal["mt_a", "mt_b", "lxx"], cell: str
 ) -> list[Annotation]:
     annotations: list[Annotation] = []
     for match in _BRACE_BLOCK.finditer(cell):
@@ -373,7 +374,7 @@ def _extract_annotations(
         annotations.append(Annotation(side=side, kind=_brace_kind(raw), raw=raw))
     for match in _ANGLE_NOTE.finditer(cell):
         annotations.append(Annotation(side=side, kind="note", raw=match.group(0)))
-    if side == "mt":
+    if side in {"mt_a", "mt_b"}:
         for match in _MT_DOT_SIGLUM.finditer(cell):
             raw = match.group(1)
             annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
