@@ -113,10 +113,7 @@ _MEMBERSHIP_FLAGS: dict[str, str] = {
     "catss_repetition": "CATSS repetition annotation",
 }
 
-_AGGREGATE_BY_FLAG = {
-    flag: f"{flag}_members"
-    for flag in _MEMBERSHIP_FLAGS
-}
+_AGGREGATE_BY_FLAG = {flag: f"{flag}_members" for flag in _MEMBERSHIP_FLAGS}
 
 _ANCHOR_SPECS: dict[str, tuple[ValueType, str]] = {
     "catss_lxx_plus_n": ("int", "number of CATSS Hebrew-empty/LXX-plus groups on this verse"),
@@ -246,10 +243,7 @@ SIDECAR_COLUMNS: dict[str, tuple[str, ...]] = {
     ),
 }
 
-_SOURCE_RANK = {
-    source: index
-    for index, source in enumerate(CATSS_PARALLEL_FILENAMES)
-}
+_SOURCE_RANK = {source: index for index, source in enumerate(CATSS_PARALLEL_FILENAMES)}
 _ROLE_PRIORITY = {
     "exact": 0,
     "ketiv_qere": 0,
@@ -420,37 +414,25 @@ def _validate_membership(
             raise TfSchemaError(f"{name} is 1-based and must be positive, got {value}")
 
     if membership.mt_i is not None and membership.mt_i > membership.mt_n:
-        raise TfSchemaError(
-            f"mt_i {membership.mt_i} exceeds CATSS mt_n {membership.mt_n}"
-        )
+        raise TfSchemaError(f"mt_i {membership.mt_i} exceeds CATSS mt_n {membership.mt_n}")
     if membership.lxx_i is not None and membership.lxx_i > membership.lxx_n:
-        raise TfSchemaError(
-            f"lxx_i {membership.lxx_i} exceeds CATSS lxx_n {membership.lxx_n}"
-        )
+        raise TfSchemaError(f"lxx_i {membership.lxx_i} exceeds CATSS lxx_n {membership.lxx_n}")
 
     if projection == "bhsa" and (membership.mt_n < 1 or membership.mt_i is None):
-        raise TfSchemaError(
-            "BHSA membership requires a non-empty CATSS MT side and mt_i"
-        )
+        raise TfSchemaError("BHSA membership requires a non-empty CATSS MT side and mt_i")
     if projection == "lxx" and (membership.lxx_n < 1 or membership.lxx_i is None):
-        raise TfSchemaError(
-            "LXX membership requires a non-empty CATSS Greek side and lxx_i"
-        )
+        raise TfSchemaError("LXX membership requires a non-empty CATSS Greek side and lxx_i")
 
     unknown_flags = membership.flags - MEMBERSHIP_FLAGS
     if unknown_flags:
-        raise TfSchemaError(
-            "unknown CATSS flag(s): " + ", ".join(sorted(unknown_flags))
-        )
+        raise TfSchemaError("unknown CATSS flag(s): " + ", ".join(sorted(unknown_flags)))
     if "catss_retro" in membership.flags and membership.retro_kind is None:
         raise TfSchemaError("catss_retro requires a structured retro_kind")
 
 
 def _validate_parent_node(max_node: int, node: int) -> None:
     if not 1 <= node <= max_node:
-        raise TfSchemaError(
-            f"parent node {node} is outside validated parent range 1..{max_node}"
-        )
+        raise TfSchemaError(f"parent node {node} is outside validated parent range 1..{max_node}")
 
 
 def _membership_sort_key(
