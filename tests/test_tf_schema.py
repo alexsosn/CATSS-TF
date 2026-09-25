@@ -558,3 +558,40 @@ def test_anchor_source_must_match_alignment_identity() -> None:
                 ),
             ),
         )
+
+
+
+def test_same_alignment_cannot_consume_two_lanes_on_one_parent_node() -> None:
+    first = _membership(
+        mt_i=None,
+        mt_segment=None,
+        lxx_n=2,
+        lxx_i=1,
+        mapping_kind="exact",
+    )
+    second = dataclasses.replace(first, lxx_i=2)
+
+    with pytest.raises(TfSchemaError, match="duplicate_alignment_membership"):
+        compile_tf_features(
+            projection="lxx",
+            max_node=10,
+            memberships=(first, second),
+            anchors=(),
+        )
+
+
+def test_module_writer_rejects_stale_existing_tf_features(tmp_path: pathlib.Path) -> None:
+    module = tmp_path / "module"
+    module.mkdir()
+    (module / "catss_alignment_id.tf").write_text(
+        "@node\n@valueType=str\n\n1\tstale\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(TfSchemaError, match="already contains TF feature"):
+        write_tf_module(
+            module,
+            {"catss_alignment_n": {1: 1}},
+            metadata=_metadata(),
+            max_node=1,
+        )
