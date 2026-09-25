@@ -542,6 +542,8 @@ parser diagnostic line numbers
 
 A line may both belong to an alignment and carry a diagnostic (for example an unsplit row); that is not loss. A physical source line owned by more than one independent alignment is an error.
 
+Each CATSS parallel file is also expected to use one stable book token in its verse headers. A later header with a different book token is a hard validation error, guarding against verse-like data lines being misclassified as headers.
+
 ### 14.2 Typed findings
 
 `ValidationFinding` contains scalar fields:
@@ -566,6 +568,7 @@ Initial finding codes include:
 - `alignment_id_mismatch`
 - `duplicate_alignment_id`
 - `duplicate_source_name`
+- `inconsistent_header_book`
 - parser diagnostic codes such as `orphan_line`, `unsplit_row`, and `malformed_continuation`
 - `unknown_annotation`
 - `unknown_mt_strategy_siglum`
@@ -603,6 +606,7 @@ unknown_annotations
 invalid_alignment_ids
 duplicate_alignment_ids
 duplicate_source_names
+inconsistent_header_books
 error_count
 unresolved_count
 ignored_count
