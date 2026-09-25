@@ -13,7 +13,12 @@ HB5 HB6\tGR5 GR6
     )
 
     rows = doc.verses[0].alignments
-    assert [row.ratio for row in rows] == ["1:1", "1:2", "2:1", "2:2"]
+    assert [(row.mt_count, row.lxx_count) for row in rows] == [
+        (1, 1),
+        (1, 2),
+        (2, 1),
+        (2, 2),
+    ]
     assert rows[1].mt_tokens == ("HB2",)
     assert rows[1].lxx_tokens == ("GR2", "GR3")
     assert rows[2].mt_tokens == ("HB3", "HB4")
@@ -35,11 +40,11 @@ HBA =:ALT .dr\tGRA
     assert plus.mt_col_a == "--+ ''"
     assert plus.mt_col_b == ";HBPLUS"
     assert plus.mt_tokens == ()
-    assert plus.ratio == "0:1"
+    assert (plus.mt_count, plus.lxx_count) == (0, 1)
 
     assert minus.is_lxx_minus is True
     assert minus.lxx_tokens == ()
-    assert minus.ratio == "1:0"
+    assert (minus.mt_count, minus.lxx_count) == (1, 0)
 
     assert retro.mt_col_a == "HBA"
     assert retro.mt_col_b == ":ALT .dr"
@@ -74,14 +79,14 @@ HBPLACE\t{...GRPLACE}
 
     local, remote, stylistic, placeholder = doc.verses[0].alignments
 
-    assert "local" in local.transposition_kinds
+    assert local.is_transposition_local is True
     assert local.mt_tokens == ("HBLOCAL",)
     assert local.lxx_tokens == ("GRLOCAL",)
 
-    assert "remote" in remote.transposition_kinds
-    assert "stylistic" in stylistic.transposition_kinds
+    assert remote.is_transposition_remote is True
+    assert stylistic.is_transposition_stylistic is True
     assert stylistic.lxx_tokens == ("GRSTYLE",)
-    assert "remote" in placeholder.transposition_kinds
+    assert placeholder.is_transposition_remote is True
     assert placeholder.lxx_tokens == ("GRPLACE",)
 
 
@@ -94,7 +99,7 @@ HB ~\tGR
     )
 
     row = doc.verses[0].alignments[0]
-    assert "local" in row.transposition_kinds
+    assert row.is_transposition_local is True
     assert row.raw_lines == ("HB ~\tGR",)
 
 
@@ -115,7 +120,7 @@ HBY\t
     assert first.raw_lines == ("HBX\tGRX #", "#\tGRY")
     assert first.mt_tokens == ("HBX",)
     assert first.lxx_tokens == ("GRX", "GRY")
-    assert first.ratio == "1:2"
+    assert (first.mt_count, first.lxx_count) == (1, 2)
 
     assert second.source_lines == (4, 5)
     assert second.mt_tokens == ("HBZ", "HBY")
