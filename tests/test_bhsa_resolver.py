@@ -258,3 +258,65 @@ HB\tGR
 
     assert report.summary.unknown_documents == 1
     assert report.findings[0].code == "unknown_catss_source"
+
+
+def test_invalid_catss_document_cannot_emit_bhsa_mappings() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+BR) {zzUNKNOWN}\tEPOI
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(BhsaWord(101, "ברא", None, None))
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.word_mappings == ()
+    assert report.summary.validation_failures == 1
+    assert report.findings[0].code == "catss_validation_unknown_annotation"
+
+
+def test_explicitly_allowed_unresolved_validation_code_can_proceed() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+BR) {zzUNKNOWN}\tEPOI
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(BhsaWord(101, "ברא", None, None))
+
+    report = resolve_bhsa_document(
+        doc,
+        provider,
+        allowed_validation_codes={"unknown_annotation"},
+    )
+
+    assert len(report.word_mappings) == 1
+    assert report.summary.validation_failures == 0
+    assert report.summary.validation_ignored == 1
+
+
+def test_hard_validation_error_cannot_be_allowed_through_resolver() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+BR)\tEPOI
+""",
+        source_name="01.Genesis.par",
+    )
+    verse = doc.verses[0]
+    bad_row = dataclasses.replace(verse.alignments[0], alignment_id="catss:tampered")
+    bad_doc = dataclasses.replace(
+        doc,
+        verses=(dataclasses.replace(verse, alignments=(bad_row,)),),
+    )
+    provider = _provider(BhsaWord(101, "ברא", None, None))
+
+    report = resolve_bhsa_document(
+        bad_doc,
+        provider,
+        allowed_validation_codes={"alignment_id_mismatch"},
+    )
+
+    assert report.word_mappings == ()
+    assert report.summary.validation_failures == 1
+    assert report.findings[0].code == "catss_validation_alignment_id_mismatch"
