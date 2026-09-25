@@ -1188,9 +1188,10 @@ Any failed gate yields zero mappings for that document.
 - locate a verse with `T.nodeFromSection((book, chapter, verse))`;
 - descend to `word` slots;
 - read `word`, `subverse`, and `orig_order`;
-- optionally filter words by exact `subverse`.
+- when `subverse` is absent, keep only words whose parent `subverse` feature is empty;
+- when `subverse` is present, keep only words with that exact suffix.
 
-It does not repair references or surfaces.
+Thus canonical verse material and lettered additions are never mixed in one placement span. It does not repair references or surfaces.
 
 ### 18.10 Corpus audit
 
