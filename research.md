@@ -994,3 +994,28 @@ The Text-Fabric adapter is deliberately thin and requires the caller/materialize
 A production audit must not use a looser path than ordinary materialization.
 
 **Decision:** #9 exposes `resolve_lxx_documents()`, which validates the parent once, resolves every supplied CATSS document through the same pure mapping engine, and returns scalar coverage/divergence counts plus typed findings. Normal CI uses synthetic providers; users with CATSS and CenterBLC installed can run the same resolver over the full source set later without a separate mapping implementation.
+
+
+## R-069 — Some CATSS transposition rows deliberately name the same printed Greek word twice
+
+The CATSS parser research documents Gen 1:29:
+
+```text
+ZR(     {..^SPORI/MOU}
+ZR(     SPE/RMATOS
+{...}   SPORI/MOU
+L/KM    U(MI=N
+```
+
+The first `SPORI/MOU` is wrapped as a stylistic/grammatical transposition aligned with the relevant Hebrew element; the later row with MT `{...}` carries the same Greek surface at its printed position.
+
+A blanket “one CATSS row per parent word” rule therefore rejects a documented valid CATSS structure.
+
+**Decision:** exact parent-word overlap is permitted only for a complementary, explicit pair:
+
+- a Greek-side `transposition_stylistic` or text-bearing `transposition_remote` alignment; and
+- an MT-side bare `{...}` transposition carrier;
+
+and only when both resolve to the **identical complete parent span**. Partial overlaps and unmarked duplicate rows remain conflicts.
+
+Resolver output distinguishes `mapping_kind=transposition_alignment` from `mapping_kind=transposition_carrier`. This preserves both CATSS row identities without pretending they are two printed Greek tokens. Issue #10 must account for this real many-CATSS-rows→one-parent-node case without encoding an opaque list of alignment IDs in TF.
