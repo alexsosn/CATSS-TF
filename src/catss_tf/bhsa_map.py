@@ -1,9 +1,9 @@
 """Deterministic CATSS Hebrew -> BHSA 2021 word-slot resolver."""
 
+import collections.abc
 import dataclasses
 import enum
 import unicodedata
-from collections.abc import Callable
 
 from catss_tf.bhsa_schema import BhsaSourceStatus, classify_catss_source
 from catss_tf.parser import AlignmentRecord, ParallelDocument, VerseRecord
@@ -230,7 +230,7 @@ def normalize_bhsa_hebrew(text: str) -> str:
 def resolve_document_to_bhsa(
     document: ParallelDocument,
     *,
-    verse_lookup: Callable[[str, int, int], BhsaVerse | None],
+    verse_lookup: collections.abc.Callable[[str, int, int], BhsaVerse | None],
 ) -> BhsaMappingReport:
     """Resolve one canonical CATSS document against BHSA verse snapshots."""
 
