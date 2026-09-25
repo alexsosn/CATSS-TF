@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+
 from catss_tf import source
 from catss_tf.source import SourceInspectionError, inspect_parallel_source
 
