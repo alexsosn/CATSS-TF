@@ -224,3 +224,47 @@ Rejected because CATSS parsing/grouping semantics would drift.
 ### Prebuilt generated modules in this repository
 
 Rejected because of upstream data licensing and parent-version coupling.
+
+
+## 11. CATSS source/acquisition contract
+
+The v0.1 materializer boundary is an explicit local path supplied by the user:
+
+```text
+user-acquired CATSS parallel directory
+            |
+            | direct child *.par files only
+            v
+    source inspection/fingerprint
+            |
+            v
+       CATSS parser (#4)
+```
+
+CATSS-TF does not fetch CATSS over the network and does not treat installation of the Python package as acceptance of CATSS data terms.
+
+### Source directory contract
+
+The configured directory:
+
+- must already exist;
+- must contain at least one direct-child `*.par` file;
+- is not searched recursively;
+- may contain CATSS documentation or unrelated non-`.par` files, which are ignored by the parser input set;
+- is fingerprinted before parsing.
+
+The source inspector returns a deterministic manifest sorted by filename. Each entry contains relative filename, byte size, and SHA-256.
+
+### Rejected acquisition designs
+
+**Built-in downloader for v0.1:** rejected because CATSS-TF cannot satisfy or verify the CCAT declaration/registration requirements on the user's behalf.
+
+**Depend on `curran-gehring/catss`:** rejected as the production source boundary because its code is CC BY-NC 4.0 and it adds a SQLite/morphology layer CATSS-TF does not require.
+
+**Require the full CATSS tree:** rejected because only the parallel alignment is necessary for the initial modules.
+
+**Recursive source discovery:** rejected because it makes source identity dependent on directory layout and risks silently consuming unrelated datasets.
+
+### Future acquisition work
+
+A future explicit acquisition command is not prohibited, but it requires a separate reviewed decision documenting a contemporary way to satisfy the applicable upstream terms. It must not be introduced opportunistically inside parser/materializer work.

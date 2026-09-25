@@ -47,3 +47,12 @@ TF module              TF module
 ## License
 
 The software in this repository is MIT licensed. CATSS data and the parent corpora have separate upstream terms. See [LICENSE_SCOPE.md](LICENSE_SCOPE.md).
+
+
+## CATSS source contract
+
+The initial release will consume a **local user-supplied directory of CATSS parallel `.par` files**. CATSS-TF does not download CATSS and does not require the CATSS morphology collection.
+
+The source directory is fingerprinted by filename, byte size, and SHA-256 before parsing. Real CATSS files are never committed to this repository; tests use synthetic fixtures.
+
+See [research.md](research.md), [design.md](design.md), and [LICENSE_SCOPE.md](LICENSE_SCOPE.md) for the rationale and data-license boundary.

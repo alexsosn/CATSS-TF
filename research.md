@@ -120,3 +120,73 @@ Maintaining separate Hebrew and Greek CATSS parsers would create drift: a change
 5. Can one parent token participate in more than one canonical alignment group, and if so, what TF feature encoding is most queryable?
 6. Which CATSS sigla should become normalized structured features in v0.1 versus retained raw/provenance text?
 7. How should generated modules record upstream license/provenance metadata without embedding prohibited source data?
+
+
+## R-010 — Current CATSS distribution still exposes the raw parallel files together with a restrictive user declaration
+
+**Rechecked:** 2026-09-25.
+
+The current CCAT parallel directory still exposes the `.par` files and the files named `00.UserDec.txt` / `00.user-declaration.txt` alongside the format documentation:
+
+- https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/
+
+The declaration is reproduced by current CATSS-consuming projects/services. Its conditions include: no commercial use without written consent; observance of text-specific restrictions; control of downstream access; requiring recipients of supplied material to observe the same conditions and register a signed declaration; proper acknowledgment; and reporting discovered errors.
+
+A current reproduction is available at:
+
+- https://biblecrawler.org/index.php/user-licence/
+
+The modern `curran-gehring/catss` README independently describes the CATSS data as governed by the CCAT user agreement, not for commercial use without written consent, and states that CCAT no longer has an active maintainer after Robert Kraft's death in 2023:
+
+- https://github.com/curran-gehring/catss
+
+**Implication:** public availability of the raw files is not equivalent to a permissive data license. CATSS-TF must not treat an HTTP GET as sufficient evidence that downstream redistribution or automated third-party acquisition is authorized.
+
+## R-011 — v0.1 should not automate CATSS acquisition
+
+Both examined parser projects can fetch CCAT files directly over HTTP. Cody Kingham's MIT-licensed downloader downloads the parallel and morphology collections; `curran-gehring/catss` similarly fetches CCAT documentation, parallel files, and morphology files.
+
+However, an automated downloader in CATSS-TF cannot itself satisfy the declaration's recipient-registration requirement, and CATSS-TF cannot verify that a user has completed whatever registration/permission process applies to their copy. The lack of an active CCAT maintainer makes inventing a replacement click-through particularly inappropriate.
+
+Sources:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/download_catss.py
+- https://github.com/curran-gehring/catss/blob/main/catss/download.py
+
+**Decision:** v0.1 accepts only a **user-supplied local CATSS parallel directory**. CATSS-TF does not download CATSS data. Acquisition remains the user's responsibility under upstream terms. A downloader may be reconsidered only after a separate issue establishes a valid contemporary acquisition/acceptance mechanism.
+
+## R-012 — v0.1 needs only the CATSS parallel files, not the LXX morphology collection
+
+The project goal is to project the Hebrew–Greek alignment and CATSS-specific alignment annotations onto BHSA and CenterBLC/LXX. The parent LXX corpus already supplies its own TF text/morphology layer, and BHSA supplies the Hebrew linguistic layer.
+
+The CATSS `lxxmorph` collection would therefore duplicate parent-corpus information while expanding the acquisition and licensing surface.
+
+**Decision:** the v0.1 source contract consumes `*.par` files from the CATSS **parallel** collection only. Morphology may later be consulted as a validation oracle if a focused issue demonstrates a need, but it is not part of the materializer's required source contract.
+
+## R-013 — Parser implementation stays inside CATSS-TF and must remain MIT-compatible
+
+`codykingham/CATSS_parsers` is MIT licensed and is valid prior art/reference material. `curran-gehring/catss` has a convenient package/API but its original source is CC BY-NC 4.0, which is a poor implementation dependency for an MIT materializer intended for general Agora distribution.
+
+The newer package remains useful as an external behavioral/reference oracle during research, but CATSS-TF must not copy its CC BY-NC implementation into this repository.
+
+Sources:
+
+- https://github.com/codykingham/CATSS_parsers/blob/master/LICENSE
+- https://github.com/curran-gehring/catss/blob/main/LICENSE
+
+**Decision:** issue #4 will implement CATSS-TF's own parser at the raw `.par` boundary. It may use the published CATSS documentation and MIT-compatible prior art, with attribution where code is actually reused. The production package has no runtime dependency on `curran-gehring/catss`.
+
+## R-014 — Source provenance starts with deterministic per-file fingerprints
+
+The CCAT directory does not expose a versioned release identifier for the parallel corpus as a whole. File modification dates also vary by book and are not sufficient as immutable identifiers.
+
+**Decision:** the minimum source provenance recorded by CATSS-TF is:
+
+- source kind: `catss-parallel`;
+- each direct-child `*.par` filename;
+- byte size;
+- SHA-256 digest.
+
+Absolute local paths are operational input and are not part of canonical provenance. Materialization time belongs to the later generated-module metadata, not the source fingerprint.
+
+The source inspector is intentionally non-recursive so that an accidentally selected broad directory cannot silently mix unrelated CATSS collections into the source set.
