@@ -5,7 +5,6 @@ import typing
 
 from catss_tf.parser import ParallelDocument, alignment_id_for
 
-
 Severity = typing.Literal["error", "unresolved", "ignored"]
 
 
@@ -260,7 +259,11 @@ def _finding(
     side: str | None = None,
     raw: str | None = None,
 ) -> ValidationFinding:
-    severity: Severity = "ignored" if code in allowed_codes else base_severity
+    severity: Severity = (
+        "ignored"
+        if base_severity == "unresolved" and code in allowed_codes
+        else base_severity
+    )
     return ValidationFinding(
         code=code,
         severity=severity,
