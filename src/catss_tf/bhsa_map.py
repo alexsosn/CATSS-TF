@@ -2,6 +2,7 @@
 
 import dataclasses
 import enum
+import itertools
 import unicodedata
 from collections.abc import Callable
 
@@ -389,7 +390,7 @@ def _parent_snapshot_problem(parent: BhsaVerse) -> str | None:
     nodes = tuple(word.node for word in parent.words)
     if any(node <= 0 for node in nodes):
         return ",".join(str(node) for node in nodes)
-    if any(left >= right for left, right in zip(nodes, nodes[1:], strict=True)):
+    if any(left >= right for left, right in itertools.pairwise(nodes)):
         return ",".join(str(node) for node in nodes)
     return None
 
