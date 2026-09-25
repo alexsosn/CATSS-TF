@@ -317,12 +317,8 @@ def _build_alignment(
 
     mt_readings = _mt_lexical_readings(mt_col_a)
     mt_tokens = tuple(reading.primary for reading in mt_readings)
-    mt_ketiv_tokens = tuple(
-        reading.ketiv for reading in mt_readings if reading.ketiv is not None
-    )
-    mt_qere_tokens = tuple(
-        reading.qere for reading in mt_readings if reading.qere is not None
-    )
+    mt_ketiv_tokens = tuple(reading.ketiv for reading in mt_readings if reading.ketiv is not None)
+    mt_qere_tokens = tuple(reading.qere for reading in mt_readings if reading.qere is not None)
     is_ketiv = bool(mt_ketiv_tokens)
     is_qere = bool(mt_qere_tokens)
 
