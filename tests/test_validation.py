@@ -201,3 +201,26 @@ HB\tGR
     assert report.summary.error_count == 1
     assert report.summary.ignored_count == 0
     assert report.findings[0].severity == "error"
+
+
+def test_duplicate_source_names_are_hard_errors_even_when_content_differs() -> None:
+    first = parse_parallel_text(
+        """Test 1:1
+HB1\tGR1
+""",
+        source_name="99.Test.par",
+    )
+    second = parse_parallel_text(
+        """Test 1:2
+HB2\tGR2
+""",
+        source_name="99.Test.par",
+    )
+
+    report = validate_documents((first, second))
+
+    assert report.summary.duplicate_source_names == 1
+    assert report.summary.error_count == 1
+    finding = next(f for f in report.findings if f.code == "duplicate_source_name")
+    assert finding.source_name == "99.Test.par"
+    assert finding.severity == "error"
