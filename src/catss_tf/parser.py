@@ -518,7 +518,8 @@ def _brace_payload(raw: str) -> str:
 
 
 def _cell_has_trailing_hash(cell: str) -> bool:
-    return bool(re.search(r"(?:^|\s)#\s*$", cell))
+    tokens = cell.split()
+    return len(tokens) >= 2 and tokens[-1] == "#" and any(token != "#" for token in tokens[:-1])
 
 
 def _cell_has_leading_hash(cell: str) -> bool:
