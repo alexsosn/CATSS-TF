@@ -248,3 +248,24 @@ UNSPLIT
     diagnosed = {diagnostic.line_no for diagnostic in doc.diagnostics}
 
     assert consumed | diagnosed == {1, 3, 4, 5, 6}
+
+
+def test_mt_strategy_sigla_are_structured_not_lexical_tokens() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB .m .s .j .w .z .xx\tGR
+""",
+        source_name="99.Test.par",
+    )
+
+    row = doc.verses[0].alignments[0]
+    assert row.mt_tokens == ("HB",)
+    kinds = [annotation.kind for annotation in row.annotations if annotation.side == "mt"]
+    assert kinds == [
+        "metathesis",
+        "word_separation",
+        "word_join",
+        "word_division",
+        "abbreviation",
+        "mt_strategy_siglum",
+    ]
