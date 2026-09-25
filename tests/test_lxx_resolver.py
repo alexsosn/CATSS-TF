@@ -1,4 +1,3 @@
-
 import dataclasses
 import types
 
@@ -50,9 +49,7 @@ class FakeProvider:
         probe: LxxParentProbe | None = None,
     ) -> None:
         self.parent_probe = _probe() if probe is None else probe
-        self._spans = {
-            (span.book, span.chapter, span.verse, span.subverse): span for span in spans
-        }
+        self._spans = {(span.book, span.chapter, span.verse, span.subverse): span for span in spans}
 
     def get_span(
         self,
