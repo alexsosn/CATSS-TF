@@ -79,6 +79,7 @@ def _print_validation_summary(summary: ValidationSummary) -> None:
     print(f"unknown_annotations={summary.unknown_annotations}")
     print(f"invalid_alignment_ids={summary.invalid_alignment_ids}")
     print(f"duplicate_alignment_ids={summary.duplicate_alignment_ids}")
+    print(f"duplicate_source_names={summary.duplicate_source_names}")
     print(f"error_count={summary.error_count}")
     print(f"unresolved_count={summary.unresolved_count}")
     print(f"ignored_count={summary.ignored_count}")
