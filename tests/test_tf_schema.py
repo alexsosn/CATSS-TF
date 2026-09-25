@@ -60,7 +60,6 @@ def _metadata(projection: Projection = "bhsa") -> TfModuleMetadata:
     )
 
 
-
 def _anchor(
     *,
     node: int = 9,
@@ -500,7 +499,6 @@ def test_anchor_token_counts_follow_empty_side_semantics() -> None:
         )
 
 
-
 def test_duplicate_anchor_event_is_rejected_not_double_counted() -> None:
     duplicate = _anchor(
         alignment_id="catss:01.Genesis.par:duplicate-anchor",
@@ -545,7 +543,6 @@ def test_anchor_requires_canonical_source_and_alignment_identity() -> None:
         )
 
 
-
 def test_membership_source_must_match_alignment_identity() -> None:
     mismatched = _membership(
         source="02.Exodus.par",
@@ -575,7 +572,6 @@ def test_anchor_source_must_match_alignment_identity() -> None:
                 ),
             ),
         )
-
 
 
 def test_same_alignment_cannot_consume_two_lanes_on_one_parent_node() -> None:
