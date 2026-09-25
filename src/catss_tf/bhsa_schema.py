@@ -5,7 +5,6 @@ import enum
 import pathlib
 import typing
 
-
 BHSA_REPOSITORY = "ETCBC/bhsa"
 BHSA_VERSION = "2021"
 BHSA_CHECKOUT_TAG = "v1.8.1"
