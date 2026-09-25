@@ -1214,3 +1214,52 @@ Text-Fabric's `Fabric(locations=..., modules=[parent,module])` loads ordinary mo
 - parent warp remains authoritative;
 - lane-2 features remain independently queryable;
 - structural-node aggregate features load without creating nodes.
+
+
+## R-080 — Exact physical source-line provenance must remain normalized, not summarized away
+
+The parser IR preserves every physical source line number and raw line contributing to a logical CATSS alignment. Word-node TF features intentionally expose only scalar summaries (`catss_line_first`, `catss_line_last`, `catss_line_n`) because arbitrary line collections do not belong in one TF string value.
+
+That summary is query-friendly but is not by itself the complete physical provenance.
+
+**Decision:** schema v1 adds a normalized repeated-row sidecar:
+
+`catss-source-lines.tsv`
+
+with columns:
+
+```text
+source
+alignment_id
+line_no
+raw
+```
+
+One physical source line produces one row. Tabs/newlines in raw content are handled by standard TSV quoting/escaping in the materializer writer, not by delimiter-packed ad-hoc strings.
+
+## R-081 — Aggregate anchor events need identity before counting
+
+Verse/subverse aggregate counters intentionally collapse arbitrary numbers of empty-side alignments, but aggregation must not make duplicate input records invisible.
+
+A bare `(node, kind, token_n)` event cannot distinguish two real alignments from the same alignment accidentally emitted twice.
+
+**Decision:** every `TfAnchorEvent` carries canonical `source` and `alignment_id` in addition to node/kind/token count. The compiler:
+
+- validates that source belongs to the canonical CATSS source set;
+- validates that alignment identity is namespaced to that same source;
+- rejects a repeated `(source, alignment_id)` anchor as `duplicate_anchor`;
+- only then increments structural aggregate features.
+
+Exact anchor identities remain in `catss-anchors.tsv`; TF nodes keep only scalar aggregate counts.
+
+## R-082 — Source and alignment identity are one provenance invariant
+
+CATSS alignment IDs are constructed as `catss:<source basename>:<digest>`. Treating the `source` field and `alignment_id` field as independent would permit internally inconsistent module rows that still sort and serialize successfully.
+
+**Decision:** every TF membership and anchor must satisfy:
+
+```text
+alignment_id starts with "catss:" + source + ":"
+```
+
+A mismatch is a hard schema error before feature compilation.
