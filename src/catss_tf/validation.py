@@ -126,8 +126,7 @@ def validate_documents(
                             line_no=_first_line(alignment.source_lines),
                             alignment_id=alignment.alignment_id,
                             message=(
-                                "alignment id already occurred at "
-                                f"{previous[0]}:{previous[1]}"
+                                f"alignment id already occurred at {previous[0]}:{previous[1]}"
                             ),
                         )
                     )
@@ -260,9 +259,7 @@ def _finding(
     raw: str | None = None,
 ) -> ValidationFinding:
     severity: Severity = (
-        "ignored"
-        if base_severity == "unresolved" and code in allowed_codes
-        else base_severity
+        "ignored" if base_severity == "unresolved" and code in allowed_codes else base_severity
     )
     return ValidationFinding(
         code=code,
