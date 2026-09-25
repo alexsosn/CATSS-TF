@@ -63,7 +63,10 @@ def test_parse_ketiv_and_qere_independently() -> None:
     row = doc.verses[0].alignments[0]
     assert row.is_ketiv is True
     assert row.is_qere is True
-    assert row.mt_tokens == ("HBK", "HBQ")
+    assert row.mt_tokens == ("HBK",)
+    assert row.mt_ketiv_tokens == ("HBK",)
+    assert row.mt_qere_tokens == ("HBQ",)
+    assert row.mt_count == 1
 
 
 def test_parse_transposition_kinds_without_reordering() -> None:
