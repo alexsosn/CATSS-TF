@@ -247,7 +247,7 @@ The downloader retrieves files directly from the upstream CCAT host onto the use
 
 The configured directory:
 
-- must already exist;
+- must exist when handed to the parser (the downloader may create it first);
 - must contain at least one direct-child `*.par` file;
 - is not searched recursively;
 - may contain CATSS documentation or unrelated non-`.par` files, which are ignored by the parser input set;
