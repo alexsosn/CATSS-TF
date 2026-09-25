@@ -78,7 +78,7 @@ class BhsaWordMapping:
     alignment_id: str
     mt_index: int
     bhsa_node: int
-    mapping_kind: typing.Literal["exact", "ketiv_qere"]
+    mapping_kind: typing.Literal["exact", "ketiv_qere", "qere"]
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -316,14 +316,66 @@ def resolve_bhsa_document(
 
         catss_normalized: list[str] = []
         bhsa_normalized: list[str] = []
+        identity_modes: list[str] = []
         failed = False
 
         for position, ((alignment_id, _mt_index, reading), word) in enumerate(
             zip(positions, parent.words, strict=True),
             start=1,
         ):
+            qere_only = reading.qere is not None and reading.ketiv is None
+            catss_identity = reading.qere if qere_only else reading.primary
+            assert catss_identity is not None
+
+            if qere_only:
+                qere_checks += 1
+                if word.qere_utf8 is None or not word.qere_utf8.strip():
+                    qere_mismatches += 1
+                    failed = True
+                    findings.append(
+                        MappingFinding(
+                            code="qere_missing",
+                            source_name=document.source_name,
+                            chapter=verse.chapter,
+                            verse=verse.verse,
+                            position=position,
+                            alignment_id=alignment_id,
+                            catss_value=reading.qere,
+                            bhsa_value=None,
+                            message=(
+                                "CATSS Qere-only reading has no BHSA qere_utf8 "
+                                "value on the same word slot"
+                            ),
+                        )
+                    )
+                    break
+                bhsa_identity = word.qere_utf8
+                identity_modes.append("qere")
+            else:
+                if not word.g_cons_utf8.strip():
+                    failed = True
+                    findings.append(
+                        MappingFinding(
+                            code="bhsa_written_form_empty",
+                            source_name=document.source_name,
+                            chapter=verse.chapter,
+                            verse=verse.verse,
+                            position=position,
+                            alignment_id=alignment_id,
+                            catss_value=catss_identity,
+                            bhsa_value=bhsa_identity,
+                            message=(
+                                "ordinary/ketiv CATSS reading cannot map to an "
+                                "empty BHSA written consonantal form"
+                            ),
+                        )
+                    )
+                    break
+                bhsa_identity = word.g_cons_utf8
+                identity_modes.append("written")
+
             try:
-                catss_value = normalize_catss_hebrew(reading.primary)
+                catss_value = normalize_catss_hebrew(catss_identity)
             except ValueError as exc:
                 normalization_errors += 1
                 failed = True
@@ -342,7 +394,7 @@ def resolve_bhsa_document(
                 )
                 break
             try:
-                bhsa_value = normalize_bhsa_hebrew(word.g_cons_utf8)
+                bhsa_value = normalize_bhsa_hebrew(bhsa_identity)
             except ValueError as exc:
                 normalization_errors += 1
                 failed = True
@@ -380,9 +432,12 @@ def resolve_bhsa_document(
         if mismatch_index is not None:
             mismatched_verses += 1
             alignment_id, _mt_index, _reading = positions[mismatch_index]
+            qere_identity = identity_modes[mismatch_index] == "qere"
+            if qere_identity:
+                qere_mismatches += 1
             findings.append(
                 MappingFinding(
-                    code="verse_word_mismatch",
+                    code="qere_mismatch" if qere_identity else "verse_word_mismatch",
                     source_name=document.source_name,
                     chapter=verse.chapter,
                     verse=verse.verse,
@@ -390,7 +445,11 @@ def resolve_bhsa_document(
                     alignment_id=alignment_id,
                     catss_value=catss_normalized[mismatch_index],
                     bhsa_value=bhsa_normalized[mismatch_index],
-                    message="normalized CATSS MT and BHSA word differ",
+                    message=(
+                        "CATSS Qere-only reading and BHSA qere_utf8 differ"
+                        if qere_identity
+                        else "normalized CATSS MT and BHSA word differ"
+                    ),
                 )
             )
             continue
@@ -400,7 +459,7 @@ def resolve_bhsa_document(
             zip(positions, parent.words, strict=True),
             start=1,
         ):
-            if reading.qere is None:
+            if reading.qere is None or reading.ketiv is None:
                 continue
             qere_checks += 1
             if word.qere_utf8 is None or not word.qere_utf8.strip():
@@ -469,7 +528,13 @@ def resolve_bhsa_document(
                 alignment_id=alignment_id,
                 mt_index=mt_index,
                 bhsa_node=word.node,
-                mapping_kind="ketiv_qere" if reading.qere is not None else "exact",
+                mapping_kind=(
+                    "qere"
+                    if reading.qere is not None and reading.ketiv is None
+                    else "ketiv_qere"
+                    if reading.qere is not None
+                    else "exact"
+                ),
             )
             for (alignment_id, mt_index, reading), word in zip(positions, parent.words, strict=True)
         )
