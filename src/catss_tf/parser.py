@@ -495,7 +495,11 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
 
         token = raw_token
         if token == ",,a":
-            pending_aramaic = True
+            if readings:
+                previous = readings[-1]
+                readings[-1] = dataclasses.replace(previous, aramaic_section=True)
+            else:
+                pending_aramaic = True
             continue
         if token.startswith(",,a"):
             pending_aramaic = True
