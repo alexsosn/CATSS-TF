@@ -320,3 +320,74 @@ BR)\tEPOI
     assert report.word_mappings == ()
     assert report.summary.validation_failures == 1
     assert report.findings[0].code == "catss_validation_alignment_id_mismatch"
+
+
+def test_qere_only_reading_can_resolve_empty_bhsa_written_form() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+**QR)\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(BhsaWord(101, "", "", "קָרָא"))
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.summary.resolved_verses == 1
+    assert report.summary.qere_checks == 1
+    assert report.summary.qere_mismatches == 0
+    assert len(report.word_mappings) == 1
+    assert report.word_mappings[0].bhsa_node == 101
+    assert report.word_mappings[0].mapping_kind == "qere"
+
+
+def test_qere_only_reading_uses_qere_even_when_written_form_is_nonempty() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+**QR)\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(BhsaWord(101, "כתב", "כְּתַב", "קָרָא"))
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.summary.resolved_verses == 1
+    assert report.word_mappings[0].mapping_kind == "qere"
+
+
+def test_ordinary_reading_cannot_skip_empty_bhsa_written_slot() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+BR)\tGR1
+)LHYM\tGR2
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(
+        BhsaWord(101, "ברא", None, None),
+        BhsaWord(102, "", "", "קָרָא"),
+    )
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.word_mappings == ()
+    assert report.summary.mismatched_verses == 1
+    assert report.findings[-1].code == "bhsa_written_form_empty"
+    assert report.findings[-1].position == 2
+
+
+def test_qere_only_reading_without_parent_qere_fails_closed() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+**QR)\tGR
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(BhsaWord(101, "", "", None))
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.word_mappings == ()
+    assert report.summary.qere_mismatches == 1
+    assert report.findings[-1].code == "qere_missing"
