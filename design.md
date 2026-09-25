@@ -582,9 +582,10 @@ Default validation is fail-closed:
 
 - any `error` => invalid;
 - any `unresolved` => invalid;
-- `ignored` is always explicit through an allow-list of finding codes.
+- `ignored` is always explicit through an allow-list of **unresolved** finding codes;
+- hard `error` findings cannot be allow-listed.
 
-Allowing a code never deletes the finding; its severity becomes `ignored`, and `ignored_count` records the policy exception.
+Allowing an unresolved code never deletes the finding; its severity becomes `ignored`, and `ignored_count` records the policy exception.
 
 ### 14.5 Scalar summary
 
