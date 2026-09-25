@@ -465,3 +465,22 @@ BHSA 2021 has ordinary `book/chapter/verse` sections. CATSS MT-side references a
 BHSA data are CC BY-NC 4.0 and require attribution; the repository README identifies DOI `10.17026/dans-z6y-skyh` and requires consent for commercial applications.
 
 **Decision:** CATSS-TF's MIT license does not relicense BHSA. Generated `catss-bhsa` modules inherit whatever upstream restrictions apply to their BHSA-derived node association/data and are not bundled in this software repository.
+
+
+## R-037 — LXX-plus alignments have no honest BHSA word target
+
+A CATSS LXX-plus row has `mt_count=0`: the Greek contains material with no corresponding MT word. Therefore there is no BHSA word slot to which that alignment can be truthfully attached.
+
+Assigning such a row to the previous/next/nearest BHSA word would create a synthetic textual claim and violate the project's no-positional-guessing rule.
+
+BHSA does, however, provide existing `verse` nodes. A BHSA-side module can use the containing verse as the structural location for **verse-level aggregate/presence features** about Hebrew-empty CATSS alignments without inventing a word correspondence.
+
+A further limitation follows from the no-new-node module model: multiple independent LXX-plus groups in one verse cannot each be represented as separate first-class BHSA-side alignment entities without packing IDs into a list/blob. That representation decision belongs to the TF feature-schema issue (#10), not to the parent resolver.
+
+**Decision:**
+
+- MT-bearing CATSS alignments target BHSA `word` slots after textual resolution;
+- Hebrew-empty/LXX-plus alignments must never receive an invented word target;
+- the BHSA projection may use the existing `verse` node for scalar aggregate/presence features about such rows;
+- exact per-plus-group provenance may remain in the deterministic sidecar unless #10 finds a genuinely query-native representation;
+- the LXX projection remains the natural word-level home for the Greek tokens themselves.
