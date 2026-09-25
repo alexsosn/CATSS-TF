@@ -869,14 +869,14 @@ The standard TF section hierarchy remains only `book/chapter/verse`; `subverse` 
 
 At CenterBLC/LXX tag v1.0.1, Git blob IDs of mapping-critical TF files are:
 
-- `otype.tf`: `2e6480a9a4ee6abf5d13f66f3851766dfedb94e6`
-- `oslots.tf`: `e95696fc14dbbf3c3738f062a5c8b237893e7fd9`
+- `otype.tf`: `2e6480116dfda09f20e8de7c5b9feefa76322a96`
+- `oslots.tf`: `e95696a6a49f1149f8f6e850f7dfb40a26509931`
 - `book.tf`: `0bfae94bb312cb7ecd33b102babb9400c554d8be`
 - `chapter.tf`: `ec64b6bf72a6282e9da5064ca2e895171190208e`
 - `verse.tf`: `ff8766352d7aff530c6eec4f66366adcc691740e`
 - `subverse.tf`: `cecfaf2d1ddc4fd1e93958abd674a7e60e676ae5`
 - `word.tf`: `f88e525991c3d09beac713a91ef8ed41e6308a03`
-- `orig_order.tf`: `0d03394bec636957f48c0cf3ef44a2907a5d68af`
+- `orig_order.tf`: `0d0339af8a512a0a59232fbccb309fc229da6ddd`
 
 **Decision:** these files and counts define the exact v0.1 parent profile. `word` is the surface identity feature; `orig_order` is provenance/diagnostic support, not a substitute for textual agreement.
 
