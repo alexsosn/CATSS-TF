@@ -5,8 +5,7 @@ import typing
 import unicodedata
 
 from catss_tf.bhsa_schema import BhsaSourceStatus, classify_catss_source
-from catss_tf.parser import MtReading, ParallelDocument
-
+from catss_tf.parser import ParallelDocument
 
 _CATSS_HEBREW = {
     ")": "א",
