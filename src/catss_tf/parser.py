@@ -561,6 +561,7 @@ def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
 
     return tuple(readings)
 
+
 def _lxx_lexical_candidates(cell: str) -> tuple[str, ...]:
     text = _prepare_lexical_text(cell)
     return tuple(token for token in text.split() if not _is_alignment_marker(token))
