@@ -14,6 +14,8 @@ _SQUARE_REFERENCE = re.compile(r"\[[^\[\]]*\]")
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
 _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s]+)")
+_LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
+_LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -285,8 +287,8 @@ def _build_alignment(
         )
 
     mt_col_a, mt_col_b = _split_mt_columns(mt_raw)
-    is_lxx_plus = mt_col_a.lstrip().startswith("--+")
-    is_lxx_minus = lxx_raw.lstrip().startswith("---")
+    is_lxx_plus = _first_token(mt_col_a) in _LXX_PLUS_MARKERS
+    is_lxx_minus = _first_token(lxx_raw) in _LXX_MINUS_MARKERS
 
     annotations = tuple(
         [
@@ -494,8 +496,17 @@ def _prepare_lexical_text(cell: str) -> str:
     return _CONTINUATION_TOKEN.sub(" ", text)
 
 
+def _first_token(cell: str) -> str:
+    parts = cell.split(maxsplit=1)
+    return parts[0] if parts else ""
+
+
 def _is_alignment_marker(token: str) -> bool:
-    return token in {"--+", "---", "''", "^", "^^^", "~"}
+    return (
+        token in _LXX_PLUS_MARKERS
+        or token in _LXX_MINUS_MARKERS
+        or token in {"''", "^", "^^^", "~"}
+    )
 
 
 def _brace_payload(raw: str) -> str:
