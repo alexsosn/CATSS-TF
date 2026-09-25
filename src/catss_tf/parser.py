@@ -497,6 +497,7 @@ def _prepare_lexical_text(cell: str) -> str:
 def _is_alignment_marker(token: str) -> bool:
     return token in {"--+", "---", "''", "^", "^^^", "~"}
 
+
 def _brace_payload(raw: str) -> str:
     inner = raw[1:-1]
     if inner.startswith("..p^"):
