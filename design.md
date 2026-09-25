@@ -565,6 +565,7 @@ Initial finding codes include:
 - `duplicate_source_line_ownership`
 - `alignment_id_mismatch`
 - `duplicate_alignment_id`
+- `duplicate_source_name`
 - parser diagnostic codes such as `orphan_line`, `unsplit_row`, and `malformed_continuation`
 - `unknown_annotation`
 - `unknown_mt_strategy_siglum`
@@ -600,6 +601,7 @@ parser_diagnostics
 unknown_annotations
 invalid_alignment_ids
 duplicate_alignment_ids
+duplicate_source_names
 error_count
 unresolved_count
 ignored_count
