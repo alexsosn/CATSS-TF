@@ -187,11 +187,12 @@ class LxxSourceClassification:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class LxxReference:
-    """Default CenterBLC book/chapter/verse location."""
+    """Default CenterBLC book/chapter/verse/subverse location."""
 
     book: str
     chapter: int
     verse: int
+    subverse: str = ""
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
