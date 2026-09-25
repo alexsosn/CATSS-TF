@@ -194,3 +194,21 @@ The CCAT directory does not expose a versioned release identifier for the parall
 Absolute local paths are operational input and are not part of canonical provenance. Materialization time belongs to the later generated-module metadata, not the source fingerprint.
 
 The source inspector is intentionally non-recursive so that an accidentally selected broad directory cannot silently mix unrelated CATSS collections into the source set.
+
+
+## R-015 — Preserve both CATSS Daniel parallel editions
+
+The current `curran-gehring/catss` book registry describes 45 parallel files and deliberately gives `DanOG` no `par_file`, because that package chooses Theodotion as its canonical Daniel for its own application model. Its source comments nevertheless note that CCAT ships MT↔LXX parallel data in both Daniel editions.
+
+Direct checks against the CCAT host on 2026-09-25 confirm that both files are available:
+
+- `45.DanielOG.par`
+- `46.DanielTh.par`
+
+Sources:
+
+- https://github.com/curran-gehring/catss/blob/main/catss/books.py
+- https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/45.DanielOG.par
+- https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/46.DanielTh.par
+
+**Decision:** CATSS-TF's default acquisition set contains **46 parallel files**, including both Daniel OG and Theodotion. CATSS-TF is source-preserving and must not inherit an application-specific canonical-Daniel choice from another consumer.
