@@ -640,7 +640,7 @@ def _expand_catss_positions(
                 )
 
             for segment_index, identity_segment in enumerate(identity_segments):
-                paired_qere = typing.cast(str | None, paired_qere_segments[segment_index])
+                paired_qere = paired_qere_segments[segment_index]
                 positions.append(
                     _ExpandedPosition(
                         alignment_id=alignment.alignment_id,
