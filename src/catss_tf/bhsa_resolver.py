@@ -6,6 +6,7 @@ import unicodedata
 
 from catss_tf.bhsa_schema import BhsaSourceStatus, classify_catss_source
 from catss_tf.parser import ParallelDocument
+from catss_tf.validation import ValidationFinding, validate_document
 
 _CATSS_HEBREW = {
     ")": "א",
@@ -121,6 +122,8 @@ class BhsaMappingSummary:
     qere_checks: int
     qere_mismatches: int
     normalization_errors: int
+    validation_failures: int
+    validation_ignored: int
     finding_count: int
 
 
@@ -132,6 +135,7 @@ class BhsaMappingReport:
     word_mappings: tuple[BhsaWordMapping, ...]
     verse_anchors: tuple[BhsaVerseAnchor, ...]
     findings: tuple[MappingFinding, ...]
+    validation_findings: tuple[ValidationFinding, ...]
 
 
 def normalize_catss_hebrew(value: str) -> str:
@@ -188,6 +192,8 @@ def normalize_bhsa_hebrew(value: str) -> str:
 def resolve_bhsa_document(
     document: ParallelDocument,
     provider: BhsaVerseProvider,
+    *,
+    allowed_validation_codes: set[str] | frozenset[str] = frozenset(),
 ) -> BhsaMappingReport:
     """Resolve one CATSS parallel document against the declared BHSA parent."""
 
@@ -217,6 +223,44 @@ def resolve_bhsa_document(
         )
 
     assert classification.bhsa_book is not None
+
+    validation = validate_document(
+        document,
+        allowed_codes=allowed_validation_codes,
+    )
+    validation_failures = validation.summary.error_count + validation.summary.unresolved_count
+    if not validation.ok:
+        findings = tuple(
+            MappingFinding(
+                code=f"catss_validation_{finding.code}",
+                source_name=finding.source_name,
+                chapter=None,
+                verse=None,
+                position=None,
+                alignment_id=finding.alignment_id,
+                catss_value=finding.raw,
+                bhsa_value=None,
+                message=(
+                    f"CATSS validation {finding.severity}: {finding.message}"
+                    + (
+                        f" (source line {finding.line_no})"
+                        if finding.line_no is not None
+                        else ""
+                    )
+                ),
+            )
+            for finding in validation.findings
+            if finding.severity != "ignored"
+        )
+        return _report(
+            supported_documents=1,
+            verses=len(document.verses),
+            validation_failures=validation_failures,
+            validation_ignored=validation.summary.ignored_count,
+            findings=findings,
+            validation_findings=validation.findings,
+        )
+
     word_mappings: list[BhsaWordMapping] = []
     verse_anchors: list[BhsaVerseAnchor] = []
     findings: list[MappingFinding] = []
@@ -452,7 +496,10 @@ def resolve_bhsa_document(
         qere_checks=qere_checks,
         qere_mismatches=qere_mismatches,
         normalization_errors=normalization_errors,
+        validation_failures=validation_failures,
+        validation_ignored=validation.summary.ignored_count,
         findings=tuple(findings),
+        validation_findings=validation.findings,
     )
 
 
@@ -470,7 +517,10 @@ def _report(
     qere_checks: int = 0,
     qere_mismatches: int = 0,
     normalization_errors: int = 0,
+    validation_failures: int = 0,
+    validation_ignored: int = 0,
     findings: tuple[MappingFinding, ...] = (),
+    validation_findings: tuple[ValidationFinding, ...] = (),
 ) -> BhsaMappingReport:
     return BhsaMappingReport(
         summary=BhsaMappingSummary(
@@ -487,11 +537,14 @@ def _report(
             qere_checks=qere_checks,
             qere_mismatches=qere_mismatches,
             normalization_errors=normalization_errors,
+            validation_failures=validation_failures,
+            validation_ignored=validation_ignored,
             finding_count=len(findings),
         ),
         word_mappings=word_mappings,
         verse_anchors=verse_anchors,
         findings=findings,
+        validation_findings=validation_findings,
     )
 
 
