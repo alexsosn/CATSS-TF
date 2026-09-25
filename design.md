@@ -706,3 +706,138 @@ Issue #7 will bind this contract to an actual Text-Fabric API and implement Hebr
 ### 15.7 TF-feature compatibility
 
 The future `catss-bhsa` module remains a normal BHSA enrichment module. CATSS features are attached to resolved BHSA word slots when an MT word exists, and may use existing BHSA verse nodes for query-native aggregate/presence features when the CATSS alignment has no Hebrew word target. Parent BHSA features are not copied into the module; no synthetic word anchor is created.
+
+
+## 16. BHSA resolver
+
+### 16.1 Resolution unit
+
+The resolver proves mapping **one complete MT verse at a time**.
+
+```text
+CATSS source stem -> explicit BHSA book
+CATSS chapter/verse -> exact BHSA verse
+CATSS normalized MT sequence == BHSA normalized word-slot sequence
+                                  |
+                                  v
+                       assign proven word nodes
+```
+
+No individual token is mapped successfully while the containing verse sequence is still inconsistent.
+
+### 16.2 Per-position CATSS reading
+
+The parser IR exposes:
+
+```text
+MtReading
+  primary
+  ketiv?
+  qere?
+  doubtful
+  aramaic_section
+```
+
+`AlignmentRecord.mt_readings` is the ordered sequence of MT positions represented by that alignment row.
+
+Compatibility fields such as `mt_tokens` are derived from `mt_readings`; resolver code uses `mt_readings` directly.
+
+### 16.3 Hebrew normalization
+
+`normalize_catss_hebrew(beta)` returns a single consonantal Unicode Hebrew word.
+
+It:
+
+- removes CATSS `/` morpheme separators;
+- maps Michigan–Claremont consonants;
+- ignores only documented non-consonantal Hebrew BETA material;
+- applies final kaf/mem/nun/pe/tsade at word end;
+- preserves shin/sin distinction;
+- rejects unknown characters and ambiguous legacy/current markers.
+
+`normalize_bhsa_hebrew(value)`:
+
+- Unicode-normalizes;
+- removes vowel points, accents, dagesh, rafe, and other combining marks except U+05C1/U+05C2 shin/sin dots;
+- removes whitespace within the one feature value;
+- retains Hebrew letters/final forms.
+
+Neither function performs fuzzy folding such as equating shin and sin or final/non-final forms in arbitrary positions.
+
+### 16.4 Exact verse matching
+
+Flatten CATSS readings in alignment/source order:
+
+- ordinary and Ketiv-bearing readings contribute one MT position;
+- Qere is an alternative attached to that position;
+- column B contributes zero positions;
+- LXX-plus contributes zero positions.
+
+Compare against all BHSA word slots in the verse.
+
+Failure codes include:
+
+```text
+unsupported_catss_source
+unknown_catss_source
+missing_bhsa_verse
+catss_hebrew_normalization_error
+bhsa_hebrew_normalization_error
+verse_word_count_mismatch
+verse_word_mismatch
+qere_missing
+qere_mismatch
+```
+
+No failure code triggers a fallback mapping.
+
+### 16.5 Mapping result
+
+```text
+BhsaWordMapping
+  alignment_id
+  mt_index
+  bhsa_node
+  mapping_kind = exact | ketiv_qere
+
+BhsaVerseAnchor
+  alignment_id
+  bhsa_verse_node
+  kind = lxx_plus
+
+BhsaMappingSummary
+  documents
+  supported_documents
+  unsupported_documents
+  unknown_documents
+  verses
+  resolved_verses
+  missing_verses
+  mismatched_verses
+  word_mappings
+  verse_anchors
+  qere_checks
+  qere_mismatches
+  normalization_errors
+  finding_count
+```
+
+The report is deterministic and contains separate tuples of word mappings, verse anchors, and typed findings. These are implementation/provenance objects, not packed TF node features.
+
+### 16.6 Text-Fabric adapter
+
+`TextFabricBhsaProvider` is a thin adapter over an already loaded BHSA API:
+
+- `T.nodeFromSection((book, chapter, verse))` locates the verse;
+- `L.d(verse_node, otype="word")` retrieves ordered word slots;
+- `F.g_cons_utf8.v(node)`, `F.g_word_utf8.v(node)`, and `F.qere_utf8.v(node)` provide text-bearing values.
+
+The resolver itself depends only on `BhsaVerseProvider`, so normal CI uses synthetic parent views and remains offline.
+
+### 16.7 Validation gate and fail-closed rule
+
+For supported CATSS sources, the resolver first runs the issue #5 validation gate. Hard validation errors and unresolved findings emit **no BHSA mappings**. Callers may explicitly allow named unresolved validation codes; hard errors remain non-suppressible, and all validation findings remain attached to the mapping report.
+
+After validation, a verse emits word mappings only when the complete normalized sequence matches. If one word or required Qere differs, **no word mapping from that verse is emitted**. This prevents partial success from making a broken verse look trustworthy.
+
+Declared BHSA-unsupported CATSS sources are skipped as known coverage exclusions; unknown source names are findings.
