@@ -52,6 +52,8 @@ class TfAnchorEvent:
     """One Hebrew- or Greek-empty CATSS group anchored to a parent structure node."""
 
     node: int
+    source: str
+    alignment_id: str
     kind: typing.Literal["lxx_plus", "lxx_minus", "transposition_placeholder"]
     token_n: int = 0
 
@@ -232,6 +234,12 @@ SIDECAR_COLUMNS: dict[str, tuple[str, ...]] = {
         "size_bytes",
         "sha256",
     ),
+    "catss-source-lines.tsv": (
+        "source",
+        "alignment_id",
+        "line_no",
+        "raw",
+    ),
     "catss-diagnostics.tsv": (
         "stage",
         "severity",
@@ -319,8 +327,20 @@ def compile_tf_features(
             if count:
                 _put(features, _AGGREGATE_BY_FLAG[flag], node, count)
 
+    seen_anchors: set[tuple[str, str, str]] = set()
     for anchor in anchors:
         _validate_parent_node(max_node, anchor.node)
+        if anchor.source not in _SOURCE_RANK:
+            raise TfSchemaError(f"unknown CATSS source {anchor.source!r}")
+        if not anchor.alignment_id.startswith("catss:"):
+            raise TfSchemaError(f"invalid CATSS alignment id {anchor.alignment_id!r}")
+        anchor_identity = (anchor.source, anchor.alignment_id, anchor.kind)
+        if anchor_identity in seen_anchors:
+            raise TfSchemaError(
+                "duplicate_anchor: "
+                f"{anchor.source} {anchor.alignment_id} {anchor.kind}"
+            )
+        seen_anchors.add(anchor_identity)
         if anchor.kind not in _ANCHOR_KINDS[projection]:
             raise TfSchemaError(
                 f"anchor kind {anchor.kind!r} is invalid for {projection} projection"
@@ -405,13 +425,15 @@ def _validate_membership(
     if membership.line_last < membership.line_first:
         raise TfSchemaError("line_last precedes line_first")
 
-    for name, value in (
+    for name, optional_index in (
         ("mt_i", membership.mt_i),
         ("mt_segment", membership.mt_segment),
         ("lxx_i", membership.lxx_i),
     ):
-        if value is not None and value < 1:
-            raise TfSchemaError(f"{name} is 1-based and must be positive, got {value}")
+        if optional_index is not None and optional_index < 1:
+            raise TfSchemaError(
+                f"{name} is 1-based and must be positive, got {optional_index}"
+            )
 
     if membership.mt_i is not None and membership.mt_i > membership.mt_n:
         raise TfSchemaError(f"mt_i {membership.mt_i} exceeds CATSS mt_n {membership.mt_n}")
