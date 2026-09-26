@@ -800,3 +800,17 @@ def test_semantic_features_are_dynamic_scalar_tf_features_without_packing() -> N
     assert compiled["catss_sem_distributive_rendering"] == {1: 1}
     assert compiled["catss_sem_gender_switch"] == {1: 1}
     assert compiled["catss_sem_distributive_rendering_payload"] == {1: "Gen 1:2"}
+
+
+def test_writer_accepts_registered_complete_semantic_features(tmp_path: pathlib.Path) -> None:
+    write_tf_module(
+        tmp_path / "module",
+        {
+            "catss_sem_distributive_rendering": {1: 1},
+            "catss_sem_distributive_rendering_payload": {1: "Gen 1:2"},
+        },
+        metadata=_metadata(),
+        max_node=10,
+    )
+    assert (tmp_path / "module" / "catss_sem_distributive_rendering.tf").exists()
+    assert (tmp_path / "module" / "catss_sem_distributive_rendering_payload.tf").exists()
