@@ -95,8 +95,11 @@ tables.
 ## “Passing through fire” probe
 
 The report contrasts passages in which the same broad ritual domain receives
-different Greek treatment. The raw alignment evidence confirms that this is a
-good example for showing the limit between corpus evidence and interpretation:
+different Greek treatment. It cites Deut 18:11, while the pinned CATSS/MT text
+places the child-through-fire clause in Deut 18:10, immediately before the
+magical-terminology list that continues into 18:11. The raw alignment evidence
+confirms that this is a good example for showing the limit between corpus
+evidence and interpretation:
 
 - Deut 18:10 has `M(BYR` ↔ `PERIKAQAI/RWN`, with the child and fire
   expressions in adjacent aligned rows;
