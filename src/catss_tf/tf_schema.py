@@ -154,6 +154,7 @@ _RAW_SEMANTIC_KINDS = frozenset(
         "doubt",
         "greek_correction",
         "greek_edition_difference",
+        "inf_abs_accusative_without_mt_inf_abs",
         "letter_interchange",
         "metathesis",
         "possible_doublet",
