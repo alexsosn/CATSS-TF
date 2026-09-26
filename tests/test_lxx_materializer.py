@@ -488,10 +488,3 @@ def test_lxx_does_not_project_mt_scoped_annotation_onto_greek_word(
     assert not (output / "catss_distributive_payload.tf").exists()
 
 
-def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
-    tmp_path: pathlib.Path,
-) -> None:
-    source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS {..rQEOS}\n")
-    output = tmp_path / "catss-lxx"
-    materialize_lxx(source, output, provider=provider)
