@@ -201,3 +201,14 @@ def test_missing_tf_executable_is_reported(
 
     with pytest.raises(browser.BrowserLaunchError, match="Text-Fabric executable"):
         browser.launch_browser("bhsa", module)
+
+
+def test_bundle_with_non_catss_tf_feature_is_rejected(tmp_path: pathlib.Path) -> None:
+    module = _bhsa_bundle(tmp_path)
+    (module / "foreign_annotation.tf").write_text(
+        "@node\n@valueType=int\n\n1\t1\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(browser.BrowserLaunchError, match="non-CATSS TF feature"):
+        browser.build_browser_launch("bhsa", module)
