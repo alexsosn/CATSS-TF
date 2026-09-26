@@ -11,6 +11,7 @@ from catss_tf.notation import notation_spec
 _VERSE_HEADER = re.compile(r"^\s*([0-9A-Za-z][0-9A-Za-z/]*)\s+(?:(\d+):)?(\d+)\s*$")
 _COLUMN_SPACES = re.compile(r"\s{2,}")
 _BRACE_BLOCK = re.compile(r"\{[^{}]*\}")
+_SIRACH_DOUBLE_BRACE = re.compile(r"\{\{[^{}]*\}\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
 _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
