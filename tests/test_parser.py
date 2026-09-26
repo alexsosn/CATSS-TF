@@ -594,3 +594,33 @@ def test_snapshot_special_notation_variants_are_typed_not_unknown() -> None:
         annotations = document.alignments[0].annotations
         assert all(item.kind != "unknown" for item in annotations)
         assert any(item.kind == expected for item in annotations)
+
+
+@pytest.mark.parametrize(
+    ("source_name", "raw"),
+    [
+        ("05.Deut.par", "{!}na+"),
+        ("06.JoshB.par", "{=51}"),
+        ("06.JoshB.par", "{TOU= SWTHRI/OU}"),
+        ("09.JudgesA.par", "{**?}"),
+        ("14.2Kings.par", "{H)=GEN}"),
+        ("16.2Chron.par", "[v.8]"),
+        ("16.2Chron.par", "{TOU=}"),
+        ("17.1Esdras.par", "[cc.35.27]"),
+        ("17.1Esdras.par", "[e.14]"),
+        ("19.Neh.par", "{PU/LHS}"),
+        ("20.Psalms.par", "{.1.dU(PE\\R}"),
+        ("23.Prov.par", "{U(POLH/NION}"),
+        ("26.Job.par", "{O(LO/RRIZOI}"),
+        ("26.Job.par", "{E)PI\\ TOU/TW|}"),
+        ("26.Job.par", "{A)PO\\ PROSW/POU AU)TOU=}"),
+        ("26.Job.par", "{#}"),
+        ("26.Job.par", "{QUMOU=}"),
+        ("30.Amos.par", "[cGH=S]"),
+        ("30.Amos.par", "[cGUNAI=KES]"),
+        ("45.DanielOG.par", "[37cc]"),
+    ],
+)
+def test_empirical_special_notation_is_never_unknown(source_name: str, raw: str) -> None:
+    doc = parse_parallel_text(f"Test 1:1\\nHB\\tGR {raw}\\n", source_name=source_name)
+    assert all(annotation.kind != "unknown" for annotation in doc.alignments[0].annotations)
