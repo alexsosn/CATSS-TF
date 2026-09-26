@@ -29,6 +29,7 @@ def _membership(
     mt_i: int | None = 1,
     mt_segment: int | None = 1,
     lxx_i: int | None = None,
+    retro_kind: str | None = None,
     flags: frozenset[str] = frozenset(),
 ) -> TfMembership:
     return TfMembership(
@@ -44,7 +45,7 @@ def _membership(
         line_first=10,
         line_last=11,
         line_n=2,
-        retro_kind=None,
+        retro_kind=retro_kind,
         flags=flags,
     )
 
@@ -311,6 +312,24 @@ def _write_synthetic_parent(root: pathlib.Path) -> None:
 @valueType=str
 
 4\t1-3
+""",
+        encoding="utf-8",
+    )
+    (parent / "word.tf").write_text(
+        """@node
+@valueType=str
+
+1\tone
+2\ttwo
+3\tthree
+""",
+        encoding="utf-8",
+    )
+    (parent / "otext.tf").write_text(
+        """@config
+@fmt:text-orig-full={word} 
+@writtenBy=CATSS-TF-test
+
 """,
         encoding="utf-8",
     )
