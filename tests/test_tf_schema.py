@@ -765,3 +765,23 @@ def test_annotation_sidecar_contract_exposes_typed_semantics_and_payload() -> No
         "payload",
         "raw",
     )
+
+
+def test_membership_semantics_compile_as_query_native_node_features() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        annotation_kind="distributive",
+        annotation_family="translation_technique",
+        annotation_payload="GRDIST",
+    )
+
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(membership,),
+        anchors=(),
+    )
+
+    assert compiled["catss_annotation_kind"] == {1: "distributive"}
+    assert compiled["catss_annotation_family"] == {1: "translation_technique"}
+    assert compiled["catss_annotation_payload"] == {1: "GRDIST"}
