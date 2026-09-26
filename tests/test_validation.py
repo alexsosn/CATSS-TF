@@ -65,7 +65,7 @@ HB .xx {zzUNKNOWN}\tGR
     assert report.summary.unknown_annotations == 2
     assert [(finding.code, finding.side, finding.raw) for finding in report.findings] == [
         ("unknown_annotation", "mt_a", "{zzUNKNOWN}"),
-        ("unknown_mt_strategy_siglum", "mt_a", ".xx"),
+        ("unknown_mt_strategy_siglum", "mt_a", ".toolong"),
     ]
     assert report.summary.unresolved_count == 2
 
