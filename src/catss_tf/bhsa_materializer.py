@@ -497,7 +497,7 @@ def _mapping_rows(
     lane_one = features.get("catss_alignment_id", {})
     lane_two = features.get("catss_alignment_id_2", {})
 
-    for membership, mt_index, segment_index in mapping_facts:
+    for membership, mt_index, _segment_index in mapping_facts:
         if lane_one.get(membership.node) == membership.alignment_id:
             lane = 1
         elif lane_two.get(membership.node) == membership.alignment_id:
