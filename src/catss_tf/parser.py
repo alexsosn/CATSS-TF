@@ -705,7 +705,9 @@ def _mt_dot_kind(raw: str) -> str:
         ".z": "abbreviation",
     }.get(
         raw,
-        "letter_interchange" if raw.startswith(".") and len(raw) > 2 else "mt_strategy_siglum",
+        "letter_interchange"
+        if re.fullmatch(r"\\.[a-z+\\-        "letter_interchange" if raw.startswith(".") and len(raw) > 2 else "mt_strategy_siglum",()]{2,3}", raw)
+        else "mt_strategy_siglum",
     )
 
 
