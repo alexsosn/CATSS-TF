@@ -493,6 +493,8 @@ def _extract_annotations(
                 "transposition_remote": ("transposition_remote", "transposition", True),
                 "transposition_stylistic": ("transposition_stylistic", "transposition", True),
                 "repetition": ("repetition", "translation_technique", True),
+                "greek_correction": ("greek_correction", "textual", True),
+                "greek_edition_difference": ("greek_edition_difference", "textual", True),
             }.get(raw_kind)
             if raw_semantics is None:
                 annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
@@ -590,7 +592,8 @@ def _extract_annotations(
                 )
 
     if side == "lxx":
-        for match in _DOUBT_MARKER.finditer(cell):
+        doubt_text = _BRACE_BLOCK.sub(" ", cell)
+        for match in _DOUBT_MARKER.finditer(doubt_text):
             annotations.append(Annotation(side=side, kind="doubt", raw=match.group(0)))
         for match in _SQUARE_GROUP.finditer(cell):
             raw = match.group(0)
@@ -607,7 +610,7 @@ def _extract_annotations(
                             payload=inner,
                         )
                     )
-                else:
+                elif _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None:
                     annotations.append(
                         Annotation(
                             side=side,
@@ -618,6 +621,8 @@ def _extract_annotations(
                             payload=inner,
                         )
                     )
+                else:
+                    annotations.append(Annotation(side=side, kind="unknown", raw=raw))
             elif notation_spec(raw, book=book) is None:
                 annotations.append(Annotation(side=side, kind="unknown", raw=raw))
     return annotations
@@ -638,6 +643,15 @@ def _extract_greek_references(
             continue
         parsed = _GREEK_REFERENCE_VALUE.fullmatch(inner)
         if parsed is None:
+            if _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is None:
+                diagnostics.append(
+                    ParseDiagnostic(
+                        code="invalid_lxx_reference",
+                        line_no=line_no,
+                        raw_line=raw_line,
+                        message=f"unsupported CATSS Greek reference syntax: {raw}",
+                    )
+                )
             continue
         suffix = parsed.group(3) or None
         references.append(
