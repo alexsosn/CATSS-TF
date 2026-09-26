@@ -47,6 +47,8 @@ class TfMembership:
     retro_kind: str | None
     flags: frozenset[str] = frozenset()
     annotation_payloads: tuple[tuple[str, str], ...] = ()
+    semantic_kinds: tuple[str, ...] = ()
+    semantic_payloads: tuple[tuple[str, str], ...] = ()
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -455,6 +457,14 @@ def _compile_membership(
         "catss_line_n": membership.line_n,
         "catss_retro_kind": membership.retro_kind,
     }
+    for kind in membership.semantic_kinds:
+        feature_name = f"catss_sem_{kind}" if lane == 1 else f"catss_sem_{kind}_2"
+        _put(features, feature_name, node, 1)
+    for kind, payload in membership.semantic_payloads:
+        base_name = f"catss_sem_{kind}_payload"
+        feature_name = base_name if lane == 1 else f"{base_name}_2"
+        _put(features, feature_name, node, payload)
+
     for payload_name, payload in membership.annotation_payloads:
         if payload_name not in _ANNOTATION_PAYLOAD_SPECS:
             raise TfSchemaError(f"unknown annotation payload feature {payload_name!r}")
