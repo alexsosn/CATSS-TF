@@ -49,6 +49,7 @@ class TfMembership:
     flags: frozenset[str] = frozenset()
     annotation_payloads: tuple[tuple[str, str], ...] = ()
     semantic_kinds: tuple[str, ...] = ()
+    semantic_scopes: tuple[tuple[str, str], ...] = ()
     semantic_payloads: tuple[tuple[str, str], ...] = ()
 
 
@@ -256,11 +257,7 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
             )
             payload_base = f"{base_name}_payload"
             payload_name = payload_base if lane == 1 else f"{payload_base}_2"
-            specs[payload_name] = TfFeatureSpec(
-                payload_name,
-                "str",
-                f"CATSS semantic payload for {kind}{suffix}",
-            )
+            specs[payload_name] = TfFeatureSpec(\n                payload_name,\n                "str",\n                f"CATSS semantic payload for {kind}{suffix}",\n            )\n            for scope in ("mt_a", "mt_b", "lxx"):\n                scoped_base = f"{base_name}_{scope}"\n                scoped_name = scoped_base if lane == 1 else f"{scoped_base}_2"\n                specs[scoped_name] = TfFeatureSpec(\n                    scoped_name,\n                    "int",\n                    f"CATSS semantic annotation: {kind}, source scope {scope}{suffix}",\n                )
 
     specs["catss_alignment_n"] = TfFeatureSpec(
         "catss_alignment_n",
@@ -515,7 +512,7 @@ def _compile_membership(
     for kind in membership.semantic_kinds:
         feature_name = f"catss_sem_{kind}" if lane == 1 else f"catss_sem_{kind}_2"
         _put(features, feature_name, node, 1)
-    for kind, payload in membership.semantic_payloads:
+    for kind, scope in membership.semantic_scopes:\n        base_name = f"catss_sem_{kind}_{scope}"\n        feature_name = base_name if lane == 1 else f"{base_name}_2"\n        _put(features, feature_name, node, 1)\n    for kind, payload in membership.semantic_payloads:
         base_name = f"catss_sem_{kind}_payload"
         feature_name = base_name if lane == 1 else f"{base_name}_2"
         _put(features, feature_name, node, payload)
