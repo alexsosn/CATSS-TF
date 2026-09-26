@@ -18,13 +18,15 @@ browser integration.
 Install core software:
 
 ```sh
-pip install catss-tf
+pip install \\
+  https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
 Install with Text-Fabric integration:
 
 ```sh
-pip install "catss-tf[tf]"
+pip install \\
+  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
 ```
 
 Verify:
