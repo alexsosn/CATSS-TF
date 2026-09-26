@@ -458,7 +458,7 @@ def _extract_annotations(
                 annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
             else:
                 kind, family, contextual = raw_semantics
-                payload = _brace_payload(raw, raw_kind)
+                payload = _annotation_brace_payload(raw, raw_kind)
                 annotations.append(
                     Annotation(
                         side=side,
@@ -559,7 +559,7 @@ def _mt_dot_kind(raw: str) -> str:
     }.get(raw, "mt_strategy_siglum")
 
 
-def _brace_payload(raw: str, kind: str) -> str | None:
+def _annotation_brace_payload(raw: str, kind: str) -> str | None:
     """Extract contextual payload from encoded CATSS brace families."""
 
     prefixes = {
