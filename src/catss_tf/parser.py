@@ -707,7 +707,7 @@ def _mt_dot_kind(raw: str) -> str:
     }
     if raw in exact:
         return exact[raw]
-    if re.fullmatch(r"\.[a-z+\-()]{2,3}", raw):
+    if re.fullmatch(r"\\.[A-Za-z$&()+\\-]{1,4}", raw):
         return "letter_interchange"
     return "mt_strategy_siglum"
 
