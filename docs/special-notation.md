@@ -22,7 +22,7 @@ Existing convenience features such as `catss_doublet`, `catss_distributive`, and
 
 The two modules never use foreign parent node IDs. Hebrew/Aramaic-side notation is projected to resolved BHSA nodes; Greek-side notation is projected to resolved LXX nodes. Corresponding material across the two independent TF node spaces is joined by the stable `catss_alignment_id`.
 
-An annotation is not inferred from BHSA or LXX morphology. It reports CATSS's analysis. CATSS-TF preserves the distinction between source evidence and derived convenience features.
+An annotation is not inferred from BHSA or LXX morphology. It reports CATSS's analysis. CATSS-TF preserves the distinction between source evidence and derived convenience features. On BHSA, `catss_sem_<kind>_mt_a` and `catss_sem_<kind>_mt_b` preserve whether the notation came from the MT column or reconstructed-Hebrew column; on LXX, `catss_sem_<kind>_lxx` preserves Greek-side scope. The unsuffixed `catss_sem_<kind>` remains the convenient projection-local union.
 
 When one parent node participates in two CATSS memberships, lane 2 uses the normal `_2` suffix, including semantic and payload features.
 
