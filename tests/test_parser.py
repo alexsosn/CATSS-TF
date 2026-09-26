@@ -383,7 +383,7 @@ def test_mt_readings_structure_inline_aramaic_and_doubt_markers() -> None:
     assert doc.verses[0].alignments[0].mt_tokens == ("MLK", "DBR")
 
 
-def test_parser_decodes_documented_contextual_influence_annotation():
+def test_parser_decodes_documented_contextual_influence_annotation() -> None:
     document = parse_parallel_text(
         "Ge 1:1\nBR> {XTM}\tλογος\n",
         source_name="01.Genesis.par",
