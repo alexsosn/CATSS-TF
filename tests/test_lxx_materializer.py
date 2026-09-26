@@ -494,5 +494,4 @@ def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
     source = tmp_path / "source"
     _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS {..rQEOS}\n")
     output = tmp_path / "catss-lxx"
-    provider = FakeLxxProvider((_span("θεός", "θεός"),))
     materialize_lxx(source, output, provider=provider)
