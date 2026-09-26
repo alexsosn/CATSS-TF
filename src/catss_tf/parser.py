@@ -484,7 +484,30 @@ def _extract_annotations(
                     )
                 )
     for match in _ANGLE_NOTE.finditer(cell):
-        annotations.append(Annotation(side=side, kind="note", raw=match.group(0)))
+        raw = match.group(0)
+        spec = notation_spec(raw, book=book)
+        if spec is not None:
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=spec.kind,
+                    raw=raw,
+                    family=spec.family,
+                    contextual=spec.contextual,
+                    payload=raw[1:-1] or None,
+                )
+            )
+        else:
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind="source_note",
+                    raw=raw,
+                    family="reference",
+                    contextual=True,
+                    payload=raw[1:-1] or None,
+                )
+            )
     if side in {"mt_a", "mt_b"}:
         for match in _MT_DOT_SIGLUM.finditer(cell):
             raw = match.group(1)
@@ -505,7 +528,28 @@ def _extract_annotations(
             raw = match.group(0)
             inner = raw.lstrip("[").rstrip("]")
             if any(character.isdigit() for character in inner):
-                annotations.append(Annotation(side=side, kind="verse_reference", raw=raw))
+                if _GREEK_REFERENCE_VALUE.fullmatch(inner) is not None:
+                    annotations.append(
+                        Annotation(
+                            side=side,
+                            kind="verse_reference",
+                            raw=raw,
+                            family="reference",
+                            contextual=True,
+                            payload=inner,
+                        )
+                    )
+                else:
+                    annotations.append(
+                        Annotation(
+                            side=side,
+                            kind="contextual_reference",
+                            raw=raw,
+                            family="reference",
+                            contextual=True,
+                            payload=inner,
+                        )
+                    )
             elif notation_spec(raw, book=book) is None:
                 annotations.append(Annotation(side=side, kind="unknown", raw=raw))
     return annotations
@@ -526,14 +570,6 @@ def _extract_greek_references(
             continue
         parsed = _GREEK_REFERENCE_VALUE.fullmatch(inner)
         if parsed is None:
-            diagnostics.append(
-                ParseDiagnostic(
-                    code="invalid_lxx_reference",
-                    line_no=line_no,
-                    raw_line=raw_line,
-                    message=f"unsupported CATSS Greek reference syntax: {raw}",
-                )
-            )
             continue
         suffix = parsed.group(3) or None
         references.append(
