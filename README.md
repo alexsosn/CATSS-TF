@@ -79,4 +79,4 @@ The wrapper validates module/parent metadata and then invokes the normal `tf` br
 You can also use the direct Text-Fabric `--locations/--modules` mechanism or
 `tf.app.use()`.
 
-See [docs/browser.md](docs/browser.md) for exact pinned commands and search examples.
+See [docs/browser.md](docs/browser.md) for exact pinned commands and search examples.\n\n## Special notation semantics\n\nCATSS special notation is decoded into query-native `catss_sem_*` Text-Fabric features rather than requiring researchers to parse raw sigla or provenance sidecars. Context-bearing notation has corresponding `*_payload` features, and unknown notation fails validation instead of falling into a generic bucket. See [docs/special-notation.md](docs/special-notation.md) for the semantic families, Sirach-specific profile, scope rules, and query examples.
