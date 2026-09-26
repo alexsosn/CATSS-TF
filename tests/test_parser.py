@@ -538,3 +538,38 @@ def test_stylistic_preposition_transposition_preserves_context_payload() -> None
     annotations = document.verses[0].alignments[0].annotations
     match = next(item for item in annotations if item.kind == "transposition_stylistic")
     assert match.payload == "TARGET"
+
+
+def test_raw_uncertain_doublet_and_stylistic_transposition_are_typed() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB {d?} {..?YDY}\tGR\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    by_raw = {item.raw: item for item in annotations}
+    assert by_raw["{d?}"].kind == "possible_doublet"
+    assert by_raw["{..?YDY}"].kind == "transposition_stylistic"
+    assert by_raw["{..?YDY}"].payload == "?YDY"
+
+
+def test_beta_code_letter_interchange_sigla_are_typed_and_stop_before_angle_note() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB .$c .h-<ge10.4>\tGR\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    dot = {item.raw: item for item in annotations if item.raw.startswith(".")}
+    assert dot[".$c"].kind == "letter_interchange"
+    assert dot[".h-"].kind == "letter_interchange"
+    assert all(item.kind != "unknown_mt_strategy_siglum" for item in annotations)
+
+
+def test_contextual_square_references_accept_catss_book_prefix_and_uncertainty() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tGR [cc35.21] [ne 8.4] [[5.1?]]\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    refs = [item for item in annotations if item.family == "reference"]
+    assert {item.payload for item in refs} >= {"cc35.21", "ne 8.4", "5.1?"}
+    assert all(item.kind != "unknown" for item in annotations)
