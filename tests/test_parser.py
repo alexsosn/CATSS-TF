@@ -1,3 +1,4 @@
+import pytest
 from pathlib import Path
 
 from catss_tf.parser import parse_parallel_text
