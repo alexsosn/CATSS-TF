@@ -51,7 +51,7 @@ def test_validate_command_fails_on_unresolved_markup(
 
     output = capsys.readouterr().out
     assert "unresolved_count=1" in output
-    assert "unresolved unknown_annotation 01.First.par:2" in output
+    assert "unresolved unknown_annotation 01.First.par:2 raw={zzUNKNOWN!r}" in output
 
 
 def test_validate_command_can_explicitly_allow_a_finding_code(
