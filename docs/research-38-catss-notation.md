@@ -81,3 +81,16 @@ Offline CI proves the decoder contracts on synthetic fixtures. The public upstre
 intermittently timing out from automation, so a final corpus-wide zero-unknown claim is made only
 after all 46 configured files are acquired and validated as one snapshot. A partial/cache-backed
 inspection is useful for discovering RED cases but is not sufficient evidence for completion.
+
+
+## Empirical complete-snapshot audit
+
+The issue-38 CI audit downloads the configured 46 CCAT parallel files into an ephemeral runner directory and does not commit or publish them. On the 2026-09-26 upstream snapshot it accounted for all 350,426 source data lines and reported:
+
+- `source_files=46`
+- `unaccounted_lines=0`
+- `unknown_annotations=0`
+- `invalid_alignment_ids=0`
+- `duplicate_alignment_ids=0`
+
+The same validation run reported 246 unresolved general parser diagnostics, principally malformed/physical continuation rows and legacy LXX-reference syntax. Those diagnostics remain visible and keep ordinary strict validation non-zero; they are not notation tokens and are not reclassified or silently ignored to obtain the zero-unknown notation result.
