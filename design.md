@@ -2114,3 +2114,89 @@ CATSS browser UX is the ordinary parent corpus UX plus additional features. Sear
 ### 24.9 Agora boundary
 
 Agora may later discover/install/invoke CATSS-TF materializers. It is not involved in Text-Fabric browser startup, app configuration, display, or search.
+
+
+## 25. v0.1 release contract
+
+### 25.1 Version
+
+```text
+package version: 0.1.0
+git/release tag: v0.1.0
+schema version: 1
+technique schema: 1
+```
+
+Package version changes do not alter schema versions automatically.
+
+### 25.2 Install surfaces
+
+Core software:
+
+```sh
+pip install catss-tf
+```
+
+Text-Fabric integration/browser:
+
+```sh
+pip install "catss-tf[tf]"
+```
+
+A GitHub release wheel can be installed directly before/without PyPI publication.
+
+### 25.3 Public Python API
+
+```python
+from catss_tf import (
+    __version__,
+    compare_projection_bundles,
+    materialize_bhsa,
+    materialize_lxx,
+    TextFabricBhsaProvider,
+    TextFabricLxxProvider,
+)
+```
+
+Provider/profile construction and advanced diagnostics remain available from their dedicated modules.
+
+### 25.4 CLI contract
+
+```text
+catss-tf --version
+catss-tf fetch ...
+catss-tf validate ...
+catss-tf browse ...
+```
+
+Materialization remains library-first in v0.1. Agora integration (#16) may add a thin invocation adapter, but mapping/materialization behavior remains here.
+
+### 25.5 Release smoke
+
+A dedicated CI job builds with `python -m build`, checks distributions with `twine check`, creates a fresh virtual environment, installs the wheel without dev extras, and verifies version + public API import.
+
+The wheel smoke must not download CATSS/BHSA/LXX.
+
+### 25.6 Opt-in real-data verification
+
+Release documentation gives two independent paths:
+
+- normal offline/synthetic test suite;
+- opt-in user-acquired CATSS + pinned BHSA/LXX Text-Fabric parents.
+
+Real-data integration output remains local and is never uploaded by CI.
+
+### 25.7 Publication
+
+`release/VERSION` is the explicit publication trigger. Only a reviewed version change merged to `main` invokes release publication. The workflow creates `v0.1.0` at that main commit and attaches software distributions only.
+
+### 25.8 Release notes
+
+`CHANGELOG.md` is cumulative. `RELEASE_NOTES.md` describes the current release and its known limitations, especially:
+
+- exact parent versions;
+- CATSS upstream-license responsibility;
+- declared unsupported projection sources;
+- fail-closed unresolved mappings;
+- maximum two query-native membership lanes in schema-v1;
+- no cross-language lemma/morphology comparison in technique-v1.
