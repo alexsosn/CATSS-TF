@@ -507,7 +507,9 @@ def _extract_annotations(
                 annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
             else:
                 kind, family, contextual = raw_semantics
-                payload = _annotation_brace_payload(raw, raw_kind)\n                if payload is None and contextual:\n                    payload = raw[1:-1] or None
+                payload = _annotation_brace_payload(raw, raw_kind)
+                if payload is None and contextual:
+                    payload = raw[1:-1] or None
                 annotations.append(
                     Annotation(
                         side=side,
