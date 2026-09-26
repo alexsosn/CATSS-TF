@@ -19,7 +19,6 @@ from catss_tf.lxx_schema import (
 )
 from catss_tf.tf_schema import SCHEMA_VERSION, WARP_FEATURES
 
-
 BrowserProjection = typing.Literal["bhsa", "lxx"]
 
 
