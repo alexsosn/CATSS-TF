@@ -484,9 +484,7 @@ def _alignment_flags(alignment: AlignmentRecord, *, side: str = "both") -> froze
     return frozenset(flags)
 
 
-def _annotation_payloads(
-    alignment: AlignmentRecord, *, side: str
-) -> tuple[tuple[str, str], ...]:
+def _annotation_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[str, str], ...]:
     payload_feature = {
         "distributive": "catss_distributive_payload",
         "preposition_added": "catss_prep_added_payload",
