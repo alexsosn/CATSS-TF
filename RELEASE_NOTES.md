@@ -55,13 +55,18 @@ BHSA or CenterBLC/LXX and add the locally generated CATSS module. See
 Core:
 
 ```sh
-pip install catss-tf
+pip install \\
+  https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
 With Text-Fabric integration:
 
 ```sh
-pip install "catss-tf[tf]"
+pip install \\
+  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
 ```
 
 The GitHub release also attaches source and wheel distributions.
+
+
+PyPI publication is not part of v0.1.0; use the release artifacts above.
