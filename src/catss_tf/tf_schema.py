@@ -746,19 +746,14 @@ def _write_feature_file(
         rendered = str(value) if isinstance(value, int) else _feature_value(value)
         lines.append(f"{node}\t{rendered}")
 
-    path.write_text("
-".join(lines) + "
-", encoding="utf-8")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _header_value(value: str) -> str:
-    if "
-" in value or "\r" in value:
+    if "\n" in value or "\r" in value:
         raise TfSchemaError("TF feature metadata values must be single-line")
     return value
 
 
 def _feature_value(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("\t", "\\t").replace("
-", "\
-")
+    return value.replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n")
