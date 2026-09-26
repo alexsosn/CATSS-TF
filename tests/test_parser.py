@@ -434,3 +434,15 @@ def test_contextual_brace_annotation_exposes_payload_separately() -> None:
         ("distributive", "GRDIST"),
         ("repetition", "GRREPEAT"),
     ]
+
+
+def test_sirach_uncertain_transliteration_annotation_is_typed() -> None:
+    document = parse_parallel_text(
+        "Sir 2:13\n[..]\tOU)AI\\ {t?}\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    annotation = next(a for a in annotations if a.raw == "{t?}")
+    assert annotation.kind == "uncertain_transliteration"
+    assert annotation.family == "translation_technique"
