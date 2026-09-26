@@ -1,9 +1,7 @@
 name: Case study real-data smoke
 
 on:
-  push:
-    branches:
-      - issue-41-magic-terminology-notebook
+  workflow_dispatch:
 
 permissions:
   contents: read
