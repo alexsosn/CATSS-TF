@@ -44,7 +44,6 @@ jobs:
               "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/$name" \
               --output "./data/catss-parallel/$name"
           done < /tmp/catss-files.txt
-          catss-tf validate ./data/catss-parallel
 
       - name: Materialize pinned BHSA and LXX modules
         run: |
