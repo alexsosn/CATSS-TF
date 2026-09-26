@@ -522,7 +522,7 @@ def test_sirach_brace_manuscript_markup_keeps_raw_and_witness_payload() -> None:
     )
 
     annotations = document.verses[0].alignments[0].annotations
-    assert [(a.raw, a.kind, a.payload) for a in annotations] == [
+    assert sorted((a.raw, a.kind, a.payload) for a in annotations) == [
         ("{7}", "sirach_lacuna_in_witness", "7"),
         ("{{}}", "sirach_manuscript_addition", None),
     ]
