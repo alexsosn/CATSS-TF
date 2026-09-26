@@ -76,7 +76,7 @@ _GENERAL: dict[str, NotationSpec] = {
     "n": _spec("noun", "grammatical_label"),
     "npr": _spec("reconstructed_proper_noun", "reconstruction"),
     "om": _spec("lxx_parent_omits_mt_elements", "alignment"),
-    "{p}": _spec("hebrew_preposition_as_greek_verb_prefix", "preposition"),
+    "{p}": _spec("greek_preverb", "preposition"),
     "pa": _spec("passive_to_active", "translation_technique"),
     "pass2act": _spec("passive_to_active", "translation_technique"),
     "pr": _spec("preposition_difference", "preposition", contextual=True),
