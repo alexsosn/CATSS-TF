@@ -232,7 +232,9 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
             specs[lane_name] = TfFeatureSpec(lane_name, "str", lane_description)
 
     semantic_specs = {spec.kind: spec for spec in documented_specs().values()}
-    for kind, semantic in sorted(semantic_specs.items()):
+    semantic_kinds = set(semantic_specs) | set(_RAW_SEMANTIC_KINDS)
+    for kind in sorted(semantic_kinds):
+        semantic = semantic_specs.get(kind)
         base_name = semantic_feature_name(semantic) if semantic is not None else f"catss_sem_{kind}"
         for lane in (1, 2):
             name = base_name if lane == 1 else f"{base_name}_2"
@@ -242,14 +244,13 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
                 "int",
                 f"CATSS semantic annotation: {kind}{suffix}",
             )
-            if semantic.contextual:
-                payload_base = f"{base_name}_payload"
-                payload_name = payload_base if lane == 1 else f"{payload_base}_2"
-                specs[payload_name] = TfFeatureSpec(
-                    payload_name,
-                    "str",
-                    f"CATSS contextual payload for {kind}{suffix}",
-                )
+            payload_base = f"{base_name}_payload"
+            payload_name = payload_base if lane == 1 else f"{payload_base}_2"
+            specs[payload_name] = TfFeatureSpec(
+                payload_name,
+                "str",
+                f"CATSS semantic payload for {kind}{suffix}",
+            )
 
     specs["catss_alignment_n"] = TfFeatureSpec(
         "catss_alignment_n",
