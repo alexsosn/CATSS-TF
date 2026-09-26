@@ -506,3 +506,19 @@ def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
     assert "1\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
     payload_text = (output / "catss_sem_distributive_payload.tf").read_text(encoding="utf-8")
     assert "1\t)B" in payload_text
+
+
+def test_bhsa_preserves_mt_a_vs_mt_b_semantic_scope(tmp_path: pathlib.Path) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..d} = )B {..r}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+    assert "1\t1" in (output / "catss_sem_distributive_mt_a.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_repetition_mt_b.tf").read_text(encoding="utf-8")
+    assert not (output / "catss_sem_distributive_mt_b.tf").exists()
+    assert not (output / "catss_sem_repetition_mt_a.tf").exists()
