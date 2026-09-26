@@ -403,8 +403,8 @@ def test_parser_maps_raw_catss_brace_syntax_to_documented_semantics() -> None:
     )
     annotations = document.verses[0].alignments[0].annotations
     assert [(a.kind, a.family, a.contextual) for a in annotations] == [
-        ("distributive_rendering", "translation_technique", True),
+        ("distributive", "translation_technique", True),
         ("preposition_added", "preposition", True),
         ("transposition_remote", "transposition", True),
-        ("element_repeated_in_lxx", "translation_technique", True),
+        ("repetition", "translation_technique", True),
     ]
