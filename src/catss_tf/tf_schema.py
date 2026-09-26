@@ -4,6 +4,7 @@ import dataclasses
 import pathlib
 import typing
 
+from catss_tf.notation import documented_specs, semantic_feature_name
 from catss_tf.source import CATSS_PARALLEL_FILENAMES
 from catss_tf.technique import TECHNIQUE_SCHEMA_VERSION, TechniqueError, derive_technique_state
 
@@ -206,6 +207,26 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
             lane_name = name if lane == 1 else f"{name}_2"
             lane_description = description if lane == 1 else f"{description} (membership lane 2)"
             specs[lane_name] = TfFeatureSpec(lane_name, "str", lane_description)
+
+    semantic_specs = {spec.kind: spec for spec in documented_specs().values()}
+    for kind, semantic in sorted(semantic_specs.items()):
+        base_name = semantic_feature_name(semantic)
+        for lane in (1, 2):
+            name = base_name if lane == 1 else f"{base_name}_2"
+            suffix = "" if lane == 1 else " (membership lane 2)"
+            specs[name] = TfFeatureSpec(
+                name,
+                "int",
+                f"CATSS semantic annotation: {kind}{suffix}",
+            )
+            if semantic.contextual:
+                payload_base = f"{base_name}_payload"
+                payload_name = payload_base if lane == 1 else f"{payload_base}_2"
+                specs[payload_name] = TfFeatureSpec(
+                    payload_name,
+                    "str",
+                    f"CATSS contextual payload for {kind}{suffix}",
+                )
 
     specs["catss_alignment_n"] = TfFeatureSpec(
         "catss_alignment_n",
