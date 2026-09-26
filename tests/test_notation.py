@@ -41,7 +41,23 @@ def test_unknown_notation_has_no_fallback() -> None:
 
 def test_every_documented_notation_has_a_spec() -> None:
     for raw in documented_notation():
-        book = "Sir" if raw in {"[]", "{}", "{{}}", ">", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"} else "Ge"
+        sirach_only = {
+            "[]",
+            "{}",
+            "{{}}",
+            ">",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+        }
+        book = "Sir" if raw in sirach_only else "Ge"
         assert notation_spec(raw, book=book) is not None
 
 
