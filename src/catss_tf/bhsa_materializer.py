@@ -340,6 +340,8 @@ def _projection_facts(
                 retro_kind=alignment.retroversion_kind,
                 flags=_alignment_flags(alignment, side="mt"),
                 annotation_payloads=_annotation_payloads(alignment, side="mt"),
+                semantic_kinds=_semantic_kinds(alignment, side="mt"),
+                semantic_payloads=_semantic_payloads(alignment, side="mt"),
             )
             memberships.append(membership)
             mapping_facts.append((membership, mapping.mt_index, mapping.segment_index))
@@ -503,6 +505,32 @@ def _annotation_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tupl
             result.append((feature, annotation.payload))
     return tuple(result)
 
+
+
+
+def _semantic_kinds(alignment: AlignmentRecord, *, side: str) -> tuple[str, ...]:
+    kinds = {
+        annotation.kind
+        for annotation in alignment.annotations
+        if (side == "mt" and annotation.side != "lxx")
+        or (side == "lxx" and annotation.side == "lxx")
+    }
+    return tuple(sorted(kinds))
+
+
+def _semantic_payloads(
+    alignment: AlignmentRecord, *, side: str
+) -> tuple[tuple[str, str], ...]:
+    payloads = {
+        (annotation.kind, annotation.payload)
+        for annotation in alignment.annotations
+        if annotation.payload is not None
+        and (
+            (side == "mt" and annotation.side != "lxx")
+            or (side == "lxx" and annotation.side == "lxx")
+        )
+    }
+    return tuple(sorted(payloads))
 
 
 def _alignment_sidecar_row(context: _AlignmentContext) -> tuple[object, ...]:
