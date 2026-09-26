@@ -140,6 +140,14 @@ _MEMBERSHIP_FLAGS: dict[str, str] = {
     "catss_repetition": "CATSS repetition annotation",
 }
 
+_ANNOTATION_PAYLOAD_SPECS: dict[str, str] = {
+    "catss_distributive_payload": "CATSS distributive-rendering contextual payload",
+    "catss_prep_added_payload": "CATSS added-preposition contextual payload",
+    "catss_repetition_payload": "CATSS repetition contextual payload",
+    "catss_trans_remote_payload": "CATSS remote-transposition contextual payload",
+    "catss_trans_style_payload": "CATSS stylistic-transposition contextual payload",
+}
+
 _AGGREGATE_BY_FLAG = {flag: f"{flag}_members" for flag in _MEMBERSHIP_FLAGS}
 
 _ANCHOR_SPECS: dict[str, tuple[ValueType, str]] = {
@@ -190,6 +198,12 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
             name = lane_feature_name(base_name, lane)
             lane_description = description if lane == 1 else f"{description} (membership lane 2)"
             specs[name] = TfFeatureSpec(name, "int", lane_description)
+
+    for name, description in _ANNOTATION_PAYLOAD_SPECS.items():
+        for lane in (1, 2):
+            lane_name = name if lane == 1 else f"{name}_2"
+            lane_description = description if lane == 1 else f"{description} (membership lane 2)"
+            specs[lane_name] = TfFeatureSpec(lane_name, "str", lane_description)
 
     specs["catss_alignment_n"] = TfFeatureSpec(
         "catss_alignment_n",
@@ -441,6 +455,12 @@ def _compile_membership(
         "catss_line_n": membership.line_n,
         "catss_retro_kind": membership.retro_kind,
     }
+    for payload_name, payload in membership.annotation_payloads:
+        if payload_name not in _ANNOTATION_PAYLOAD_SPECS:
+            raise TfSchemaError(f"unknown annotation payload feature {payload_name!r}")
+        feature_name = payload_name if lane == 1 else f"{payload_name}_2"
+        _put(features, feature_name, node, payload)
+
     for base_name, value in values.items():
         if value is not None:
             _put(features, lane_feature_name(base_name, lane), node, value)
