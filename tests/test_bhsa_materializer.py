@@ -530,12 +530,18 @@ def test_bhsa_preserves_distinct_mt_a_mt_b_payloads_for_same_kind(
     source = tmp_path / "source"
     _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..dA} = )B {..dB}\tQEOS\n")
     output = tmp_path / "catss-bhsa"
-    materialize_bhsa(
-        source,
-        output,
-        provider=FakeBhsaProvider((_verse(),)),
-        parent_probe=_probe(),
+    provider = FakeBhsaProvider(
+        (
+            dataclasses.replace(
+                _verse(),
+                words=(
+                    _verse().words[0],
+                    dataclasses.replace(_verse().words[0], node=3),
+                ),
+            ),
+        )
     )
+    materialize_bhsa(source, output, provider=provider, parent_probe=_probe())
     mt_a = (output / "catss_sem_distributive_mt_a_payload.tf").read_text(encoding="utf-8")
     mt_b = (output / "catss_sem_distributive_mt_b_payload.tf").read_text(encoding="utf-8")
     assert "1\tA" in mt_a
