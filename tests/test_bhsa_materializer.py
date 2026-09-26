@@ -166,7 +166,7 @@ def test_simple_bhsa_materialization_writes_query_native_module_and_sidecars(
             "lane": "1",
             "mapping_kind": "exact",
             "mt_i": "1",
-            "mt_segment": "1",
+            "mt_segment": "",
             "lxx_i": "",
         }
     ]
@@ -395,3 +395,34 @@ def test_mid_write_failure_removes_temporary_bundle(
 
     assert not output.exists()
     assert list(tmp_path.glob(".catss-bhsa.tmp-*")) == []
+
+
+
+def test_maqaf_expansion_emits_segment_only_when_explicit(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B-GD\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    provider = FakeBhsaProvider(
+        (
+            BhsaVerse(
+                node=3,
+                book="Genesis",
+                chapter=1,
+                verse=1,
+                words=(
+                    BhsaWord(node=1, g_cons_utf8="אב", g_word_utf8="אב", qere_utf8=None),
+                    BhsaWord(node=2, g_cons_utf8="גד", g_word_utf8="גד", qere_utf8=None),
+                ),
+            ),
+        )
+    )
+
+    materialize_bhsa(source, output, provider=provider, parent_probe=_probe())
+
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert [(row["parent_node"], row["mt_i"], row["mt_segment"]) for row in mappings] == [
+        ("1", "1", "1"),
+        ("2", "1", "2"),
+    ]
