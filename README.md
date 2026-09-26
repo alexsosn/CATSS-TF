@@ -43,7 +43,8 @@ Read:
 4. [research.md](research.md)
 5. [design.md](design.md)
 6. [plan.md](plan.md)
-7. [AGENTS.md](AGENTS.md)
+7. [docs/case-studies/magic-terminology.ipynb](docs/case-studies/magic-terminology.ipynb) — reproducible Hebrew–Greek research case study
+8. [AGENTS.md](AGENTS.md)
 
 ## Architectural boundary
 
