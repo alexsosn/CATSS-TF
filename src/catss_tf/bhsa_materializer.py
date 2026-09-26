@@ -355,9 +355,7 @@ def _projection_facts(
             if finding.severity == "ignored"
         )
 
-    alignment_rows.sort(
-        key=lambda row: (str(row[0]), _required_int_sort(row[5]), str(row[1]))
-    )
+    alignment_rows.sort(key=lambda row: (str(row[0]), _required_int_sort(row[5]), str(row[1])))
     annotation_rows.sort(
         key=lambda row: (
             str(row[0]),
@@ -367,12 +365,8 @@ def _projection_facts(
             str(row[4]),
         )
     )
-    source_line_rows.sort(
-        key=lambda row: (str(row[0]), _required_int_sort(row[2]), str(row[1]))
-    )
-    anchor_rows.sort(
-        key=lambda row: (str(row[1]), str(row[2]), _required_int_sort(row[3]))
-    )
+    source_line_rows.sort(key=lambda row: (str(row[0]), _required_int_sort(row[2]), str(row[1])))
+    anchor_rows.sort(key=lambda row: (str(row[1]), str(row[2]), _required_int_sort(row[3])))
     diagnostic_rows.sort(
         key=lambda row: (
             str(row[3]),
