@@ -147,13 +147,13 @@ _RAW_SEMANTIC_KINDS = frozenset(
     {
         "abbreviation",
         "contextual_reference",
-        "distributive",
+        "distributive",\n        "doublet_transposed",
         "doubt",
         "greek_correction",
         "greek_edition_difference",
         "letter_interchange",
         "metathesis",
-        "possible_doublet",
+        "possible_doublet",\n        "preposition_marker",
         "preposition_added",
         "repetition",
         "sirach_lacuna_in_witness",
@@ -163,7 +163,7 @@ _RAW_SEMANTIC_KINDS = frozenset(
         "verse_reference",
         "word_division",
         "word_join",
-        "word_separation",
+        "word_separation",\n        "ziegler_variant",
     }
 )
 
