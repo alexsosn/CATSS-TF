@@ -30,6 +30,17 @@ jobs:
 
       - name: Acquire CATSS parallel source directly from CCAT
         run: |
+          # CCAT's TLS chain is not accepted by the hosted runner's default
+          # OpenSSL trust store. Prefer the independently maintained certifi CA
+          # bundle already installed through Text-Fabric/requests; do not disable
+          # certificate verification.
+          export SSL_CERT_FILE="$(python -c 'import certifi; print(certifi.where())')"
+          python - <<'PY'
+          import os
+          import ssl
+          print("SSL_CERT_FILE", os.environ["SSL_CERT_FILE"])
+          print("verify paths", ssl.get_default_verify_paths())
+          PY
           catss-tf fetch ./data/catss-parallel
           catss-tf validate ./data/catss-parallel
 
