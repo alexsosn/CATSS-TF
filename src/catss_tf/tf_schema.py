@@ -143,26 +143,28 @@ _MEMBERSHIP_FLAGS: dict[str, str] = {
     "catss_repetition": "CATSS repetition annotation",
 }
 
-_RAW_SEMANTIC_KINDS = frozenset(\n    {
-    "abbreviation",
-    "contextual_reference",
-    "distributive",
-    "doubt",
-    "greek_correction",
-    "greek_edition_difference",
-    "letter_interchange",
-    "metathesis",
-    "preposition_added",
-    "repetition",
-    "sirach_lacuna_in_witness",
-    "source_note",
-    "transposition_remote",
-    "transposition_stylistic",
-    "verse_reference",
-    "word_division",
-    "word_join",
-    "word_separation",
-}\n)
+_RAW_SEMANTIC_KINDS = frozenset(
+    {
+        "abbreviation",
+        "contextual_reference",
+        "distributive",
+        "doubt",
+        "greek_correction",
+        "greek_edition_difference",
+        "letter_interchange",
+        "metathesis",
+        "preposition_added",
+        "repetition",
+        "sirach_lacuna_in_witness",
+        "source_note",
+        "transposition_remote",
+        "transposition_stylistic",
+        "verse_reference",
+        "word_division",
+        "word_join",
+        "word_separation",
+    }
+)
 
 _ANNOTATION_PAYLOAD_SPECS: dict[str, str] = {
     "catss_distributive_payload": "CATSS distributive-rendering contextual payload",
