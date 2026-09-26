@@ -83,7 +83,9 @@ def test_feature_contract_uses_only_scalar_int_and_str_values() -> None:
     assert {spec.value_type for spec in FEATURE_SPECS.values()} <= {"int", "str"}
     assert not {"otype", "oslots", "otext"} & set(FEATURE_SPECS)
     assert all("json" not in name for name in FEATURE_SPECS)
-    assert all(not name.endswith(("_list", "_lists")) for name in FEATURE_SPECS)
+    assert all(
+        not name.endswith(("_list", "_lists")) for name in FEATURE_SPECS
+    )
 
 
 def test_lane_two_feature_names_are_explicit_scalars() -> None:
