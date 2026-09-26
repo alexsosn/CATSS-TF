@@ -509,6 +509,7 @@ def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[
     }
     return tuple(sorted(payloads))
 
+
 def _alignment_sidecar_row(context: _AlignmentContext) -> tuple[object, ...]:
     alignment = context.alignment
     return (
