@@ -1309,3 +1309,118 @@ message
 ```
 
 Fields unavailable for a particular validation/mapping finding remain empty cells. No mismatch context is embedded as JSON or reconstructed from the human-readable message.
+
+
+## R-086 — BHSA materialization is a gated projection pipeline
+
+The parser, validator, BHSA resolver, parent schema profile, and TF schema are now separate tested layers. The materializer should compose them rather than introduce a second interpretation path.
+
+**Decision:** `catss-bhsa` materialization proceeds in this order:
+
+1. inspect and fingerprint the local CATSS source directory;
+2. validate the supplied BHSA parent probe against the exact v0.1 parent contract;
+3. parse every selected CATSS parallel file;
+4. resolve each BHSA-supported document through `resolve_bhsa_document()`;
+5. abort before filesystem output if any supported document has a mapping finding;
+6. translate proven resolver mappings/anchors into generic `TfMembership` / `TfAnchorEvent`;
+7. compile schema-v1 TF features;
+8. write feature files and normalized TSV sidecars to a fresh temporary sibling directory;
+9. atomically rename that completed directory to the requested destination.
+
+There is no materializer-specific text matching, Ketiv/Qere heuristic, or positional repair.
+
+## R-087 — Parent validation is explicit input to the materializer
+
+`TextFabricBhsaProvider` intentionally exposes only the textual/locality API needed by the pure resolver. Release identity belongs to the parent profile layer, not to verse lookup.
+
+**Decision:** the library materializer accepts both:
+
+- a `BhsaVerseProvider`; and
+- a `BhsaParentProbe`.
+
+It calls `validate_bhsa_parent()` before parsing/resolution output is published. A profile mismatch is a hard materialization error.
+
+Structural parent validation is sufficient when raw TF files are not exposed by the caller. If blob fingerprints are supplied in the probe they are checked by the existing profile validator. A later CLI may construct the probe from a local BHSA installation; the core #11 API does not guess release identity from arbitrary paths.
+
+## R-088 — BHSA projection sidecars are projection-specific, source fingerprints are acquisition-wide
+
+Four CATSS sources are explicitly unsupported for the BHSA projection. Treating them as mapping failures would contradict the frozen source profile; inventing BHSA rows for them would be worse.
+
+**Decision:**
+
+- `catss-sources.tsv` records every input `.par` fingerprint in the inspected local source set;
+- alignment, annotation, source-line, mapping, and anchor rows are emitted only for BHSA-supported source documents;
+- declared unsupported sources are counted in the materialization summary but create no BHSA node features or projected alignment rows;
+- an unknown/unclassified CATSS source is a hard materialization failure.
+
+## R-089 — Resolver facts translate mechanically into schema-v1 memberships
+
+A BHSA `BhsaWordMapping` already carries all parent-node and source-position identity needed by schema v1. The materializer looks up its canonical `AlignmentRecord` by `alignment_id` and emits:
+
+```text
+node          = bhsa_node
+source        = document.source_name
+alignment_id  = mapping.alignment_id
+mapping_kind  = mapping.mapping_kind
+mt_n          = alignment.mt_count
+lxx_n         = alignment.lxx_count
+mt_i          = mapping.mt_index + 1
+mt_segment    = mapping.segment_index + 1
+lxx_i         = empty
+line_*        = scalar summary of alignment.source_lines
+retro_kind    = alignment.retroversion_kind
+flags         = normalized alignment/annotation concepts
+```
+
+No raw source string is reparsed during this translation.
+
+A `BhsaVerseAnchor` becomes `TfAnchorEvent(kind="lxx_plus")` with `token_n=alignment.lxx_count`.
+
+## R-090 — Flag derivation is closed and annotation-kind based
+
+The parser has already normalized stable CATSS annotation kinds. Materialization maps only reviewed kinds to schema-v1 flags.
+
+Alignment-state flags come directly from `AlignmentRecord` booleans. Annotation flags use a closed kind→feature table. Unknown/unmapped annotation kinds remain in `catss-annotations.tsv`; they are never guessed into a TF flag.
+
+Doubt is true when either:
+
+- any MT reading in the alignment has `doubtful=True`; or
+- an annotation has `kind="doubt"`.
+
+**Decision:** raw sigla are provenance, not a second semantic parser at materialization time.
+
+## R-091 — Sidecars use RFC-style tabular quoting and deterministic ordering
+
+Raw CATSS physical lines may contain tabs. Hand-written tab joining would make `catss-source-lines.tsv` ambiguous.
+
+**Decision:** sidecars are written with Python's `csv.writer` using tab delimiter, newline-safe quoting, and `lineterminator="\n"`. Every table starts with the frozen `SIDECAR_COLUMNS` header. Rows are sorted deterministically by canonical source order and then by source location/alignment/node indices as appropriate.
+
+No sidecar cell stores a collection.
+
+## R-092 — Final publication is atomic and destination-safe
+
+#10 made the low-level TF writer clean-target only. The higher-level materializer must also prevent partially written sidecars or half a module from becoming the requested output.
+
+**Decision:**
+
+- the requested destination must not already exist;
+- a temporary sibling directory is created on the same filesystem;
+- all TF features and sidecars are written there;
+- any exception deletes the temporary directory and leaves destination absent;
+- only after all writes succeed is the temporary directory renamed to destination.
+
+Replacement/overwrite semantics are deferred; callers can choose a new destination or explicitly remove an old generated module themselves.
+
+## R-093 — Successful materialization is independently load-tested over a parent warp
+
+Schema-v1 already proves generic module loadability. #11 additionally needs to prove the full BHSA conversion from parser/resolver facts to features and sidecars.
+
+**Decision:** normal CI uses an injected synthetic `BhsaVerseProvider` and exact synthetic parent node IDs, writes a `catss-bhsa` bundle in `tmp_path`, and verifies:
+
+- expected BHSA word and verse features;
+- no warp files in the generated module;
+- exact source/mapping/anchor TSV rows;
+- source SHA-256 provenance;
+- a generated module can be loaded alongside a synthetic parent Text-Fabric warp and queried.
+
+No CATSS or BHSA corpus bytes are committed to the repository.
