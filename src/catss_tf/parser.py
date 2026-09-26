@@ -760,7 +760,12 @@ def _brace_kind(raw: str) -> str:
         "{d}": "doublet",
         "{d?}": "possible_doublet",
         "{?d}": "possible_doublet",
-        "{t}": "transliteration",\n        "{t.}": "transliteration",\n        "{dt}": "doublet_transposed",\n        "{pm}": "preposition_marker",\n        "{z}": "ziegler_variant",\n        "{?}": "doubt",
+        "{t}": "transliteration",
+        "{t.}": "transliteration",
+        "{dt}": "doublet_transposed",
+        "{pm}": "preposition_marker",
+        "{z}": "ziegler_variant",
+        "{?}": "doubt",
         "{x}": "apparent_plus_minus",
         "{*}": "greek_agrees_ketiv",
         "{**}": "greek_agrees_qere",
@@ -770,7 +775,7 @@ def _brace_kind(raw: str) -> str:
     }
     if raw in exact:
         return exact[raw]
-    if raw.startswith("{..^") or raw.startswith("{..p^"):
+    if raw.startswith(("{..^", "{..p^", "{?..^")):
         return "transposition_stylistic"
     if raw.startswith("{..."):
         return "transposition_remote"
@@ -787,7 +792,6 @@ def _brace_kind(raw: str) -> str:
     if raw.startswith("{g"):
         return "greek_edition_difference"
     return "unknown"
-
 
 def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
     text = _prepare_lexical_text(cell)
