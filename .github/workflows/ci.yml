@@ -75,4 +75,12 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
-      - name: Assert complete notation coverage\n        run: |\n          set +e\n          catss-tf validate --complete /tmp/catss-parallel | tee /tmp/catss-audit.txt\n          set -e\n          grep -qx 'complete_snapshot=true' /tmp/catss-audit.txt\n          grep -qx 'source_files=46' /tmp/catss-audit.txt\n          grep -qx 'unaccounted_lines=0' /tmp/catss-audit.txt\n          grep -qx 'unknown_annotations=0' /tmp/catss-audit.txt
+      - name: Assert complete notation coverage
+        run: |
+          set +e
+          catss-tf validate --complete /tmp/catss-parallel | tee /tmp/catss-audit.txt
+          set -e
+          grep -qx 'complete_snapshot=true' /tmp/catss-audit.txt
+          grep -qx 'source_files=46' /tmp/catss-audit.txt
+          grep -qx 'unaccounted_lines=0' /tmp/catss-audit.txt
+          grep -qx 'unknown_annotations=0' /tmp/catss-audit.txt
