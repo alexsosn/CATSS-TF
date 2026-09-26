@@ -506,7 +506,6 @@ def _annotation_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tupl
     return tuple(result)
 
 
-
 def _semantic_kinds(alignment: AlignmentRecord, *, side: str) -> tuple[str, ...]:
     kinds = {
         annotation.kind
