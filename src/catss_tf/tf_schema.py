@@ -252,6 +252,9 @@ SIDECAR_COLUMNS: dict[str, tuple[str, ...]] = {
         "alignment_id",
         "side",
         "kind",
+        "family",
+        "contextual",
+        "payload",
         "raw",
     ),
     "catss-mappings.tsv": (
