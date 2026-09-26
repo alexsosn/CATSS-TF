@@ -513,3 +513,16 @@ def test_sirach_mt_manuscript_markup_is_not_silently_dropped() -> None:
         ("*", "sirach_uncertain_fragmentary_letter"),
         (">7", "sirach_reading_lacking_in_witness"),
     ]
+
+
+def test_sirach_brace_manuscript_markup_keeps_raw_and_witness_payload() -> None:
+    document = parse_parallel_text(
+        "Sir 3:1\nHB {7} {{}}\tGR\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.raw, a.kind, a.payload) for a in annotations] == [
+        ("{7}", "sirach_lacuna_in_witness", "7"),
+        ("{{}}", "sirach_manuscript_addition", None),
+    ]
