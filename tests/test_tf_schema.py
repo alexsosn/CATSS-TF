@@ -690,7 +690,7 @@ def test_lxx_plus_word_membership_gets_explicit_derived_addition_flag() -> None:
         anchors=(),
     )
 
-    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "zero_many"}
+    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "zero_one"}
     assert compiled["catss_tt_token_balance_mt_lxx"] == {1: "not_applicable"}
     assert compiled["catss_tt_transposition_mt_lxx"] == {1: "not_applicable"}
     assert compiled["catss_tt_addition_vs_mt"] == {1: 1}
@@ -711,7 +711,7 @@ def test_lxx_minus_bhsa_membership_gets_explicit_derived_omission_flag() -> None
         anchors=(),
     )
 
-    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "many_zero"}
+    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "one_zero"}
     assert compiled["catss_tt_omission_vs_mt"] == {1: 1}
     assert "catss_tt_addition_vs_mt" not in compiled
 
