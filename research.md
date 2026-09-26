@@ -1624,3 +1624,106 @@ ConsistencyFinding exposes only scalar fields: code, source, alignment_id, table
 ## R-111 — The checker consumes completed bundles
 
 **Decision:** the primary API is compare_projection_bundles(bhsa_directory, lxx_directory). It reads frozen normalized sidecars emitted by #11/#12. Tests materialize synthetic bundles and compare those actual artifacts, so there is one comparison algorithm and no hidden parser-only shortcut.
+
+
+## R-112 — Translation-technique features are derived facts, not CATSS editorial facts
+
+Schema v1 intentionally preserves CATSS source/editorial annotations under `catss_*`. Issue #14 adds a second semantic layer whose values are mechanically derived from canonical CATSS alignment state.
+
+**Decision:** every derived Text-Fabric feature uses the `catss_tt_*` prefix. CATSS source facts remain unchanged and independently queryable. No derived feature replaces or aliases a source feature silently.
+
+## R-113 — The only v1 comparison base is explicit MT ↔ LXX
+
+CATSS-TF currently models the MT/BHS side and the CATSS Greek/LXX side. It does not yet contain Aquila, Symmachus, Theodotion, or another reviser-vs-Old-Greek layer.
+
+**Decision:** technique-v1 has one comparison base, `mt_lxx`. Feature names themselves encode the base where ambiguity matters:
+
+- `catss_tt_cardinality_mt_lxx`;
+- `catss_tt_token_balance_mt_lxx`;
+- `catss_tt_transposition_mt_lxx`;
+- `catss_tt_addition_vs_mt`;
+- `catss_tt_omission_vs_mt`.
+
+A future reviser-vs-OG layer must use different feature names and cannot reuse these fields with a different meaning.
+
+## R-114 — Token cardinality is descriptive and fully reproducible
+
+Canonical `mt_n` and `lxx_n` already count CATSS alignment elements/Greek lexical elements.
+
+**Decision:** derive a closed cardinality enum:
+
+```text
+zero_zero
+zero_many
+many_zero
+one_one
+one_many
+many_one
+many_many
+```
+
+“many” means `>1`. This is a descriptive shape only; it does not claim semantic expansion/contraction.
+
+## R-115 — Token balance must not be confused with semantic expansion
+
+Comparing two languages by token count can be useful, but “more Greek tokens” is not automatically a semantic expansion and “fewer Greek tokens” is not automatically a semantic contraction.
+
+**Decision:** derive `catss_tt_token_balance_mt_lxx` only for alignments where both sides are non-empty:
+
+- `equal`;
+- `lxx_more`;
+- `lxx_fewer`.
+
+When either side is empty, value = `not_applicable`.
+
+## R-116 — Addition/omission labels must name MT as the comparison base
+
+CATSS explicitly marks LXX plus/minus and canonical cardinalities independently confirm the empty side.
+
+**Decision:**
+
+- `catss_tt_addition_vs_mt=1` only when `mt_n=0`, `lxx_n>0`, and CATSS marks LXX plus;
+- `catss_tt_omission_vs_mt=1` only when `mt_n>0`, `lxx_n=0`, and CATSS marks LXX minus.
+
+A zero-side alignment lacking the corresponding CATSS source flag is not silently reclassified as addition/omission; technique derivation fails closed. This keeps the derived terminology tied to explicit CATSS evidence.
+
+## R-117 — Word-order evidence is annotation evidence, not reconstructed order
+
+CATSS provides local, remote/reflected-elsewhere, and stylistic/grammatical transposition evidence. Absence of such a marker does not prove identical Hebrew/Greek word order.
+
+**Decision:** `catss_tt_transposition_mt_lxx` is a closed evidence enum:
+
+- `none_marked`;
+- `local`;
+- `remote`;
+- `stylistic`;
+- `multiple`;
+- `not_applicable` when either side is empty.
+
+The value `none_marked` deliberately does **not** mean “same word order”.
+
+## R-118 — Cross-language lexical/morphological difference is not derivable from current evidence
+
+Hebrew and Greek lexemes/morphology live in different linguistic systems. A yes/no “same lemma” or “morphological difference” between MT Hebrew and LXX Greek is not well-defined without a separately designed cross-lingual ontology.
+
+Likewise, the future question “same lemma as OG” belongs to a Greek reviser-vs-OG comparison layer, not MT↔LXX.
+
+**Decision:** technique-v1 does not materialize lexical- or morphological-difference features. The documentation records them as intentionally unavailable rather than filling every node with a misleading `unknown`/false value.
+
+## R-119 — Derived alignment facts need both TF-native projection and canonical sidecar identity
+
+Ordinary word queries should not require joining a TSV sidecar, while exact per-alignment provenance must remain projection-independent.
+
+**Decision:**
+
+- derived scalar values are emitted in each membership lane as `catss_tt_*` TF features;
+- `catss-technique.tsv` stores one canonical derived row per supported alignment;
+- the technique sidecar is identical between BHSA/LXX for common sources and becomes part of cross-projection canonical consistency checks.
+
+Structural plus/minus events that have no word on one side remain represented by the existing source anchor counters; the derived sidecar preserves their per-alignment technique classification.
+
+## R-120 — technique-v1 is an adjunct contract, not a mutation of source schema-v1 semantics
+
+Schema-v1 source features are already stable and used by both materializers/consistency checks.
+
+**Decision:** keep `SCHEMA_VERSION=1` for source facts and add `TECHNIQUE_SCHEMA_VERSION=1` for the derived layer. New technique feature metadata include `@catssTechniqueSchema=1`. Existing source feature meanings, lane assignment, and sidecar columns are unchanged except for adding one new normalized technique table.
