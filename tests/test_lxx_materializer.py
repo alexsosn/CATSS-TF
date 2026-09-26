@@ -468,9 +468,7 @@ def test_lxx_plus_materializer_emits_explicit_addition_vs_mt_feature(
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("λόγος"),)))
 
     assert "1\t1" in (output / "catss_tt_addition_vs_mt.tf").read_text(encoding="utf-8")
-    assert "1\tzero_one" in (
-        output / "catss_tt_cardinality_mt_lxx.tf"
-    ).read_text(encoding="utf-8")
+    assert "1\tzero_one" in (output / "catss_tt_cardinality_mt_lxx.tf").read_text(encoding="utf-8")
 
     rows = _read_tsv(output / "catss-technique.tsv")
     assert rows[0]["comparison_base"] == "mt_lxx"
