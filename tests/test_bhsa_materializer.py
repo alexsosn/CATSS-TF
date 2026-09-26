@@ -494,7 +494,5 @@ def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
         parent_probe=_probe(),
     )
     assert "1\\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
-    payload_text = (output / "catss_sem_distributive_payload.tf").read_text(
-        encoding="utf-8"
-    )
+    payload_text = (output / "catss_sem_distributive_payload.tf").read_text(encoding="utf-8")
     assert "1\\tGRDIST" in payload_text
