@@ -294,6 +294,9 @@ def _projection_facts(
                         alignment.alignment_id,
                         annotation.side,
                         annotation.kind,
+                        annotation.family,
+                        int(annotation.contextual),
+                        annotation.payload,
                         annotation.raw,
                     )
                     for annotation in alignment.annotations
