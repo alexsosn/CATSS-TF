@@ -613,7 +613,7 @@ def _extract_annotations(
                             payload=inner,
                         )
                     )
-                elif _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None:
+                elif (\n                    _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None\n                    or (raw.startswith("[[") and raw.endswith("]]"))\n                ):
                     annotations.append(
                         Annotation(
                             side=side,
@@ -760,7 +760,7 @@ def _brace_kind(raw: str) -> str:
         "{d}": "doublet",
         "{d?}": "possible_doublet",
         "{?d}": "possible_doublet",
-        "{t}": "transliteration",
+        "{t}": "transliteration",\n        "{t.}": "transliteration",\n        "{dt}": "doublet_transposed",\n        "{pm}": "preposition_marker",\n        "{z}": "ziegler_variant",\n        "{?}": "doubt",
         "{x}": "apparent_plus_minus",
         "{*}": "greek_agrees_ketiv",
         "{**}": "greek_agrees_qere",
