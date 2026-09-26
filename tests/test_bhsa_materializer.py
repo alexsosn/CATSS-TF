@@ -41,9 +41,7 @@ def _probe() -> BhsaParentProbe:
 
 class FakeBhsaProvider:
     def __init__(self, verses: tuple[BhsaVerse, ...]) -> None:
-        self._verses = {
-            (verse.book, verse.chapter, verse.verse): verse for verse in verses
-        }
+        self._verses = {(verse.book, verse.chapter, verse.verse): verse for verse in verses}
 
     def get_verse(self, book: str, chapter: int, verse: int) -> BhsaVerse | None:
         return self._verses.get((book, chapter, verse))
@@ -223,9 +221,7 @@ def test_two_bhsa_sources_on_same_parent_word_use_deterministic_lanes(
     _write_source(source, "45.DanielOG.par", "Dan 1:1\n)B\tLOGOS\n")
     _write_source(source, "46.DanielTh.par", "Dan 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
-    provider = FakeBhsaProvider(
-        (_verse(book="Daniel", node=20, word_node=10),)
-    )
+    provider = FakeBhsaProvider((_verse(book="Daniel", node=20, word_node=10),))
 
     materialize_bhsa(source, output, provider=provider, parent_probe=_probe())
 
