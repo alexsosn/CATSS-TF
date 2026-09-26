@@ -7,7 +7,8 @@ import pathlib
 from catss_tf.browser import BrowserLaunchError, launch_browser
 from catss_tf.parser import parse_parallel_file
 from catss_tf.source import (
-    CATSS_PARALLEL_FILENAMES,\n    CCAT_USER_DECLARATION_URL,
+    CATSS_PARALLEL_FILENAMES,
+    CCAT_USER_DECLARATION_URL,
     download_parallel_source,
     inspect_parallel_source,
 )
