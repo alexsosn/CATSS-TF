@@ -36,7 +36,13 @@ Within a projection, CATSS-TF uses resolved parent nodes and the alignment membe
 
 Sirach has a book-specific notation profile. In particular `*` means an uncertain/fragmentary letter, not the general CATSS asterisked-passage meaning; `[..]` is a Sirach lacuna/illegibility marker. Witness numbers and manuscript-addition/lacuna notation are decoded separately. Researchers should therefore query the resulting semantic kind rather than interpret the raw glyph globally.
 
-## Complete-snapshot audit\n\nRun `catss-tf validate --complete PATH` for the release gate. The command refuses a partial or extra-file snapshot before parsing, then normal validation requires zero unresolved/unknown notation unless the researcher explicitly supplies an `--allow` code. A partial directory is therefore useful for exploration but cannot produce the project’s zero-unknown completion claim.\n\n## Fail-closed behavior
+## Complete-snapshot audit\n\nRun `catss-tf validate --complete PATH` for the release gate. The command refuses a partial or extra-file snapshot before parsing, then normal validation requires zero unresolved/unknown notation unless the researcher explicitly supplies an `--allow` code. A partial directory is therefore useful for exploration but cannot produce the project’s zero-unknown completion claim.\n\n## Empirical corpus gate
+
+CI audits the complete configured upstream CATSS snapshot without committing or publishing the source data. The current corpus gate covers 46 files and 349,908 alignment records, requires every source data line to be accounted for, and requires `unknown_annotations=0`. Corpus-discovered forms extend the documented glossary conservatively: bracketed `c...` readings are Greek corrections; `{**?}` is possible Greek agreement with Qere; `{=number}` and dotted bracket forms such as `[v.8]` are contextual references; uppercase Beta-Code brace payloads are contextual Greek readings; and `{!}na+` is represented as `inf_abs_accusative_without_mt_inf_abs`.
+
+The complete notation gate is intentionally narrower than the general structural validation report. The upstream files also contain legacy line-layout anomalies (for example continuation and unsplit-row diagnostics) tracked by the parser; those remain visible and fail ordinary validation unless explicitly handled, but they cannot hide or waive unknown notation in the complete-snapshot gate.
+
+## Fail-closed behavior
 
 Unknown notation is not mapped to `other` and is not silently discarded. Validation reports it as unresolved. A complete-snapshot audit requires all configured CATSS parallel files; a partial directory cannot establish zero unknown notation.
 
