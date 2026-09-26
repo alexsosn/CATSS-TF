@@ -282,8 +282,10 @@ and Theodotion without treating them as one translation.
 ## A second example: “passing through fire”
 
 Yurovitskaya uses the child-through-fire passages to argue that the boundary
-between “magic” and prohibited religion is not transparent. CATSS-TF can verify
-the lexical differences on which that interpretation rests:
+between “magic” and prohibited religion is not transparent. Her report cites
+Deut 18:11; in the pinned MT/LXX corpora and CATSS source the child-through-fire
+clause itself is Deut 18:10, immediately before the terminology in 18:11.
+CATSS-TF can verify the lexical differences on which that interpretation rests:
 
 | passage | MT/CATSS | Greek rendering |
 | --- | --- | --- |
