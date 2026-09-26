@@ -340,7 +340,7 @@ def _projection_facts(
                 retro_kind=alignment.retroversion_kind,
                 flags=_alignment_flags(alignment, side="mt"),
                 annotation_payloads=_annotation_payloads(alignment, side="mt"),
-                semantic_kinds=_semantic_kinds(alignment, side="mt"),
+                semantic_kinds=_semantic_kinds(alignment, side="mt"),\n                semantic_scopes=_semantic_scopes(alignment, side="mt"),
                 semantic_payloads=_semantic_payloads(alignment, side="mt"),
             )
             memberships.append(membership)
@@ -517,6 +517,19 @@ def _semantic_kinds(alignment: AlignmentRecord, *, side: str) -> tuple[str, ...]
         )
     }
     return tuple(sorted(kinds))
+
+
+def _semantic_scopes(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[str, str], ...]:
+    scopes = {
+        (annotation.kind, annotation.side)
+        for annotation in alignment.annotations
+        if annotation.kind != "unknown"
+        and (
+            (side == "mt" and annotation.side != "lxx")
+            or (side == "lxx" and annotation.side == "lxx")
+        )
+    }
+    return tuple(sorted(scopes))
 
 
 def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[str, str], ...]:
