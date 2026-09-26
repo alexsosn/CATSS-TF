@@ -2,10 +2,10 @@
 
 import csv
 import dataclasses
+import hashlib
 import pathlib
 import shutil
 import tempfile
-import typing
 
 from catss_tf import __version__
 from catss_tf.bhsa_resolver import (
@@ -24,8 +24,12 @@ from catss_tf.bhsa_schema import (
     classify_catss_source,
     validate_bhsa_parent,
 )
-from catss_tf.parser import AlignmentRecord, ParallelDocument, VerseRecord, parse_parallel_file
-from catss_tf.source import ParallelSourceManifest, inspect_parallel_source
+from catss_tf.parser import AlignmentRecord, ParallelDocument, VerseRecord, parse_parallel_text
+from catss_tf.source import (
+    ParallelSourceManifest,
+    SourceFileFingerprint,
+    inspect_parallel_source,
+)
 from catss_tf.tf_schema import (
     SIDECAR_COLUMNS,
     TfAnchorEvent,
@@ -110,15 +114,11 @@ def materialize_bhsa(
     if destination.exists():
         raise BhsaMaterializationError(f"destination already exists: {destination}")
 
-    manifest = inspect_parallel_source(source_root)
+    manifest, documents = _snapshot_parallel_source(source_root)
     parent_validation = validate_bhsa_parent(parent_probe)
     if not parent_validation.ok:
         details = ", ".join(finding.code for finding in parent_validation.findings)
         raise BhsaMaterializationError(f"BHSA parent does not satisfy v0.1 profile: {details}")
-
-    documents = tuple(
-        parse_parallel_file(source_root / source.relative_path) for source in manifest.files
-    )
 
     supported: list[tuple[ParallelDocument, BhsaMappingReport]] = []
     unsupported_documents = 0
@@ -216,6 +216,38 @@ def materialize_bhsa(
             sidecar_rows=sidecar_rows,
             ignored_validation_findings=ignored_validation_findings,
         ),
+    )
+
+
+def _snapshot_parallel_source(
+    source_root: pathlib.Path,
+) -> tuple[ParallelSourceManifest, tuple[ParallelDocument, ...]]:
+    """Read each selected CATSS file once; fingerprint and parse the same bytes."""
+
+    discovered = inspect_parallel_source(source_root)
+    fingerprints: list[SourceFileFingerprint] = []
+    documents: list[ParallelDocument] = []
+
+    for item in discovered.files:
+        path = source_root / item.relative_path
+        payload = path.read_bytes()
+        fingerprint = SourceFileFingerprint(
+            relative_path=item.relative_path,
+            size_bytes=len(payload),
+            sha256=hashlib.sha256(payload).hexdigest(),
+        )
+        text = payload.decode("utf-8")
+        fingerprints.append(fingerprint)
+        documents.append(
+            parse_parallel_text(
+                text,
+                source_name=item.relative_path,
+            )
+        )
+
+    return (
+        ParallelSourceManifest(files=tuple(fingerprints)),
+        tuple(documents),
     )
 
 
@@ -322,7 +354,15 @@ def _projection_facts(
         )
 
     alignment_rows.sort(key=lambda row: (str(row[0]), int(row[5]), str(row[1])))
-    annotation_rows.sort(key=lambda row: (str(row[0]), str(row[1]), str(row[2]), str(row[3]), str(row[4])))
+    annotation_rows.sort(
+        key=lambda row: (
+            str(row[0]),
+            str(row[1]),
+            str(row[2]),
+            str(row[3]),
+            str(row[4]),
+        )
+    )
     source_line_rows.sort(key=lambda row: (str(row[0]), int(row[2]), str(row[1])))
     anchor_rows.sort(key=lambda row: (str(row[1]), str(row[2]), int(row[3])))
     diagnostic_rows.sort(
@@ -371,7 +411,8 @@ def _alignment_index(document: ParallelDocument) -> dict[str, _AlignmentContext]
         for alignment in verse.alignments:
             if alignment.alignment_id in contexts:
                 raise BhsaMaterializationError(
-                    f"duplicate alignment id inside {document.source_name}: {alignment.alignment_id}"
+                    "duplicate alignment id inside "
+                    f"{document.source_name}: {alignment.alignment_id}"
                 )
             contexts[alignment.alignment_id] = _AlignmentContext(
                 source=document.source_name,
