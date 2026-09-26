@@ -480,3 +480,16 @@ def test_contextual_reference_markup_is_typed_without_false_invalid_reference() 
     assert by_raw["[2.46k,10.26a]"].kind == "contextual_reference"
     assert by_raw["[[30:11]]"].kind == "verse_reference"
     assert document.diagnostics == ()
+
+
+def test_greek_editorial_wrappers_expose_payload() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\tGR {c?PU/LHS} {gREADING}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.payload) for a in annotations] == [
+        ("greek_correction", "?PU/LHS"),
+        ("greek_edition_difference", "READING"),
+    ]
