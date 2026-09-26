@@ -1677,3 +1677,134 @@ This prevents a time-of-check/time-of-use mismatch between `catss-sources.tsv` a
 `BhsaWordMapping.segment_index` is an implementation index for every mapping. `catss_mt_segment` is emitted only when the corresponding canonical CATSS MT reading explicitly contains maqaf. Ordinary one-slot words leave the feature empty.
 
 This keeps `catss_mt_segment` queryable as evidence of source segmentation rather than a generic always-1 position.
+
+
+## 21. LXX materializer
+
+### 21.1 Library boundary
+
+```text
+materialize_lxx(
+  source_directory,
+  output_directory,
+  provider: LxxVerseProvider,
+  allowed_validation_codes=(),
+) -> LxxMaterializationResult
+```
+
+The provider owns the exact `LxxParentProbe` used both for validation and module metadata.
+
+### 21.2 Pipeline
+
+```text
+local CATSS
+   -> direct-child source discovery
+   -> exact byte snapshot + SHA-256
+   -> CenterBLC parent-profile gate
+   -> parse + canonical validation
+   -> strict LXX resolver
+   -> schema-v1 memberships / anchors
+   -> TF wefts + normalized TSV sidecars
+   -> atomic publish
+```
+
+Declared LXX-unsupported CATSS sources are fingerprinted but not projected.
+
+### 21.3 Membership translation
+
+For every `LxxWordMapping`:
+
+```text
+TfMembership(
+  node=lxx_node,
+  source=document.source_name,
+  alignment_id=mapping.alignment_id,
+  mapping_kind=mapping.mapping_kind,
+  mt_n=alignment.mt_count,
+  lxx_n=alignment.lxx_count,
+  mt_i=None,
+  mt_segment=None,
+  lxx_i=mapping.lxx_index + 1,
+  line_first=min(source_lines),
+  line_last=max(source_lines),
+  line_n=len(source_lines),
+  retro_kind=alignment.retroversion_kind,
+  flags=closed normalized flag set,
+)
+```
+
+The materializer never reconstructs parent reference location or Greek identity from raw text.
+
+### 21.4 Anchor translation
+
+Each resolver anchor becomes:
+
+```text
+TfAnchorEvent(
+  node=lxx_reference_node,
+  source=document.source_name,
+  alignment_id=alignment_id,
+  kind=lxx_minus | transposition_placeholder,
+  token_n=0,
+)
+```
+
+The same event creates one normalized `catss-anchors.tsv` row.
+
+### 21.5 Sidecars
+
+The LXX bundle writes the exact schema-v1 tables:
+
+- `catss-alignments.tsv`;
+- `catss-annotations.tsv`;
+- `catss-mappings.tsv`;
+- `catss-anchors.tsv`;
+- `catss-sources.tsv`;
+- `catss-source-lines.tsv`;
+- `catss-diagnostics.tsv`.
+
+Alignment/source-line/annotation records are canonical CATSS provenance. Mapping/anchor records are LXX projection facts. Parent Greek text and morphology are not copied.
+
+### 21.6 Failure model
+
+Hard failure before publication for:
+
+- parent profile mismatch;
+- unknown CATSS source;
+- parser/validation failure not explicitly allowed;
+- any LXX resolver mapping finding;
+- resolver alignment ID absent from canonical parser records;
+- schema membership overflow/duplicate identity;
+- node outside validated CenterBLC range;
+- stale/existing destination;
+- any TF or sidecar write failure.
+
+Declared Joshua A / Judges A exclusion is not failure.
+
+### 21.7 Result summary
+
+Scalar result fields:
+
+```text
+source_files
+supported_documents
+unsupported_documents
+verses
+alignments
+word_mappings
+reference_anchors
+tf_features
+sidecar_rows
+ignored_validation_findings
+```
+
+### 21.8 Loadability and transposition lanes
+
+Synthetic CI writes a small CenterBLC-like parent warp and loads the generated module through Text-Fabric.
+
+Tests must cover both:
+
+1. ordinary exact Greek membership;
+2. documented transposition alignment + carrier sharing one word slot.
+
+The latter must expose two independent scalar lanes and two sidecar mapping rows.
