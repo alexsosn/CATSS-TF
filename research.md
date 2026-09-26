@@ -1654,7 +1654,9 @@ Canonical `mt_n` and `lxx_n` already count CATSS alignment elements/Greek lexica
 
 ```text
 zero_zero
+zero_one
 zero_many
+one_zero
 many_zero
 one_one
 one_many
@@ -1662,7 +1664,7 @@ many_one
 many_many
 ```
 
-“many” means `>1`. This is a descriptive shape only; it does not claim semantic expansion/contraction.
+“one” means exactly 1 and “many” means `>1`, including on zero-side classes. This is a descriptive shape only; it does not claim semantic expansion/contraction.
 
 ## R-115 — Token balance must not be confused with semantic expansion
 
