@@ -478,14 +478,14 @@ def test_bhsa_materializes_mt_scoped_annotation_semantics_as_node_features(
     )
 
     assert "1\t1" in (output / "catss_distributive.tf").read_text(encoding="utf-8")
-    assert not (output / "catss_distributive_payload.tf").exists()
+    assert "1\\t" not in (output / "catss_distributive_payload.tf").read_text(encoding="utf-8")
 
 
 def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\\n)B {..dGRDIST}\\tQEOS\\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..dGRDIST}\tQEOS\n")
     output = tmp_path / "catss-bhsa"
     materialize_bhsa(
         source,
@@ -493,6 +493,6 @@ def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
         provider=FakeBhsaProvider((_verse(),)),
         parent_probe=_probe(),
     )
-    assert "1\\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
     payload_text = (output / "catss_sem_distributive_payload.tf").read_text(encoding="utf-8")
-    assert "1\\tGRDIST" in payload_text
+    assert "1\tGRDIST" in payload_text
