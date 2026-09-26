@@ -755,6 +755,7 @@ def _annotation_brace_payload(raw: str, kind: str) -> str | None:
             return payload or None
     return None
 
+
 def _brace_kind(raw: str) -> str:
     exact = {
         "{d}": "doublet",
