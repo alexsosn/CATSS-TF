@@ -486,9 +486,7 @@ def test_lxx_does_not_project_mt_scoped_annotation_onto_greek_word(
 
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
 
-    assert not (output / "catss_distributive.tf").exists()
-    legacy_payload = (output / "catss_distributive_payload.tf").read_text(encoding="utf-8")
-    assert not any(line.startswith("1") for line in legacy_payload.splitlines())
+    assert not (output / "catss_distributive.tf").exists()\n    assert not (output / "catss_distributive_payload.tf").exists()
 
 
 def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
