@@ -494,7 +494,7 @@ def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\\nHB\\tQEOS {..r}\\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\\nHB\\tQEOS {..rGRREPEAT}\\n")
     output = tmp_path / "catss-lxx"
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
     assert "1\\t1" in (output / "catss_sem_repetition.tf").read_text(encoding="utf-8")
