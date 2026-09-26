@@ -269,7 +269,7 @@ HB .m .s .j .w .z .xx\tGR
         "word_join",
         "word_division",
         "abbreviation",
-        "mt_strategy_siglum",
+        "letter_interchange",
     ]
 
 
