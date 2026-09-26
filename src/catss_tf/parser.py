@@ -6,8 +6,6 @@ import pathlib
 import re
 import typing
 
-from catss_tf.notation import notation_spec
-
 _VERSE_HEADER = re.compile(r"^\s*([0-9A-Za-z][0-9A-Za-z/]*)\s+(?:(\d+):)?(\d+)\s*$")
 _COLUMN_SPACES = re.compile(r"\s{2,}")
 _BRACE_BLOCK = re.compile(r"\{[^{}]*\}")
@@ -29,8 +27,6 @@ class Annotation:
     side: typing.Literal["mt_a", "mt_b", "lxx"]
     kind: str
     raw: str
-    family: str | None = None
-    contextual: bool = False
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -333,13 +329,9 @@ def _build_alignment(
 
     annotations = tuple(
         [
-            *_extract_annotations("mt_a", mt_col_a, book=verse.book),
-            *(
-                _extract_annotations("mt_b", mt_col_b, book=verse.book)
-                if mt_col_b is not None
-                else []
-            ),
-            *_extract_annotations("lxx", lxx_raw, book=verse.book),
+            *_extract_annotations("mt_a", mt_col_a),
+            *(_extract_annotations("mt_b", mt_col_b) if mt_col_b is not None else []),
+            *_extract_annotations("lxx", lxx_raw),
         ]
     )
 
@@ -428,24 +420,12 @@ def _join_continued_cells(cells: typing.Iterable[str]) -> str:
 
 
 def _extract_annotations(
-    side: typing.Literal["mt_a", "mt_b", "lxx"], cell: str, *, book: str
+    side: typing.Literal["mt_a", "mt_b", "lxx"], cell: str
 ) -> list[Annotation]:
     annotations: list[Annotation] = []
     for match in _BRACE_BLOCK.finditer(cell):
         raw = match.group(0)
-        spec = notation_spec(raw, book=book)
-        if spec is not None:
-            annotations.append(
-                Annotation(
-                    side=side,
-                    kind=spec.kind,
-                    raw=raw,
-                    family=spec.family,
-                    contextual=spec.contextual,
-                )
-            )
-        else:
-            annotations.append(Annotation(side=side, kind=_brace_kind(raw), raw=raw))
+        annotations.append(Annotation(side=side, kind=_brace_kind(raw), raw=raw))
     for match in _ANGLE_NOTE.finditer(cell):
         annotations.append(Annotation(side=side, kind="note", raw=match.group(0)))
     if side in {"mt_a", "mt_b"}:
