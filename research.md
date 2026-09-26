@@ -1879,3 +1879,229 @@ This keeps publication reproducible without broadening CATSS-TF's data-distribut
 A current PyPI search does not show a `catss-tf` project. The v0.1 publication workflow creates an immutable GitHub Release and attaches the built wheel/sdist, but it does not publish to PyPI.
 
 **Decision:** v0.1 documentation must not advertise bare `pip install catss-tf` or `pip install catss-tf[tf]`. Installation is documented from the exact GitHub Release wheel (or an equivalent explicit release artifact URL). Agora #16 can pin this immutable release artifact/tag. PyPI publication, if desired later, is a separate distribution decision with its own trusted-publisher setup.
+
+
+## R-133 — The current CATSS source/LXX contracts already include Hebrew-bearing non-BHSA books
+
+**Rechecked:** 2026-09-26.
+
+The released code already contradicts a narrower assumption that CATSS-TF only knows the
+39-book BHSA surface. `src/catss_tf/source.py` acquires 46 CATSS parallel files, including:
+
+- `22.Ps151.par`;
+- `27.Sirach.par`;
+- `42.Baruch.par`.
+
+`src/catss_tf/lxx_schema.py` explicitly maps these to CenterBLC/LXX as `Ps` chapter
+151, `Sir`, and `Bar` respectively. By contrast,
+`src/catss_tf/bhsa_schema.py` explicitly classifies `17.1Esdras`,
+`22.Ps151`, `27.Sirach`, and `42.Baruch` as unsupported for BHSA because BHSA has
+no corresponding parent book.
+
+The raw CCAT Psalm 151 parallel file is especially useful evidence: it contains Hebrew
+and Greek lexical material on the same CATSS rows, not merely a Greek-only text. The
+current CCAT directory also exposes `27.Sirach.par` as a 289 KiB parallel source, and
+the CATSS parser prior art contains file-specific repair evidence for that source.
+
+Sources:
+
+- `src/catss_tf/source.py`
+- `src/catss_tf/lxx_schema.py`
+- `src/catss_tf/bhsa_schema.py`
+- https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/
+- https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/22.Ps151.par
+- https://github.com/codykingham/CATSS_parsers/blob/master/patch_catss.py
+
+**Implication:** a future DSS projection should consume the canonical CATSS IR directly.
+BHSA is one parent projection of that IR, not the semantic definition of the CATSS
+Hebrew side. In particular, Sirach and Psalm 151 must not be excluded merely because
+they have no BHSA book.
+
+## R-134 — The IR name `mt_*` is narrower than the actual CATSS left-hand evidence
+
+The canonical parser represents the left-hand CATSS column with names such as
+`mt_raw`, `mt_col_a`, `mt_readings`, and `mt_tokens`. That is accurate for the
+ordinary BHS/MT parallel files, but the acquired source set also includes Psalm 151 and
+Sirach, where the left-hand evidence is Hebrew outside the Masoretic canon.
+
+This distinction was mostly harmless while the only Hebrew parent was BHSA, because
+`bhsa_schema.py` rejects those sources before resolution. It becomes material if a
+DSS resolver is added: DSS can contain Hebrew witnesses for material that has no BHSA
+parent.
+
+**Implication:** research and any future DSS API should distinguish “CATSS Hebrew/left
+side” from “MT/BHSA”. Renaming the stable v0.1 parser fields is not proposed here; this
+is a semantic constraint to preserve when designing an additional projection.
+
+## R-135 — DSS 2.0.1 has usable biblical references, but they are word features and are not universally canonical
+
+The current ETCBC DSS corpus at commit
+`47ecc1738fad6e67df7d40a3e84d73e4a125e265`, TF version `2.0.1`, uses `sign` as
+its slot type. Its own feature documentation says that `book`, `chapter`, and
+`verse` are attached to words coming from the biblical source file.
+
+The same documentation warns explicitly that these fields are not always canonical
+Bible coordinates:
+
+- `book` may be a scroll identifier such as `1Q1`;
+- `chapter` may actually be a fragment label such as `f6`;
+- `verse` may actually be a line number.
+
+The `biblical` feature is therefore provenance/classification information, not by
+itself a guarantee that `(book, chapter, verse)` is a canonical reference.
+
+Sources:
+
+- https://github.com/ETCBC/dss/blob/47ecc1738fad6e67df7d40a3e84d73e4a125e265/docs/feature_documentation.md
+- https://github.com/ETCBC/dss/tree/47ecc1738fad6e67df7d40a3e84d73e4a125e265/tf/2.0.1
+
+**Implication:** a DSS→CATSS passage resolver must use an explicit DSS-book vocabulary
+and validate chapter/verse syntax. It must fail closed on scroll/fragment/line labels
+instead of treating every populated DSS reference triple as biblical versification.
+
+## R-136 — The current DSS corpus exposes a large directly addressable canonical candidate surface
+
+A direct audit of `tf/2.0.1/book.tf`, `chapter.tf`, and `verse.tf` at the DSS
+commit above found 36 canonical-style book labels with numeric chapter and verse
+coordinates:
+
+`Gen, Ex, Lev, Num, Deut, Josh, Judg, Ruth, 1Sam, 2Sam, 1Kgs, 2Kgs, 2Chr, Ezra, Ps,
+Prov, Eccl, Song, Job, Hos, Mic, Amos, Joel, Jonah, Obad, Nah, Hab, Zeph, Hag, Zech,
+Mal, Is, Jer, Lam, Ezek, Dan`.
+
+Using only those explicit labels and requiring both chapter and verse to be decimal
+integers yielded:
+
+- **212,374 DSS word nodes** carrying such coordinates;
+- **8,024 distinct book/chapter/verse references**.
+
+All 36 book labels have a corresponding CATSS parallel source in the present
+`CATSS_PARALLEL_FILENAMES` set, after the documented naming normalization
+(`Ex→Exodus`, `Eccl→Qoh`, `Song→Cant`, `Is→Isaiah`, etc.).
+
+This is a **candidate reference surface**, not a measured final CATSS intersection.
+The audit did not assert that every one of the 8,024 DSS references exists with exactly
+the same versification in the raw CATSS files.
+
+**Implication:** passage-level DSS projection is broad enough to be useful before
+word-level alignment is solved. A real materialization run must still intersect the
+DSS coordinates with parsed CATSS verse headers and report reference mismatches rather
+than assuming identity.
+
+## R-137 — Qumran Sirach and Tobit are not reachable through the DSS canonical-reference shortcut
+
+The same TF audit shows that the witnesses most relevant to the deuterocanonical
+question are stored differently.
+
+For `2Q18` (2QSir), `scroll.tf` identifies one scroll node, two fragment nodes, and
+15 line nodes. None of those nodes has a `biblical` value. The scroll therefore
+belongs to the non-biblical side of the ETCBC DSS data model and does not acquire
+canonical `book/chapter/verse` word references through the biblical source path.
+
+The conversion log independently places `11Q5 21 fragment` and
+`11Q5 22 fragment` in the `(NON)-BIBLICAL` compilation block. Those are precisely
+the columns relevant to the non-Psalms material in 11Q5; a generic “11Q5 is biblical”
+shortcut is consequently unsafe because the scroll mixes biblical and non-biblical
+content.
+
+The Aramaic/Hebrew Tobit scroll identifiers `4Q196`, `4Q197`, `4Q198`,
+`4Q199`, and `4Q200` likewise have no `biblical` value on their scroll/fragment/line
+nodes in TF 2.0.1.
+
+Sources:
+
+- `ETCBC/dss tf/2.0.1/scroll.tf`
+- `ETCBC/dss tf/2.0.1/biblical.tf`
+- https://github.com/ETCBC/dss/blob/47ecc1738fad6e67df7d40a3e84d73e4a125e265/log/conversion-2020-07-14.txt
+
+**Implication:** Sirach/Tobit cannot be projected merely by reading DSS
+`book/chapter/verse`. They need an explicit scholarly witness-location crosswalk
+(scroll/fragment/line or word span → work/chapter/verse) before CATSS/LXX alignment can
+be claimed.
+
+For Sirach that crosswalk can then target `27.Sirach.par`, whose Hebrew side is already
+part of the CATSS parallel source contract. Tobit is different: the current CATSS
+parallel source set has no Tobit `.par` file, even though CenterBLC/LXX contains
+`TobBA` and `TobS`. Tobit therefore lies outside a strictly CATSS-derived projection
+unless another alignment source is introduced deliberately.
+
+## R-138 — ETCBC/dss contains useful 1QIsa↔BHSA alignment prior art, not a general reusable alignment layer
+
+`ETCBC/dss/alignment/README.md` and `alignment/autoCheck.js` document an automatic
+1QIsaᵃ↔BHSA alignment experiment. Its procedure is:
+
+1. assign both corpora a numeric verse id;
+2. compare words only inside the same verse;
+3. find longest continuous matching runs;
+4. accept exact consonantal matches or morphology-compatible matches that can account
+   for matres lectionis.
+
+The README reports 70% automatically predicted words and another 11% possible
+correspondences for 1QIsaᵃ.
+
+The implementation is not a generic published DSS↔BHSA TF relation. It is hard-coded
+around the `1Qisaa` SQL table and an Isaiah BHSA `vid` range, and the current
+`tf/2.0.1` feature directory contains no `bhs`, `alignment`, or equivalent edge
+feature exporting those correspondences.
+
+Sources:
+
+- https://github.com/ETCBC/dss/blob/47ecc1738fad6e67df7d40a3e84d73e4a125e265/alignment/README.md
+- https://github.com/ETCBC/dss/blob/47ecc1738fad6e67df7d40a3e84d73e4a125e265/alignment/autoCheck.js
+
+**Implication:** this code is valuable algorithmic prior art for a future word resolver,
+especially its verse-first restriction and treatment of matres lectionis, but CATSS-TF
+must not assume that DSS 2.0.1 already supplies a corpus-wide DSS↔BHSA word mapping.
+
+## R-139 — A DSS projection naturally has two evidence levels
+
+The data support two distinct claims that should not be conflated.
+
+**Reference projection:** for validated canonical DSS coordinates, associate the DSS
+passage with the corresponding parsed CATSS verse/reference and therefore with the CATSS
+Greek-side reference. This can cover many witnesses of the same biblical verse without
+claiming word identity.
+
+**Word projection:** within an already validated passage/witness span, resolve individual
+CATSS Hebrew tokens/alignment groups to DSS word nodes. This requires sequence alignment
+and explicit representation of variants, lacunae, reconstructions, additions,
+omissions, and transpositions. Multiple DSS witnesses of the same verse must remain
+separate; agreement with one scroll must never be generalized to “the DSS reading”.
+
+For noncanonical witnesses such as 2Q18, the same two stages remain valid, but stage one
+starts from an explicit scholarly witness crosswalk rather than the DSS
+`book/chapter/verse` features.
+
+**Implication:** an eventual DSS-facing module should expose mapping method/status so
+researchers can distinguish “same referenced passage” from “word/alignment identity
+resolved”. A reference-only mapping is useful evidence, but it is not a lexical
+alignment.
+
+## R-140 — If implemented, the natural TF artifact is a DSS-warp module fed by the existing CATSS IR
+
+The existing architectural constraints still apply: TF modules add features around one
+parent warp and cannot create cross-corpus node identities. The natural future artifact
+would therefore be a module over the ETCBC/dss warp (provisionally, `catss-dss`), fed
+by the same parsed `ParallelDocument` / `AlignmentRecord` IR used for BHSA and LXX.
+
+The CATSS `alignment_id` can remain the cross-projection identity. DSS node numbers are
+local materialization outputs. BHSA or LXX node numbers must not be stored as naked
+cross-warp identifiers in the DSS module.
+
+This architecture also avoids making BHSA a mandatory transit point:
+
+```text
+                         canonical CATSS IR
+                       /        |          \
+                      v         v           v
+                   BHSA       LXX          DSS
+                 resolver   resolver     resolver
+                    |          |            |
+              catss-bhsa  catss-lxx   catss-dss
+```
+
+A BHSA alignment can still be used as validation/prior evidence for canonical books, but
+Sirach demonstrates why it cannot define the DSS projection.
+
+**Status:** research only. No implementation ticket is created by this entry, and no
+claim is made yet that corpus-wide DSS word alignment is solved.
