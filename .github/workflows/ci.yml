@@ -49,3 +49,18 @@ jobs:
           "import catss_tf; from catss_tf import materialize_bhsa, materialize_lxx,
           compare_projection_bundles, TextFabricBhsaProvider, TextFabricLxxProvider;
           assert catss_tf.__version__ == '0.1.0'"
+
+
+  complete-catss-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e .
+      - run: catss-tf fetch /tmp/catss-parallel
+      - run: catss-tf validate --complete /tmp/catss-parallel
