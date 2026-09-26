@@ -73,9 +73,7 @@ class FakeBhsaProvider:
 class FakeLxxProvider:
     def __init__(self, spans: tuple[LxxSpan, ...]) -> None:
         self.parent_probe = _lxx_probe()
-        self._spans = {
-            (span.book, span.chapter, span.verse, span.subverse): span for span in spans
-        }
+        self._spans = {(span.book, span.chapter, span.verse, span.subverse): span for span in spans}
 
     def get_span(
         self,
@@ -237,17 +235,13 @@ def test_consistency_classifies_projection_exclusive_sources(tmp_path: pathlib.P
     materialize_bhsa(
         source,
         bhsa,
-        provider=FakeBhsaProvider(
-            (_bhsa_verse("Josua", 1, 1, 300, ("אב",), 30),)
-        ),
+        provider=FakeBhsaProvider((_bhsa_verse("Josua", 1, 1, 300, ("אב",), 30),)),
         parent_probe=_bhsa_probe(),
     )
     materialize_lxx(
         source,
         lxx,
-        provider=FakeLxxProvider(
-            (_lxx_span("Ps", 151, 1, 400, ("θεός",), 40),)
-        ),
+        provider=FakeLxxProvider((_lxx_span("Ps", 151, 1, 400, ("θεός",), 40),)),
     )
 
     report = compare_projection_bundles(bhsa, lxx)
