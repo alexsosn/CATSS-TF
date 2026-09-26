@@ -4,6 +4,18 @@ import subprocess
 import pytest
 
 from catss_tf import browser
+from catss_tf.bhsa_schema import (
+    BHSA_CHECKOUT_COMMIT,
+    BHSA_CHECKOUT_TAG,
+    BHSA_REPOSITORY,
+    BHSA_VERSION,
+)
+from catss_tf.lxx_schema import (
+    LXX_RELEASE_COMMIT,
+    LXX_RELEASE_TAG,
+    LXX_REPOSITORY,
+    LXX_VERSION,
+)
 
 
 def _write_feature(
@@ -46,10 +58,10 @@ def _bhsa_bundle(tmp_path: pathlib.Path) -> pathlib.Path:
     _write_feature(
         module,
         projection="bhsa",
-        parent_repo="ETCBC/bhsa",
-        parent_version="2021",
-        parent_release="v1.8.1",
-        parent_commit="b112c161cfd21eae403d51a2733740d8743460e7",
+        parent_repo=BHSA_REPOSITORY,
+        parent_version=BHSA_VERSION,
+        parent_release=BHSA_CHECKOUT_TAG,
+        parent_commit=BHSA_CHECKOUT_COMMIT,
     )
     return module
 
@@ -59,10 +71,10 @@ def _lxx_bundle(tmp_path: pathlib.Path) -> pathlib.Path:
     _write_feature(
         module,
         projection="lxx",
-        parent_repo="CenterBLC/LXX",
-        parent_version="1935",
-        parent_release="v1.0.1",
-        parent_commit="4829f3746c84d75576702498e75a68856358f289",
+        parent_repo=LXX_REPOSITORY,
+        parent_version=LXX_VERSION,
+        parent_release=LXX_RELEASE_TAG,
+        parent_commit=LXX_RELEASE_COMMIT,
     )
     return module
 
@@ -124,10 +136,10 @@ def test_bundle_parent_version_mismatch_is_rejected(tmp_path: pathlib.Path) -> N
     _write_feature(
         module,
         projection="bhsa",
-        parent_repo="ETCBC/bhsa",
+        parent_repo=BHSA_REPOSITORY,
         parent_version="future",
-        parent_release="v1.8.1",
-        parent_commit="b112c161cfd21eae403d51a2733740d8743460e7",
+        parent_release=BHSA_CHECKOUT_TAG,
+        parent_commit=BHSA_CHECKOUT_COMMIT,
     )
 
     with pytest.raises(browser.BrowserLaunchError, match="parentVersion"):
@@ -139,10 +151,10 @@ def test_mixed_feature_metadata_is_rejected(tmp_path: pathlib.Path) -> None:
     _write_feature(
         module,
         projection="lxx",
-        parent_repo="CenterBLC/LXX",
-        parent_version="1935",
-        parent_release="v1.0.1",
-        parent_commit="4829f3746c84d75576702498e75a68856358f289",
+        parent_repo=LXX_REPOSITORY,
+        parent_version=LXX_VERSION,
+        parent_release=LXX_RELEASE_TAG,
+        parent_commit=LXX_RELEASE_COMMIT,
         name="catss_mt_n.tf",
     )
 
@@ -162,7 +174,7 @@ def test_empty_or_missing_bundle_is_rejected(tmp_path: pathlib.Path) -> None:
     empty = tmp_path / "empty"
     empty.mkdir()
 
-    with pytest.raises(browser.BrowserLaunchError, match="no catss_.*\.tf"):
+    with pytest.raises(browser.BrowserLaunchError, match=r"no catss_.*\.tf"):
         browser.build_browser_launch("bhsa", empty)
 
     with pytest.raises(browser.BrowserLaunchError, match="does not exist"):
