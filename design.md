@@ -1895,7 +1895,8 @@ Closed values:
 
 ```text
 cardinality:
-  zero_zero | zero_many | many_zero |
+  zero_zero | zero_one | zero_many |
+  one_zero | many_zero |
   one_one | one_many | many_one | many_many
 
 token_balance:
