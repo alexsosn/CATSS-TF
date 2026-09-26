@@ -628,3 +628,18 @@ def test_empirical_special_notation_is_never_unknown(source_name: str, raw: str)
     doc = parse_parallel_text(f"Test 1:1\nHB\tGR {raw}\n", source_name="99.Test.par")
     annotations = doc.verses[0].alignments[0].annotations
     assert all(annotation.kind != "unknown" for annotation in annotations)
+
+
+def test_double_bracket_contextual_reference_with_prefix_is_valid() -> None:
+    document = parse_parallel_text(
+        "Josh 1:1\nHB\tGR [[20.8 c6.63]]\n",
+        source_name="06.JoshB.par",
+    )
+    assert not any(item.code == "invalid_lxx_reference" for item in document.diagnostics)
+    annotation = next(
+        item
+        for item in document.verses[0].alignments[0].annotations
+        if item.raw == "[[20.8 c6.63]]"
+    )
+    assert annotation.kind == "contextual_reference"
+    assert annotation.payload == "20.8 c6.63"
