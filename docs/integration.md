@@ -111,10 +111,7 @@ A = use(
 )
 
 api = A.api
-node_counts = {
-    node_type: len(api.F.otype.s(node_type))
-    for node_type in LXX_NODE_COUNTS
-}
+node_counts = {node_type: len(api.F.otype.s(node_type)) for node_type in LXX_NODE_COUNTS}
 probe = LxxParentProbe(
     repository=LXX_REPOSITORY,
     version=LXX_VERSION,
