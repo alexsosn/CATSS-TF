@@ -1,4 +1,4 @@
-from catss_tf.notation import notation_spec
+from catss_tf.notation import documented_notation, notation_spec
 
 
 def test_documented_general_notation_is_typed() -> None:
@@ -37,3 +37,16 @@ def test_sirach_collision_is_book_sensitive() -> None:
 
 def test_unknown_notation_has_no_fallback() -> None:
     assert notation_spec("definitely-not-catss", book="Ge") is None
+
+
+def test_every_documented_notation_has_a_spec() -> None:
+    for raw in documented_notation():
+        book = "Sir" if raw in {"[]", "{}", "{{}}", ">", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"} else "Ge"
+        assert notation_spec(raw, book=book) is not None
+
+
+def test_patterned_samaritan_reference_is_typed() -> None:
+    spec = notation_spec("<sp26.35ap>", book="Ge")
+    assert spec is not None
+    assert spec.kind == "samaritan_apparatus_reference"
+    assert spec.contextual is True
