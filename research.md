@@ -1568,3 +1568,59 @@ Simple one-lane loadability is insufficient on the LXX side because the resolver
 - `catss_alignment_n=2`;
 - both rows remain separately represented in `catss-mappings.tsv`;
 - no packed list/JSON feature is introduced.
+
+## R-104 — Cross-projection consistency is a sidecar/provenance comparison, not a node-ID comparison
+
+BHSA and CenterBLC/LXX use unrelated Text-Fabric node universes. Parent node numbers have no cross-corpus meaning.
+
+Both materializers emit the same canonical CATSS identity/provenance tables before projection-specific mapping: catss-sources.tsv, catss-alignments.tsv, catss-annotations.tsv, catss-source-lines.tsv, and retained validation rows in catss-diagnostics.tsv.
+
+**Decision:** #13 compares materialized bundles through canonical CATSS identities and normalized sidecar rows. Parent node IDs are never compared across projections.
+
+## R-105 — Source fingerprints are the first consistency gate
+
+Both materializers fingerprint every inspected CATSS input file, including files declared unsupported for that projection.
+
+**Decision:** bundles claimed to represent the same CATSS acquisition must have identical source keys, sizes, and SHA-256 values in catss-sources.tsv. Missing/extra sources or fingerprint differences are hard findings.
+
+## R-106 — Canonical semantics must match exactly on sources supported by both projections
+
+BHSA supports 42 default CATSS sources and LXX supports 44; their intersection contains 40. For a common-supported source, both materializers parse the same bytes through the same canonical parser.
+
+**Decision:** complete normalized rows in catss-alignments.tsv, catss-annotations.tsv, catss-source-lines.tsv, and catss-diagnostics.tsv must match as multisets for common-supported sources. A difference proves projection drift or policy mismatch.
+
+Projection-exclusive sources are expected: BHSA-only are 07.JoshA.par and 09.JudgesA.par; LXX-only are 17.1Esdras.par, 22.Ps151.par, 27.Sirach.par, and 42.Baruch.par.
+
+## R-107 — Expected alignment asymmetries follow canonical side cardinality and resolver semantics
+
+Expected v0.1 classes:
+
+- ordinary shared: mt_n>0 and lxx_n>0; both projections have word mappings.
+- LXX plus: BHSA has a lxx_plus structural anchor; LXX has Greek word mappings.
+- LXX minus: BHSA has MT word mappings; LXX has a lxx_minus structural anchor.
+- transposition placeholder: Greek-empty non-minus remote transposition; BHSA has MT mappings and LXX has a transposition_placeholder anchor.
+- transposition carrier: Hebrew-empty printed-position carrier such as a bare {...} row; BHSA has no honest representation and LXX has word mappings with mapping_kind=transposition_carrier.
+
+These are counted expected asymmetries, not findings.
+
+## R-108 — Source-side index coverage is comparable; parent placement is not
+
+BHSA mapping rows expose 1-based mt_i plus optional maqaf mt_segment. LXX mapping rows expose 1-based lxx_i.
+
+**Decision:** for required BHSA mappings, mt_i coverage must equal 1..mt_n. Repeated mt_i values are allowed for explicit maqaf segmentation. For required LXX mappings, lxx_i coverage must equal 1..lxx_n. Parent node and lane values remain projection-local and are not compared to each other.
+
+## R-109 — Anchor identity is alignment identity, not aggregate-node equality
+
+BHSA plus anchors and LXX minus/placeholder anchors live in different parent corpora and sometimes different node types.
+
+**Decision:** consistency verifies expected canonical alignment_id plus projection-specific anchor kind. Anchor parent node values are not cross-compared.
+
+## R-110 — Consistency reports are deterministic scalar summaries plus typed findings
+
+ConsistencySummary exposes integer counts for source classes, common alignments, expected asymmetry classes, fingerprint/canonical/index/anchor/gap mismatches, and total findings.
+
+ConsistencyFinding exposes only scalar fields: code, source, alignment_id, table, message. Expected asymmetries are counters and do not create findings.
+
+## R-111 — The checker consumes completed bundles
+
+**Decision:** the primary API is compare_projection_bundles(bhsa_directory, lxx_directory). It reads frozen normalized sidecars emitted by #11/#12. Tests materialize synthetic bundles and compare those actual artifacts, so there is one comparison algorithm and no hidden parser-only shortcut.
