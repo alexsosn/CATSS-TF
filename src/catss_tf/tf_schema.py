@@ -266,7 +266,20 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
             for scope in ("mt_a", "mt_b", "lxx"):
                 scoped_base = f"{base_name}_{scope}"
                 scoped_name = scoped_base if lane == 1 else f"{scoped_base}_2"
-                specs[scoped_name] = TfFeatureSpec(\n                    scoped_name,\n                    "int",\n                    f"CATSS semantic annotation: {kind}, source scope {scope}{suffix}",\n                )\n                scoped_payload_base = f"{base_name}_{scope}_payload"\n                scoped_payload_name = (\n                    scoped_payload_base if lane == 1 else f"{scoped_payload_base}_2"\n                )\n                specs[scoped_payload_name] = TfFeatureSpec(\n                    scoped_payload_name,\n                    "str",\n                    f"CATSS semantic payload for {kind}, source scope {scope}{suffix}",\n                )
+                specs[scoped_name] = TfFeatureSpec(
+                    scoped_name,
+                    "int",
+                    f"CATSS semantic annotation: {kind}, source scope {scope}{suffix}",
+                )
+                scoped_payload_base = f"{base_name}_{scope}_payload"
+                scoped_payload_name = (
+                    scoped_payload_base if lane == 1 else f"{scoped_payload_base}_2"
+                )
+                specs[scoped_payload_name] = TfFeatureSpec(
+                    scoped_payload_name,
+                    "str",
+                    f"CATSS semantic payload for {kind}, source scope {scope}{suffix}",
+                )
 
     specs["catss_alignment_n"] = TfFeatureSpec(
         "catss_alignment_n",
@@ -525,7 +538,11 @@ def _compile_membership(
         base_name = f"catss_sem_{kind}_{scope}"
         feature_name = base_name if lane == 1 else f"{base_name}_2"
         _put(features, feature_name, node, 1)
-    for kind, scope, payload in membership.semantic_scoped_payloads:\n        base_name = f"catss_sem_{kind}_{scope}_payload"\n        feature_name = base_name if lane == 1 else f"{base_name}_2"\n        _put(features, feature_name, node, payload)\n    for kind, payload in membership.semantic_payloads:
+    for kind, scope, payload in membership.semantic_scoped_payloads:
+        base_name = f"catss_sem_{kind}_{scope}_payload"
+        feature_name = base_name if lane == 1 else f"{base_name}_2"
+        _put(features, feature_name, node, payload)
+    for kind, payload in membership.semantic_payloads:
         base_name = f"catss_sem_{kind}_payload"
         feature_name = base_name if lane == 1 else f"{base_name}_2"
         _put(features, feature_name, node, payload)
