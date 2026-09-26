@@ -823,6 +823,4 @@ def test_conflicting_semantic_payloads_fail_closed_instead_of_overwriting() -> N
         semantic_payloads=(("repetition", "A"), ("repetition", "B")),
     )
     with pytest.raises(TfSchemaError, match="conflicting feature value"):
-        compile_tf_features(
-            projection="bhsa", max_node=10, memberships=(membership,), anchors=()
-        )
+        compile_tf_features(projection="bhsa", max_node=10, memberships=(membership,), anchors=())
