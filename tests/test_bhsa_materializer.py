@@ -461,3 +461,23 @@ def test_bhsa_materializer_emits_queryable_technique_features_and_sidecar(
             "transposition_mt_lxx": "none_marked",
         }
     ]
+
+
+def test_bhsa_materializes_mt_scoped_annotation_semantics_as_node_features(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..dGRDIST}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+
+    assert "1\t1" in (output / "catss_distributive.tf").read_text(encoding="utf-8")
+    assert "1\tGRDIST" in (output / "catss_distributive_payload.tf").read_text(
+        encoding="utf-8"
+    )
