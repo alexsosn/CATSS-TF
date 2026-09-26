@@ -485,7 +485,7 @@ def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\\n)B {..d}\\tQEOS\\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\\n)B {..dGRDIST}\\tQEOS\\n")
     output = tmp_path / "catss-bhsa"
     materialize_bhsa(
         source,
