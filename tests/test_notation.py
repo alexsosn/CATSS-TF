@@ -11,7 +11,7 @@ def test_documented_general_notation_is_typed() -> None:
         "sp~": ("samaritan_partial_match", "textual_comparison"),
         "{XTM}": ("contextual_influence", "translation_technique"),
     }
-    for raw, (kind, family) in cases.items() -> None:
+    for raw, (kind, family) in cases.items():
         spec = notation_spec(raw, book="Ge")
         assert spec is not None
         assert (spec.kind, spec.family) == (kind, family)
