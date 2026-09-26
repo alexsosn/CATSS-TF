@@ -169,9 +169,7 @@ def launch_browser(
     try:
         completed = subprocess.run(spec.argv, check=False)
     except FileNotFoundError as exc:
-        raise BrowserLaunchError(
-            f"Text-Fabric executable {tf_executable!r} was not found"
-        ) from exc
+        raise BrowserLaunchError(f"Text-Fabric executable {tf_executable!r} was not found") from exc
     return completed.returncode
 
 
@@ -198,9 +196,7 @@ def _read_module_metadata(path: pathlib.Path) -> _ModuleMetadata:
     }
     missing = tuple(key for key in required if key not in headers)
     if missing:
-        raise BrowserLaunchError(
-            f"{path.name} is missing CATSS TF metadata: {', '.join(missing)}"
-        )
+        raise BrowserLaunchError(f"{path.name} is missing CATSS TF metadata: {', '.join(missing)}")
 
     return _ModuleMetadata(
         projection=headers["catssProjection"],
@@ -236,9 +232,7 @@ def _validate_metadata(profile: BrowserProfile, metadata: _ModuleMetadata) -> No
         actual_value = actual[key]
         if actual_value != expected_value:
             label = "projection mismatch" if key == "catssProjection" else f"{key} mismatch"
-            raise BrowserLaunchError(
-                f"{label}: expected {expected_value!r}, got {actual_value!r}"
-            )
+            raise BrowserLaunchError(f"{label}: expected {expected_value!r}, got {actual_value!r}")
 
 
 def _reject_newline_path(path: pathlib.Path) -> None:
