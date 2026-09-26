@@ -16,9 +16,9 @@ _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
 _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
 _CONTEXTUAL_REFERENCE_VALUE = re.compile(
-    r"^(?:[A-Za-z]{1,3}[.]?[ ]*)?[0-9]+(?:[.:][0-9]+)?[A-Za-z]{0,2}"\n    r"(?:[ ]+[A-Za-z]{1,3}[.]?[0-9]+(?:[.:][0-9]+)?[A-Za-z]{0,2})*[?]?$"
+    r"^(?:[A-Za-z]{1,3}[.]?[ ]*)?[0-9]+(?:[.:][0-9]+)?[A-Za-z]{0,2}"
+    r"(?:[ ]+[A-Za-z]{1,3}[.]?[0-9]+(?:[.:][0-9]+)?[A-Za-z]{0,2})*[?]?$"
 )
-_SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
 _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
 _DOUBT_MARKER = re.compile(r"\?+")
