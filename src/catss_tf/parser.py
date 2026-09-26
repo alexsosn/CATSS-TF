@@ -497,13 +497,13 @@ def _extract_annotations(
                 "transposition_stylistic": ("transposition_stylistic", "transposition", True),
                 "repetition": ("repetition", "translation_technique", True),
                 "greek_correction": ("greek_correction", "textual", True),
-                "greek_edition_difference": ("greek_edition_difference", "textual", True),
+                "greek_edition_difference": ("greek_edition_difference", "textual", True),\n                "contextual_reference": ("contextual_reference", "reference", True),\n                "contextual_greek_reading": ("contextual_greek_reading", "textual", True),\n                "source_format_note": ("source_format_note", "provenance", True),\n                "source_corruption_note": ("source_corruption_note", "provenance", True),
             }.get(raw_kind)
             if raw_semantics is None:
                 annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
             else:
                 kind, family, contextual = raw_semantics
-                payload = _annotation_brace_payload(raw, raw_kind)
+                payload = _annotation_brace_payload(raw, raw_kind)\n                if payload is None and contextual:\n                    payload = raw[1:-1] or None
                 annotations.append(
                     Annotation(
                         side=side,
