@@ -46,6 +46,9 @@ class TfMembership:
     line_n: int
     retro_kind: str | None
     flags: frozenset[str] = frozenset()
+    annotation_kind: str | None = None
+    annotation_family: str | None = None
+    annotation_payload: str | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -84,6 +87,9 @@ _LANE_CORE: dict[str, tuple[ValueType, str]] = {
     "catss_line_last": ("int", "last physical CATSS source line"),
     "catss_line_n": ("int", "number of physical CATSS source lines"),
     "catss_retro_kind": ("str", "normalized CATSS column-B retroversion kind"),
+    "catss_annotation_kind": ("str", "normalized CATSS annotation semantic kind"),
+    "catss_annotation_family": ("str", "normalized CATSS annotation semantic family"),
+    "catss_annotation_payload": ("str", "contextual CATSS annotation payload"),
 }
 
 _TECHNIQUE_LANE_CORE: dict[str, tuple[ValueType, str]] = {
@@ -439,6 +445,9 @@ def _compile_membership(
         "catss_line_last": membership.line_last,
         "catss_line_n": membership.line_n,
         "catss_retro_kind": membership.retro_kind,
+        "catss_annotation_kind": membership.annotation_kind,
+        "catss_annotation_family": membership.annotation_family,
+        "catss_annotation_payload": membership.annotation_payload,
     }
     for base_name, value in values.items():
         if value is not None:
