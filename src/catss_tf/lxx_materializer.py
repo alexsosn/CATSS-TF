@@ -148,9 +148,9 @@ def materialize_lxx(
             alignment_rows,
             technique_rows,
             annotation_rows,
-        source_line_rows,
-        mapping_memberships,
-        anchor_rows,
+            source_line_rows,
+            mapping_memberships,
+            anchor_rows,
             diagnostic_rows,
         ) = _projection_facts(supported)
     except TechniqueError as exc:
