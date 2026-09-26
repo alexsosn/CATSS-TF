@@ -478,8 +478,7 @@ def test_bhsa_materializes_mt_scoped_annotation_semantics_as_node_features(
     )
 
     assert "1\t1" in (output / "catss_distributive.tf").read_text(encoding="utf-8")
-    legacy_payload = (output / "catss_distributive_payload.tf").read_text(encoding="utf-8")
-    assert not any(line.startswith("1") for line in legacy_payload.splitlines())
+    assert "1\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
 
 
 def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
