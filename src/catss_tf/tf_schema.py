@@ -640,7 +640,14 @@ def _put(
     node: int,
     value: FeatureValue,
 ) -> None:
-    data = features.setdefault(feature, {})\n    existing = data.get(node)\n    if existing is not None and existing != value:\n        raise TfSchemaError(\n            f"conflicting feature value for {feature} on parent node {node}: " + f"{existing!r} != {value!r}"\n        )\n    data[node] = value\n
+    data = features.setdefault(feature, {})
+    existing = data.get(node)
+    if existing is not None and existing != value:
+        raise TfSchemaError(
+            f"conflicting feature value for {feature} on parent node {node}: "
+            f"{existing!r} != {value!r}"
+        )
+    data[node] = value
 
 def _increment(
     features: dict[str, dict[int, FeatureValue]],
