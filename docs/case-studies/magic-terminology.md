@@ -163,8 +163,8 @@ for node in H.F.otype.s("word"):
 
 greek_rows = []
 for node in L.F.otype.s("word"):
-    lemma = L.F.lex_utf8.v(node)
-    if normalize("NFC", lemma) not in TARGETS:
+    lemma = normalize("NFC", L.F.lex_utf8.v(node))
+    if lemma not in TARGETS:
         continue
 
     book, chapter, verse = L.T.sectionFromNode(node)
