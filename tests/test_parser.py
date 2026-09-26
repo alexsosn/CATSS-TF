@@ -594,7 +594,7 @@ def test_snapshot_special_notation_variants_are_typed_not_unknown() -> None:
             f"{book} 1:1\n{row}\n",
             source_name="99.Test.par",
         )
-        annotations = document.alignments[0].annotations
+        annotations = document.verses[0].alignments[0].annotations
         assert all(item.kind != "unknown" for item in annotations)
         assert any(item.kind == expected for item in annotations)
 
