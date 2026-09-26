@@ -106,11 +106,18 @@ Given the same CATSS source, prove that shared `catss_alignment_id` values and n
 
 Only after source-preserving modules are stable, define reproducible derived features such as token ratios, lexical/morphological comparison, plus/minus, and word-order relations. Keep derived analysis distinct from CATSS editorial annotation.
 
+### TF-WEBAPP — Standard Text-Fabric browser integration (#35)
+
+Use the native BHSA/LXX Text-Fabric apps with the generated CATSS modules through
+Text-Fabric's standard local module mechanism. CATSS-TF does not define a third corpus
+app and Agora is not part of browser startup.
+
 ### RELEASE — Standalone v0.1 release (#15)
 
 - clean install;
 - deterministic offline tests;
 - bounded opt-in integration fixtures using user-acquired data;
+- standard Text-Fabric browser workflow;
 - documentation and limitations;
 - no bundled corpus/data artifacts.
 
@@ -129,7 +136,7 @@ Register the released materializers with Agora without moving CATSS-specific beh
                                                          #12 LXX-MATERIALIZE <───────────┘
                                                                                           │
                                                                                           ├─> #14 TECHNIQUE
-                                                                                          └─> #15 RELEASE ─> #16 AGORA
+                                                                                          └─> #35 TF-WEBAPP ─> #15 RELEASE ─> #16 AGORA
 ```
 
 Issue bodies contain the authoritative acceptance criteria and dependencies.
