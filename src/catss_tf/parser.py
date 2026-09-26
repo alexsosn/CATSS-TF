@@ -561,7 +561,7 @@ def _extract_annotations(
                         payload=raw.lstrip("[").rstrip("]") or None,
                     )
                 )
-        for match in re.finditer(r"(?<!\\S)(10|[1-9])(?=\\s|$)", cell):
+        for match in re.finditer(r"(?<!\S)(10|[1-9])(?=\s|$)", cell):
             raw = match.group(1)
             spec = notation_spec(raw, book=book)
             if spec is not None:
@@ -581,7 +581,7 @@ def _extract_annotations(
                         payload=raw[1:],
                     )
                 )
-        for match in re.finditer(r"(?<!\\*)\\*(?!\\*)", cell):
+        for _match in re.finditer(r"(?<!\*)\*(?!\*)", cell):
             spec = notation_spec("*", book=book)
             if spec is not None:
                 annotations.append(
