@@ -75,10 +75,15 @@ def derive_technique_state(
         raise TechniqueError("CATSS LXX-plus contradicts a non-empty MT side")
     if is_lxx_minus and lxx_n != 0:
         raise TechniqueError("CATSS LXX-minus contradicts a non-empty Greek side")
-    if mt_n == 0 and lxx_n > 0 and not is_lxx_plus:
-        raise TechniqueError("Hebrew-empty Greek alignment requires explicit CATSS LXX-plus evidence")
-    if mt_n > 0 and lxx_n == 0 and not is_lxx_minus:
-        raise TechniqueError("Greek-empty MT alignment requires explicit CATSS LXX-minus evidence")
+    transposition_marked = trans_local or trans_remote or trans_style
+    if mt_n == 0 and lxx_n > 0 and not is_lxx_plus and not transposition_marked:
+        raise TechniqueError(
+            "Hebrew-empty Greek alignment requires CATSS LXX-plus or transposition evidence"
+        )
+    if mt_n > 0 and lxx_n == 0 and not is_lxx_minus and not transposition_marked:
+        raise TechniqueError(
+            "Greek-empty MT alignment requires CATSS LXX-minus or transposition evidence"
+        )
     if is_lxx_plus and is_lxx_minus:
         raise TechniqueError("CATSS alignment cannot be both LXX-plus and LXX-minus")
 
