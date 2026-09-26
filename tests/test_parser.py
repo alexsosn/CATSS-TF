@@ -651,8 +651,7 @@ def test_contextual_reference_allows_source_spacing_after_period() -> None:
         source_name="20.Psalms.par",
     )
     annotation = next(
-        item for item in document.verses[0].alignments[0].annotations
-        if item.raw == "[119. 7]"
+        item for item in document.verses[0].alignments[0].annotations if item.raw == "[119. 7]"
     )
     assert annotation.kind == "contextual_reference"
     assert annotation.payload == "119. 7"
