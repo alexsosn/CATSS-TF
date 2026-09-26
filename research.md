@@ -1811,3 +1811,64 @@ The TF browser search interface works directly with node features. Schema-v1 alr
 - transposition/retroversion/technique features.
 
 Exact raw CATSS rows and arbitrary annotations remain sidecar provenance, not the primary browser query surface.
+
+
+## R-126 — v0.1 is a software release, not a data release
+
+The repository intentionally contains no CATSS corpus snapshot, BHSA/LXX data, or generated TF modules. A distributable wheel/sdist therefore contains only software and documentation; users acquire CATSS and parent corpora under their own upstream terms.
+
+**Decision:** release artifacts are Python source/wheel artifacts only. Generated CATSS modules are never attached as release assets.
+
+## R-127 — Text-Fabric is an optional runtime integration, not a core parser dependency
+
+Core CATSS parsing, validation, schema compilation, sidecar generation, and pure resolver/materializer logic do not import Text-Fabric. Text-Fabric is required when a user loads real parent corpora or invokes the browser.
+
+**Decision:** v0.1 keeps core dependencies empty and adds an optional `tf` extra pinned to the tested Text-Fabric major range (`text-fabric>=13.1,<14`). Development installs include the same extra.
+
+## R-128 — Release identity must be single-sourced and user-visible
+
+Before v0.1, both `pyproject.toml` and `catss_tf.__version__` contain `0.0.0`, and the CLI has no version flag.
+
+**Decision:** v0.1 uses semantic package version `0.1.0`; package metadata and `__version__` must agree, and `catss-tf --version` prints the exact installed version.
+
+## R-129 — v0.1 freezes a small public Python API
+
+Direct imports from implementation modules remain possible, but release documentation should not force users/Agora adapters to treat internal module layout as the API.
+
+**Decision:** package-level public API for v0.1 exports:
+
+- `__version__`;
+- `materialize_bhsa`;
+- `materialize_lxx`;
+- `compare_projection_bundles`;
+- `TextFabricBhsaProvider`;
+- `TextFabricLxxProvider`.
+
+The version constant is initialized before these imports to avoid circular dependency with materializers that embed the software version in TF metadata.
+
+## R-130 — A release candidate needs a wheel-level smoke test, not only editable-install tests
+
+Editable CI can pass while package metadata, console scripts, or wheel contents are broken.
+
+**Decision:** release CI builds both sdist and wheel, installs the wheel into a fresh venv, and verifies:
+
+- `catss-tf --version`;
+- package version;
+- public API imports;
+- core package import without Text-Fabric installed.
+
+The normal test matrix remains corpus-independent.
+
+## R-131 — GitHub release publication can be automated from reviewed release metadata
+
+The available GitHub connector can merge reviewed code but does not expose release/tag creation. GitHub Actions can create an annotated release/tag using the repository's `GITHUB_TOKEN` after the reviewed version bump lands on `main`.
+
+**Decision:** add a narrowly scoped release workflow triggered only when `release/VERSION` changes on `main`. It:
+
+1. verifies that `release/VERSION`, `pyproject.toml`, and `catss_tf.__version__` agree;
+2. runs tests/build;
+3. refuses to overwrite an existing tag/release;
+4. creates GitHub release `v<VERSION>` at the triggering main commit;
+5. attaches only sdist/wheel software artifacts and uses `RELEASE_NOTES.md`.
+
+This keeps publication reproducible without broadening CATSS-TF's data-distribution boundary.
