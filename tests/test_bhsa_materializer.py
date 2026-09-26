@@ -366,7 +366,6 @@ def test_allowed_validation_finding_is_retained_in_diagnostics_sidecar(
     assert diagnostics[0]["side"] == "mt_a"
 
 
-
 def test_mid_write_failure_removes_temporary_bundle(
     tmp_path: pathlib.Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -395,7 +394,6 @@ def test_mid_write_failure_removes_temporary_bundle(
 
     assert not output.exists()
     assert list(tmp_path.glob(".catss-bhsa.tmp-*")) == []
-
 
 
 def test_maqaf_expansion_emits_segment_only_when_explicit(
