@@ -51,9 +51,7 @@ class FakeLxxProvider:
         probe: LxxParentProbe | None = None,
     ) -> None:
         self.parent_probe = _probe() if probe is None else probe
-        self._spans = {
-            (span.book, span.chapter, span.verse, span.subverse): span for span in spans
-        }
+        self._spans = {(span.book, span.chapter, span.verse, span.subverse): span for span in spans}
 
     def get_span(
         self,
@@ -289,9 +287,7 @@ HB2 ^\t^^^
     materialize_lxx(source, output, provider=provider)
 
     assert "2\t1" in (output / "catss_lxx_minus_n.tf").read_text(encoding="utf-8")
-    assert "2\t1" in (
-        output / "catss_transposition_placeholder_n.tf"
-    ).read_text(encoding="utf-8")
+    assert "2\t1" in (output / "catss_transposition_placeholder_n.tf").read_text(encoding="utf-8")
 
     anchors = _read_tsv(output / "catss-anchors.tsv")
     assert [(row["anchor_kind"], row["token_n"]) for row in anchors] == [
@@ -428,3 +424,35 @@ def test_sidecar_writer_quotes_raw_tab_provenance(
     rows = _read_tsv(output / "catss-source-lines.tsv")
     assert rows[0]["raw"] == "HB\tQEOS"
     assert len(rows[0]) == len(SIDECAR_COLUMNS["catss-source-lines.tsv"])
+
+
+def test_lettered_subverse_minus_anchor_stays_on_subverse_node(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "18.Esther.par",
+        "Esth 1:1\nHB\t--- '' [1:1a]\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        (
+            _span(
+                "θεός",
+                book="Esth",
+                chapter=1,
+                verse=1,
+                subverse="a",
+                node=3,
+                start_node=10,
+            ),
+        )
+    )
+
+    materialize_lxx(source, output, provider=provider)
+
+    anchors = _read_tsv(output / "catss-anchors.tsv")
+    assert anchors[0]["parent_node"] == "3"
+    assert anchors[0]["anchor_kind"] == "lxx_minus"
+    assert "3\t1" in (output / "catss_lxx_minus_n.tf").read_text(encoding="utf-8")
