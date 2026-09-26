@@ -743,7 +743,7 @@ def _annotation_brace_payload(raw: str, kind: str) -> str | None:
         "distributive": ("{..d",),
         "preposition_added": ("{..p",),
         "transposition_remote": ("{...",),
-        "transposition_stylistic": ("{..p^", "{..^", "{.."),
+        "transposition_stylistic": ("{..p^", "{?..^", "{..^", "{.."),
         "repetition": ("{..r",),
         "greek_correction": ("{c",),
         "greek_edition_difference": ("{g",),
