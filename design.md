@@ -1512,3 +1512,168 @@ Anchor events also remain alignment-identifiable until after duplicate checking.
 A parent word node may not receive more than one mapping row for the same canonical `(source, alignment_id)`. Token or maqaf-segment indices distinguish provenance inside the alignment, but they do not create additional alignment memberships on the same parent node. Such input is rejected as `duplicate_alignment_membership`.
 
 The generic TF writer is clean-target only. It refuses a target directory containing any existing `*.tf` file, preventing stale feature files from surviving rematerialization. Higher-level materializers should write to a fresh temporary directory and publish the completed module as one replacement operation.
+
+
+## 20. BHSA materializer
+
+### 20.1 Library boundary
+
+The first end-to-end API is library-first and dependency-injectable:
+
+```text
+materialize_bhsa(
+  source_directory,
+  output_directory,
+  provider: BhsaVerseProvider,
+  parent_probe: BhsaParentProbe,
+  allowed_validation_codes=(),
+) -> BhsaMaterializationResult
+```
+
+The core function does not download BHSA, discover a user's Text-Fabric installation, or infer a parent release from a directory name. Those are future CLI/Agora integration concerns.
+
+### 20.2 Fail-closed preflight
+
+Before output publication:
+
+- CATSS source inspection must succeed;
+- exact BHSA parent validation must succeed;
+- all direct-child CATSS `.par` files parse;
+- every BHSA-supported document must resolve with zero blocking mapping findings;
+- unknown CATSS source names are errors;
+- schema compilation must succeed.
+
+Declared BHSA-unsupported sources are skipped as projection inputs, not failures.
+
+### 20.3 Canonical alignment index
+
+For every supported document, the materializer builds one immutable lookup:
+
+```text
+alignment_id -> (source, verse, AlignmentRecord)
+```
+
+Duplicate IDs are already a validation error, but the materializer still rejects any duplicate while building projection facts. Resolver mappings or anchors referencing a missing ID are hard internal-consistency errors.
+
+### 20.4 Membership flags
+
+Direct alignment flags:
+
+```text
+is_lxx_plus                 -> catss_lxx_plus
+is_lxx_minus                -> catss_lxx_minus
+is_ketiv                    -> catss_ketiv
+is_qere                     -> catss_qere
+is_transposition_local      -> catss_trans_local
+is_transposition_remote     -> catss_trans_remote
+is_transposition_stylistic  -> catss_trans_style
+retroversion_kind != empty  -> catss_retro (schema also derives this)
+any MT reading doubtful     -> catss_doubt
+```
+
+Reviewed annotation-kind mappings:
+
+```text
+doublet                    -> catss_doublet
+transliteration            -> catss_translit
+apparent_plus_minus        -> catss_apparent_pm
+greek_agrees_ketiv         -> catss_agrees_ketiv
+greek_agrees_qere          -> catss_agrees_qere
+metathesis                 -> catss_metathesis
+word_separation            -> catss_word_separation
+word_join                  -> catss_word_join
+word_division              -> catss_word_division
+abbreviation               -> catss_abbreviation
+greek_preverb              -> catss_greek_preverb
+comparative_superlative    -> catss_comparative
+asterisked_passage         -> catss_asterisked
+doubt                      -> catss_doubt
+greek_edition_difference   -> catss_greek_diff
+greek_correction           -> catss_greek_correction
+preposition_added          -> catss_prep_added
+distributive               -> catss_distributive
+repetition                 -> catss_repetition
+```
+
+Other annotation kinds remain sidecar-only.
+
+### 20.5 Sidecar population
+
+For each supported canonical alignment:
+
+- one `catss-alignments.tsv` row;
+- one `catss-source-lines.tsv` row per physical source line;
+- one `catss-annotations.tsv` row per preserved annotation.
+
+For each proven BHSA word mapping:
+
+- one `catss-mappings.tsv` row.
+
+For each LXX-plus BHSA verse anchor:
+
+- one `catss-anchors.tsv` row.
+
+For every inspected input file:
+
+- one `catss-sources.tsv` fingerprint row.
+
+Successful fail-closed materialization has no blocking diagnostics. If explicitly allowed validation findings exist, they remain in `catss-diagnostics.tsv` with severity `ignored`.
+
+### 20.6 Output bundle
+
+The destination directory is one generated module bundle:
+
+```text
+<output>/
+  catss_*.tf
+  catss-alignments.tsv
+  catss-annotations.tsv
+  catss-mappings.tsv
+  catss-anchors.tsv
+  catss-sources.tsv
+  catss-source-lines.tsv
+  catss-diagnostics.tsv
+```
+
+Empty sidecar tables are still emitted with their header to keep the bundle contract stable.
+
+No `otype.tf`, `oslots.tf`, or `otext.tf` is generated.
+
+### 20.7 Atomic publication
+
+All files are first generated in a fresh sibling temporary directory. The low-level schema writer is invoked there. Sidecars are then written. After all files are closed successfully, the directory is renamed to the final output path.
+
+On any exception the temporary directory is recursively removed.
+
+### 20.8 Result summary
+
+The returned result contains scalar counts:
+
+```text
+source_files
+supported_documents
+unsupported_documents
+verses
+alignments
+word_mappings
+verse_anchors
+tf_features
+sidecar_rows
+ignored_validation_findings
+```
+
+and the final output path. It does not duplicate all sidecar contents in a result blob.
+
+
+### 20.9 Source snapshot consistency
+
+Discovery and scholarly input identity are separate steps. The materializer uses the existing source inspector to establish the selected filename set, then reads each selected file once. Size/SHA-256 and parser text derive from that same byte payload.
+
+This prevents a time-of-check/time-of-use mismatch between `catss-sources.tsv` and the actual parser input.
+
+
+### 20.10 Sparse maqaf segment semantics
+
+`BhsaWordMapping.segment_index` is an implementation index for every mapping. `catss_mt_segment` is emitted only when the corresponding canonical CATSS MT reading explicitly contains maqaf. Ordinary one-slot words leave the feature empty.
+
+This keeps `catss_mt_segment` queryable as evidence of source segmentation rather than a generic always-1 position.
