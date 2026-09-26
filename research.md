@@ -1729,3 +1729,85 @@ Structural plus/minus events that have no word on one side remain represented by
 Schema-v1 source features are already stable and used by both materializers/consistency checks.
 
 **Decision:** keep `SCHEMA_VERSION=1` for source facts and add `TECHNIQUE_SCHEMA_VERSION=1` for the derived layer. New technique feature metadata include `@catssTechniqueSchema=1`. Existing source feature meanings, lane assignment, and sidecar columns are unchanged except for adding one new normalized technique table.
+
+
+## R-121 — CATSS-TF should reuse parent Text-Fabric apps, not define a third corpus app
+
+Text-Fabric separates a corpus app from additional data modules. The browser documentation explicitly supports loading extra features with `--mod`, and the advanced API supports both remote modules and local `locations/modules`.
+
+BHSA v1.8.1 already ships a mature standard `app/` with Hebrew display, sections, lexical links, and corpus-specific formatting. CenterBLC/LXX v1.0.1 likewise ships its own `app/config.yaml` with Greek writing, sections, provenance, and word display.
+
+Sources:
+
+- https://github.com/annotation/text-fabric/blob/master/tf/docs/about/browser.md
+- https://github.com/annotation/text-fabric/blob/master/tf/docs/about/usefunc.md
+- https://github.com/ETCBC/bhsa/tree/v1.8.1/app
+- https://github.com/CenterBLC/LXX/blob/v1.0.1/app/config.yaml
+
+**Decision:** CATSS-TF does **not** add an `app/` pseudo-corpus. The standard browser entry points are the exact supported parent apps with a generated CATSS module added as extra local TF data.
+
+## R-122 — Local generated bundles fit Text-Fabric's native locations/modules mechanism
+
+`Fabric(locations=..., modules=...)` searches every `location/module` pair for non-recursive `.tf` feature files. The advanced app loader appends user-supplied `locations` and `modules` to the parent corpus locations/modules rather than replacing the parent dataset.
+
+A CATSS materializer already publishes a bundle directory whose root contains sparse `catss_*.tf` files and no warp. Therefore an output such as:
+
+```text
+/work/modules/catss-bhsa/
+  catss_alignment_id.tf
+  catss_mt_n.tf
+  ...
+```
+
+can be loaded by the parent app using:
+
+```text
+locations=/work/modules
+modules=catss-bhsa
+```
+
+No copy into the parent repo or Text-Fabric cache layout is required.
+
+Source:
+
+- https://github.com/annotation/text-fabric/blob/master/tf/core/fabric.py
+- https://github.com/annotation/text-fabric/blob/master/tf/advanced/data.py
+
+## R-123 — Browser launch must pin the same parent releases as materialization
+
+A module is valid only for the warp against which its node IDs were materialized. Browser ergonomics must not weaken that invariant by launching `latest`.
+
+**Decision:** standard browser launch specs are pinned:
+
+```text
+BHSA app/data: ETCBC/bhsa:v1.8.1, checkout=v1.8.1, version=2021
+LXX app/data:  CenterBLC/LXX:v1.0.1, checkout=v1.0.1, version=1935
+```
+
+The locally generated module metadata is checked before launch for projection, parent repo, parent version, and parent release.
+
+## R-124 — Browser convenience belongs in CATSS-TF CLI, but the server remains Text-Fabric
+
+A user should not have to reconstruct the `tf` command from materializer internals. A thin convenience command is useful, provided it does not become a separate browser implementation.
+
+**Decision:** `catss-tf browse <bhsa|lxx> <module-directory>`:
+
+1. validates the generated module bundle metadata;
+2. builds the exact standard `tf` argv;
+3. invokes the installed Text-Fabric executable with `subprocess.run(..., shell=False)`;
+4. returns the Text-Fabric process exit code.
+
+`-noweb` can be forwarded for smoke/testing. Paths remain individual argv elements, so spaces/shell characters are not reinterpreted.
+
+## R-125 — Query examples should exercise CATSS scalar features, not sidecars
+
+The TF browser search interface works directly with node features. Schema-v1 already exposes source facts and technique-v1 exposes deterministic derived facts as scalar `catss_*` / `catss_tt_*` values.
+
+**Decision:** browser documentation demonstrates native TF searches such as:
+
+- BHSA words with `catss_lxx_minus=1`;
+- BHSA/LXX word memberships with `catss_mt_n` and `catss_lxx_n`;
+- LXX words with `catss_lxx_plus=1`;
+- transposition/retroversion/technique features.
+
+Exact raw CATSS rows and arbitrary annotations remain sidecar provenance, not the primary browser query surface.

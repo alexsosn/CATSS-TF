@@ -78,3 +78,20 @@ def test_validate_command_can_explicitly_allow_a_finding_code(
     assert "unresolved_count=0" in output
     assert "ignored_count=1" in output
     assert "ignored unknown_annotation 01.First.par:2" in output
+
+
+def test_browse_command_forwards_projection_module_and_noweb(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = tmp_path / "catss-bhsa"
+    module.mkdir()
+    seen: list[tuple[str, Path, bool]] = []
+
+    def fake_launch(projection: str, module_path: str | Path, *, noweb: bool = False) -> int:
+        seen.append((projection, Path(module_path), noweb))
+        return 9
+
+    monkeypatch.setattr(cli, "launch_browser", fake_launch)
+
+    assert cli.main(["browse", "bhsa", str(module), "--noweb"]) == 9
+    assert seen == [("bhsa", module, True)]
