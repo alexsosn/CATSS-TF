@@ -493,3 +493,23 @@ def test_greek_editorial_wrappers_expose_payload() -> None:
         ("greek_correction", "?PU/LHS"),
         ("greek_edition_difference", "READING"),
     ]
+
+
+def test_sirach_mt_manuscript_markup_is_not_silently_dropped() -> None:
+    document = parse_parallel_text(
+        "Sir 2:13\n[..] 3\tOU)AI\\\n[BN]* >7\tLOGOS\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = [
+        annotation
+        for alignment in document.verses[0].alignments
+        for annotation in alignment.annotations
+    ]
+    assert [(a.raw, a.kind) for a in annotations] == [
+        ("[..]", "sirach_lacuna_or_illegible"),
+        ("3", "sirach_witness_geniza_a"),
+        ("[BN]", "sirach_reconstructed_letters"),
+        ("*", "sirach_uncertain_fragmentary_letter"),
+        (">7", "sirach_reading_lacking_in_witness"),
+    ]
