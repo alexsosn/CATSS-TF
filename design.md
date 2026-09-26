@@ -363,7 +363,7 @@ The first `=` in the MT cell separates column A from column B. Both the entire r
 
 Column B is **not** part of `mt_tokens`; it is a reconstruction/annotation layer, not an MT token sequence.
 
-The common column-B introducers are normalized into a short `retroversion_kind` enum (`proper_noun`, `context`, `etymological`, `preposition_difference`, `preposition_addition`, `preposition_omission`, `active_to_passive`, `passive_to_active`, `number_difference`, `vocalization`, `vocalization_shin_sin`, `incomplete`, or `plain`). The raw column-B value is still preserved.
+The common column-B introducers are normalized into a short `retroversion_kind` enum (`proper_noun`, `context`, `etymological`, `preposition_difference`, `active_to_passive`, `passive_to_active`, `vocalization`, `vocalization_shin_sin`, `incomplete`, or `plain`). The raw column-B value is still preserved.
 
 ### 12.5 Normalized flags
 
@@ -381,14 +381,14 @@ The parser may expose additional annotation kinds, but it must not infer a recon
 
 ### 12.6 Annotations
 
-`Annotation(side, kind, raw, family, contextual, payload)` is source-preserving and typed. `raw` always retains the exact source spelling; `payload` exposes wrapper/reference content without requiring downstream reparsing.
+`Annotation(side, kind, raw)` is source-preserving.
 
 At minimum:
 
 - known transposition blocks are classified;
 - text-bearing wrappers such as `{c...}`, `{..p...}`, `{..d...}`, and `{..r...}` retain their lexical payload while receiving a stable annotation kind;
 - `{d}`, `{t}`, `{x}`, `{*}`, and `{**}` receive stable descriptive kinds;
-- Samaritan apparatus references, source notes, simple Greek verse overrides, and complex contextual references are retained as typed reference annotations;\n- raw `{!}...` infinitive-absolute encodings and longer MT dot-strategy codes are decoded without discarding their payload;\n- Sirach uses a book-sensitive manuscript profile for lacunae, reconstructed letters, witness numbers, witness omissions, additions, and fragmentary letters;
+- angle-bracket notes and square-bracket Greek verse references are retained;
 - unrecognized brace blocks become `kind="unknown"`.
 
 ### 12.7 Token candidates and ratios
@@ -2114,3 +2114,98 @@ CATSS browser UX is the ordinary parent corpus UX plus additional features. Sear
 ### 24.9 Agora boundary
 
 Agora may later discover/install/invoke CATSS-TF materializers. It is not involved in Text-Fabric browser startup, app configuration, display, or search.
+
+
+## 25. v0.1 release contract
+
+### 25.1 Version
+
+```text
+package version: 0.1.0
+git/release tag: v0.1.0
+schema version: 1
+technique schema: 1
+```
+
+Package version changes do not alter schema versions automatically.
+
+### 25.2 Install surfaces
+
+v0.1 is published as an immutable GitHub Release, not to PyPI.
+
+Core software:
+
+```sh
+pip install \
+  https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
+```
+
+Text-Fabric integration/browser:
+
+```sh
+pip install \
+  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
+```
+
+Bare PyPI-style install commands are intentionally not documented until a PyPI release actually exists.
+
+### 25.3 Public Python API
+
+```python
+from catss_tf import (
+    __version__,
+    compare_projection_bundles,
+    materialize_bhsa,
+    materialize_lxx,
+    TextFabricBhsaProvider,
+    TextFabricLxxProvider,
+)
+```
+
+Provider/profile construction and advanced diagnostics remain available from their dedicated modules.
+
+### 25.4 CLI contract
+
+```text
+catss-tf --version
+catss-tf fetch ...
+catss-tf validate ...
+catss-tf browse ...
+```
+
+Materialization remains library-first in v0.1. Agora integration (#16) may add a thin invocation adapter, but mapping/materialization behavior remains here.
+
+### 25.5 Release smoke
+
+A dedicated CI job builds with `python -m build`, checks distributions with `twine check`, creates a fresh virtual environment, installs the wheel without dev extras, and verifies version + public API import.
+
+The wheel smoke must not download CATSS/BHSA/LXX.
+
+### 25.6 Opt-in real-data verification
+
+Release documentation gives two independent paths:
+
+- normal offline/synthetic test suite;
+- opt-in user-acquired CATSS + pinned BHSA/LXX Text-Fabric parents.
+
+Real-data integration output remains local and is never uploaded by CI.
+
+### 25.7 Publication
+
+`release/VERSION` is the explicit publication trigger. Only a reviewed version change merged to `main` invokes release publication. The workflow creates `v0.1.0` at that main commit and attaches software distributions only.
+
+### 25.8 Release notes
+
+`CHANGELOG.md` is cumulative. `RELEASE_NOTES.md` describes the current release and its known limitations, especially:
+
+- exact parent versions;
+- CATSS upstream-license responsibility;
+- declared unsupported projection sources;
+- fail-closed unresolved mappings;
+- maximum two query-native membership lanes in schema-v1;
+- no cross-language lemma/morphology comparison in technique-v1.
+
+
+## 25. Complete CATSS special-notation semantics
+
+The parser preserves exact raw notation and decodes it through a closed, book-sensitive semantic catalogue. Query-native materialization uses one sparse scalar feature per semantic kind, `catss_sem_<kind>`, plus `catss_sem_<kind>_payload` for contextual payloads. No JSON or delimiter-packed semantic collections are used. Hebrew/Aramaic-side annotations project only to BHSA memberships and Greek-side annotations only to LXX memberships. Cross-projection correspondence remains the shared stable `catss_alignment_id`; foreign parent node IDs are never encoded as edges. Sirach uses its own collision-sensitive profile. Provenance TSVs preserve raw source notation but are not the semantic query API. Unknown notation is fail-closed, and `catss-tf validate --complete` requires exactly the configured 46-file snapshot before a zero-unknown audit can be claimed.

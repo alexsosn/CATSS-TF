@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "catss-tf"
-version = "0.0.0"
+version = "0.1.0"
 description = "Materializers for projecting CATSS Hebrew-Greek alignments onto existing Text-Fabric corpora"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,12 +18,21 @@ dependencies = []
 catss-tf = "catss_tf.cli:main"
 
 [project.optional-dependencies]
+tf = [
+  "text-fabric>=13.1,<14",
+]
 dev = [
+  "build>=1.2",
   "mypy>=1.11",
   "pytest>=8",
   "ruff>=0.8",
   "text-fabric>=13.1,<14",
+  "twine>=5",
 ]
+
+[project.urls]
+Repository = "https://github.com/alexsosn/CATSS-TF"
+Issues = "https://github.com/alexsosn/CATSS-TF/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

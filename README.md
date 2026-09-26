@@ -11,16 +11,40 @@ This repository does **not** distribute BHSA, LXX, raw CATSS data, or generated 
 
 ## Status
 
-Both CATSS projections, cross-projection consistency checks, and the initial
-translation-technique layer are implemented. v0.1 release preparation is in progress.
+CATSS-TF 0.1.0 is the first standalone release. It includes both CATSS projections,
+cross-projection consistency checks, translation-technique v1, and standard Text-Fabric
+browser integration.
+
+Install core software:
+
+```sh
+pip install \\
+  https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
+```
+
+Install with Text-Fabric integration:
+
+```sh
+pip install \\
+  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
+```
+
+Verify:
+
+```sh
+catss-tf --version
+```
 
 Read:
 
-1. [research.md](research.md)
-2. [design.md](design.md)
-3. [plan.md](plan.md)
-4. [AGENTS.md](AGENTS.md)
-5. [docs/agentic-dev-loop.md](docs/agentic-dev-loop.md)
+1. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
+2. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
+3. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
+4. [CHANGELOG.md](CHANGELOG.md)
+5. [research.md](research.md)
+6. [design.md](design.md)
+7. [plan.md](plan.md)
+8. [AGENTS.md](AGENTS.md)
 
 ## Architectural boundary
 
@@ -79,4 +103,28 @@ The wrapper validates module/parent metadata and then invokes the normal `tf` br
 You can also use the direct Text-Fabric `--locations/--modules` mechanism or
 `tf.app.use()`.
 
-See [docs/browser.md](docs/browser.md) for exact pinned commands and search examples.\n\n## Special notation semantics\n\nCATSS special notation is decoded into query-native `catss_sem_*` Text-Fabric features rather than requiring researchers to parse raw sigla or provenance sidecars. Context-bearing notation has corresponding `*_payload` features, and unknown notation fails validation instead of falling into a generic bucket. See [docs/special-notation.md](docs/special-notation.md) for the semantic families, Sirach-specific profile, scope rules, and query examples.
+See [docs/browser.md](docs/browser.md) for exact pinned commands and search examples.
+
+
+## Public Python API
+
+v0.1 freezes the following package-level entry points:
+
+```python
+from catss_tf import (
+    TextFabricBhsaProvider,
+    TextFabricLxxProvider,
+    compare_projection_bundles,
+    materialize_bhsa,
+    materialize_lxx,
+)
+```
+
+Materialization is deliberately library-first. The mapping/resolver behavior stays in
+CATSS-TF; downstream integrations such as Agora should call the released API rather than
+reimplement CATSS semantics.
+
+
+## Special notation semantics
+
+CATSS special notation is decoded into query-native `catss_sem_*` Text-Fabric features rather than requiring researchers to parse raw sigla or provenance sidecars. Context-bearing notation has corresponding `*_payload` features, and unknown notation fails validation instead of falling into a generic bucket. See [docs/special-notation.md](docs/special-notation.md) for semantic families, Sirach-specific scope, and query examples.
