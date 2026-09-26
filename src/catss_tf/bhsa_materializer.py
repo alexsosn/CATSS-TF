@@ -428,9 +428,7 @@ def _require_context(
 ) -> _AlignmentContext:
     context = contexts.get(alignment_id)
     if context is None:
-        raise BhsaMaterializationError(
-            f"resolver referenced unknown alignment id: {alignment_id}"
-        )
+        raise BhsaMaterializationError(f"resolver referenced unknown alignment id: {alignment_id}")
     return context
 
 
