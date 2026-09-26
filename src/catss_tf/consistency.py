@@ -5,8 +5,10 @@ import csv
 import dataclasses
 import pathlib
 
-from catss_tf.bhsa_schema import BhsaSourceStatus, classify_catss_source as classify_bhsa_source
-from catss_tf.lxx_schema import LxxSourceStatus, classify_catss_source as classify_lxx_source
+from catss_tf.bhsa_schema import BhsaSourceStatus
+from catss_tf.bhsa_schema import classify_catss_source as classify_bhsa_source
+from catss_tf.lxx_schema import LxxSourceStatus
+from catss_tf.lxx_schema import classify_catss_source as classify_lxx_source
 from catss_tf.tf_schema import SIDECAR_COLUMNS
 
 
@@ -574,7 +576,10 @@ def _check_index_coverage(
                 f"{field.split('_')[0]}_index_coverage_mismatch",
                 identity,
                 "catss-mappings.tsv",
-                f"{projection} {field} coverage is {sorted(actual)!r}; expected {sorted(expected)!r}",
+                (
+                    f"{projection} {field} coverage is {sorted(actual)!r}; "
+                    f"expected {sorted(expected)!r}"
+                ),
             )
         )
         return 1
