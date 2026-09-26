@@ -2131,19 +2131,23 @@ Package version changes do not alter schema versions automatically.
 
 ### 25.2 Install surfaces
 
+v0.1 is published as an immutable GitHub Release, not to PyPI.
+
 Core software:
 
 ```sh
-pip install catss-tf
+pip install \
+  https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
 Text-Fabric integration/browser:
 
 ```sh
-pip install "catss-tf[tf]"
+pip install \
+  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
 ```
 
-A GitHub release wheel can be installed directly before/without PyPI publication.
+Bare PyPI-style install commands are intentionally not documented until a PyPI release actually exists.
 
 ### 25.3 Public Python API
 
