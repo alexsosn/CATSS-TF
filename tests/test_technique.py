@@ -272,3 +272,27 @@ def test_zero_side_transposition_placeholder_is_not_misclassified_as_omission() 
     assert state.cardinality_mt_lxx == "one_zero"
     assert state.addition_vs_mt is False
     assert state.omission_vs_mt is False
+
+
+def test_plus_minus_flags_require_material_on_the_named_side() -> None:
+    with pytest.raises(TechniqueError, match="LXX-plus requires Greek"):
+        derive_technique_state(
+            mt_n=0,
+            lxx_n=0,
+            is_lxx_plus=True,
+            is_lxx_minus=False,
+            trans_local=False,
+            trans_remote=False,
+            trans_style=False,
+        )
+
+    with pytest.raises(TechniqueError, match="LXX-minus requires MT"):
+        derive_technique_state(
+            mt_n=0,
+            lxx_n=0,
+            is_lxx_plus=False,
+            is_lxx_minus=True,
+            trans_local=False,
+            trans_remote=False,
+            trans_style=False,
+        )
