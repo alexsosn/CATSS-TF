@@ -446,3 +446,20 @@ def test_sirach_uncertain_transliteration_annotation_is_typed() -> None:
     annotation = next(a for a in annotations if a.raw == "{t?}")
     assert annotation.kind == "uncertain_transliteration"
     assert annotation.family == "translation_technique"
+
+
+def test_raw_mt_strategy_codes_keep_specific_semantics() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB .kb\tGR\nHB =%p-\tGR\nHB =%p+\tGR\nHB =+\tGR\nHB {!}-\tGR\n",
+        source_name="99.Test.par",
+    )
+
+    alignments = document.verses[0].alignments
+    assert alignments[0].annotations[0].kind == "letter_interchange"
+    assert alignments[0].annotations[0].payload == "kb"
+    assert alignments[1].retroversion_kind == "preposition_omission"
+    assert alignments[2].retroversion_kind == "preposition_addition"
+    assert alignments[3].retroversion_kind == "number_difference"
+    inf_abs = next(a for a in alignments[4].annotations if a.raw == "{!}")
+    assert inf_abs.kind == "inf_abs_rendered_finite_verb"
+    assert inf_abs.family == "infinitive_absolute"
