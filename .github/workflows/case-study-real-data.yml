@@ -28,20 +28,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[tf]" pandas jupyter
 
-      - name: Acquire CATSS parallel source directly from CCAT
+      - name: Acquire CATSS parallel source for one-off smoke
         run: |
-          # CCAT's TLS chain is not accepted by the hosted runner's default
-          # OpenSSL trust store. Prefer the independently maintained certifi CA
-          # bundle already installed through Text-Fabric/requests; do not disable
-          # certificate verification.
-          export SSL_CERT_FILE="$(python -c 'import certifi; print(certifi.where())')"
-          python - <<'PY'
-          import os
-          import ssl
-          print("SSL_CERT_FILE", os.environ["SSL_CERT_FILE"])
-          print("verify paths", ssl.get_default_verify_paths())
+          # TEMPORARY SMOKE-ONLY WORKAROUND.
+          # The current CCAT host serves a TLS chain that clean Python/OpenSSL
+          # cannot validate; see #44. Never copy --insecure into production.
+          mkdir -p ./data/catss-parallel
+          python - <<'PY' > /tmp/catss-files.txt
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          print("\n".join(CATSS_PARALLEL_FILENAMES))
           PY
-          catss-tf fetch ./data/catss-parallel
+          while IFS= read -r name; do
+            echo "fetching $name"
+            curl --fail --silent --show-error --insecure \
+              "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/$name" \
+              --output "./data/catss-parallel/$name"
+          done < /tmp/catss-files.txt
           catss-tf validate ./data/catss-parallel
 
       - name: Materialize pinned BHSA and LXX modules
