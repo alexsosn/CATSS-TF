@@ -445,7 +445,27 @@ def _extract_annotations(
                 )
             )
         else:
-            annotations.append(Annotation(side=side, kind=_brace_kind(raw), raw=raw))
+            raw_kind = _brace_kind(raw)
+            raw_semantics = {
+                "distributive": ("distributive_rendering", "translation_technique", True),
+                "preposition_added": ("preposition_added", "preposition", True),
+                "transposition_remote": ("transposition_remote", "transposition", True),
+                "transposition_stylistic": ("transposition_stylistic", "transposition", True),
+                "repetition": ("element_repeated_in_lxx", "translation_technique", True),
+            }.get(raw_kind)
+            if raw_semantics is None:
+                annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
+            else:
+                kind, family, contextual = raw_semantics
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=kind,
+                        raw=raw,
+                        family=family,
+                        contextual=contextual,
+                    )
+                )
     for match in _ANGLE_NOTE.finditer(cell):
         annotations.append(Annotation(side=side, kind="note", raw=match.group(0)))
     if side in {"mt_a", "mt_b"}:
