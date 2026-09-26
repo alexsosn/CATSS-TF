@@ -66,3 +66,12 @@ def test_patterned_samaritan_reference_is_typed() -> None:
     assert spec is not None
     assert spec.kind == "samaritan_apparatus_reference"
     assert spec.contextual is True
+
+
+def test_documented_notation_catalogue_has_stable_semantic_feature_names() -> None:
+    from catss_tf.notation import documented_specs, semantic_feature_name
+
+    specs = documented_specs()
+    assert specs
+    for raw, spec in specs.items():
+        assert semantic_feature_name(spec) == f"catss_sem_{spec.kind}", raw
