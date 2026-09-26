@@ -363,7 +363,7 @@ The first `=` in the MT cell separates column A from column B. Both the entire r
 
 Column B is **not** part of `mt_tokens`; it is a reconstruction/annotation layer, not an MT token sequence.
 
-The common column-B introducers are normalized into a short `retroversion_kind` enum (`proper_noun`, `context`, `etymological`, `preposition_difference`, `active_to_passive`, `passive_to_active`, `vocalization`, `vocalization_shin_sin`, `incomplete`, or `plain`). The raw column-B value is still preserved.
+The common column-B introducers are normalized into a short `retroversion_kind` enum (`proper_noun`, `context`, `etymological`, `preposition_difference`, `preposition_addition`, `preposition_omission`, `active_to_passive`, `passive_to_active`, `number_difference`, `vocalization`, `vocalization_shin_sin`, `incomplete`, or `plain`). The raw column-B value is still preserved.
 
 ### 12.5 Normalized flags
 
@@ -381,14 +381,14 @@ The parser may expose additional annotation kinds, but it must not infer a recon
 
 ### 12.6 Annotations
 
-`Annotation(side, kind, raw)` is source-preserving.
+`Annotation(side, kind, raw, family, contextual, payload)` is source-preserving and typed. `raw` always retains the exact source spelling; `payload` exposes wrapper/reference content without requiring downstream reparsing.
 
 At minimum:
 
 - known transposition blocks are classified;
 - text-bearing wrappers such as `{c...}`, `{..p...}`, `{..d...}`, and `{..r...}` retain their lexical payload while receiving a stable annotation kind;
 - `{d}`, `{t}`, `{x}`, `{*}`, and `{**}` receive stable descriptive kinds;
-- angle-bracket notes and square-bracket Greek verse references are retained;
+- Samaritan apparatus references, source notes, simple Greek verse overrides, and complex contextual references are retained as typed reference annotations;\n- raw `{!}...` infinitive-absolute encodings and longer MT dot-strategy codes are decoded without discarding their payload;\n- Sirach uses a book-sensitive manuscript profile for lacunae, reconstructed letters, witness numbers, witness omissions, additions, and fragmentary letters;
 - unrecognized brace blocks become `kind="unknown"`.
 
 ### 12.7 Token candidates and ratios
