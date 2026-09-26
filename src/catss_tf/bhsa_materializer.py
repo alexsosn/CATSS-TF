@@ -162,7 +162,7 @@ def materialize_bhsa(
         anchors=tuple(anchors),
     )
     mapping_rows = _mapping_rows(mapping_facts, features)
-    source_rows = [
+    source_rows: list[tuple[object, ...]] = [
         (source.relative_path, source.size_bytes, source.sha256) for source in manifest.files
     ]
 
@@ -355,7 +355,9 @@ def _projection_facts(
             if finding.severity == "ignored"
         )
 
-    alignment_rows.sort(key=lambda row: (str(row[0]), int(row[5]), str(row[1])))
+    alignment_rows.sort(
+        key=lambda row: (str(row[0]), _required_int_sort(row[5]), str(row[1]))
+    )
     annotation_rows.sort(
         key=lambda row: (
             str(row[0]),
@@ -365,8 +367,12 @@ def _projection_facts(
             str(row[4]),
         )
     )
-    source_line_rows.sort(key=lambda row: (str(row[0]), int(row[2]), str(row[1])))
-    anchor_rows.sort(key=lambda row: (str(row[1]), str(row[2]), int(row[3])))
+    source_line_rows.sort(
+        key=lambda row: (str(row[0]), _required_int_sort(row[2]), str(row[1]))
+    )
+    anchor_rows.sort(
+        key=lambda row: (str(row[1]), str(row[2]), _required_int_sort(row[3]))
+    )
     diagnostic_rows.sort(
         key=lambda row: (
             str(row[3]),
@@ -521,7 +527,14 @@ def _mapping_rows(
             )
         )
 
-    rows.sort(key=lambda row: (str(row[1]), str(row[2]), int(row[3]), int(row[4])))
+    rows.sort(
+        key=lambda row: (
+            str(row[1]),
+            str(row[2]),
+            _required_int_sort(row[3]),
+            _required_int_sort(row[4]),
+        )
+    )
     return rows
 
 
@@ -597,5 +610,11 @@ def _write_tsv(
             writer.writerow("" if value is None else value for value in row)
 
 
+def _required_int_sort(value: object) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise BhsaMaterializationError(f"expected integer sort cell, got {value!r}")
+    return value
+
+
 def _optional_int_sort(value: object) -> int:
-    return int(value) if isinstance(value, int) else -1
+    return value if isinstance(value, int) and not isinstance(value, bool) else -1
