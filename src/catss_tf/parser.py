@@ -655,6 +655,8 @@ def _annotation_brace_payload(raw: str, kind: str) -> str | None:
         "transposition_remote": "{...",
         "transposition_stylistic": "{..^",
         "repetition": "{..r",
+        "greek_correction": "{c",
+        "greek_edition_difference": "{g",
     }
     prefix = prefixes.get(kind)
     if prefix is None or not raw.startswith(prefix) or not raw.endswith("}"):
