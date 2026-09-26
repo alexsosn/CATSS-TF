@@ -498,6 +498,4 @@ def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
     output = tmp_path / "catss-lxx"
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
     assert "1\t1" in (output / "catss_sem_repetition.tf").read_text(encoding="utf-8")
-    assert "1\tGRREPEAT" in (
-        output / "catss_sem_repetition_payload.tf"
-    ).read_text(encoding="utf-8")
+    assert "1\\tGRREPEAT" in (output / "catss_sem_repetition_payload.tf").read_text(encoding="utf-8")
