@@ -502,4 +502,4 @@ def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
     assert "1\tQEOS" in payload_text
     assert not (output / "catss_distributive.tf").exists()
     payload_path = output / "catss_distributive_payload.tf"
-    assert not payload_path.exists()
+    assert payload_path.exists() is False
