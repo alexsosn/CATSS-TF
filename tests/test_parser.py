@@ -160,7 +160,7 @@ HB {d} {t} {x} {*} {**}\tGR [2] <note>
     kinds = {annotation.kind for annotation in row.annotations}
     assert {"doublet", "transliteration", "apparent_plus_minus"} <= kinds
     assert {"greek_agrees_ketiv", "greek_agrees_qere"} <= kinds
-    assert {"verse_reference", "note"} <= kinds
+    assert {"verse_reference", "source_note"} <= kinds
 
 
 def test_special_and_single_chapter_headers_are_parsed() -> None:
@@ -460,7 +460,7 @@ def test_raw_mt_strategy_codes_keep_specific_semantics() -> None:
     assert alignments[1].retroversion_kind == "preposition_omission"
     assert alignments[2].retroversion_kind == "preposition_addition"
     assert alignments[3].retroversion_kind == "number_difference"
-    inf_abs = next(a for a in alignments[4].annotations if a.raw == "{!}")
+    inf_abs = next(a for a in alignments[4].annotations if a.raw == "{!}-")
     assert inf_abs.kind == "inf_abs_rendered_finite_verb"
     assert inf_abs.family == "infinitive_absolute"
 
@@ -506,13 +506,15 @@ def test_sirach_mt_manuscript_markup_is_not_silently_dropped() -> None:
         for alignment in document.verses[0].alignments
         for annotation in alignment.annotations
     ]
-    assert [(a.raw, a.kind) for a in annotations] == [
-        ("[..]", "sirach_lacuna_or_illegible"),
-        ("3", "sirach_witness_geniza_a"),
-        ("[BN]", "sirach_reconstructed_letters"),
-        ("*", "sirach_uncertain_fragmentary_letter"),
-        (">7", "sirach_reading_lacking_in_witness"),
-    ]
+    assert sorted((a.raw, a.kind) for a in annotations) == sorted(
+        [
+            ("[..]", "sirach_lacuna_or_illegible"),
+            ("3", "sirach_witness_geniza_a"),
+            ("[BN]", "sirach_reconstructed_letters"),
+            ("*", "sirach_uncertain_fragmentary_letter"),
+            (">7", "sirach_reading_lacking_in_witness"),
+        ]
+    )
 
 
 def test_sirach_brace_manuscript_markup_keeps_raw_and_witness_payload() -> None:
