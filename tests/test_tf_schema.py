@@ -766,7 +766,7 @@ def test_annotation_sidecar_contract_exposes_typed_semantics_and_payload() -> No
         "raw",
     )
 
-\n\ndef test_typed_annotation_payloads_compile_as_distinct_query_native_features() -> None:
+def test_typed_annotation_payloads_compile_as_distinct_query_native_features() -> None:
     membership = dataclasses.replace(
         _membership(flags=frozenset({"catss_distributive", "catss_repetition"})),
         annotation_payloads=(
