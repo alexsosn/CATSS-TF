@@ -1,0 +1,191 @@
+name: Case study real-data smoke
+
+on:
+  push:
+    branches:
+      - issue-41-magic-terminology-notebook
+
+permissions:
+  contents: read
+
+jobs:
+  run-notebook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CATSS_LXX_MODULE: ${{ github.workspace }}/generated/catss-lxx
+      CATSS_BHSA_MODULE: ${{ github.workspace }}/generated/catss-bhsa
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install CATSS-TF and notebook dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[tf]" pandas jupyter
+
+      - name: Acquire CATSS parallel source directly from CCAT
+        run: |
+          catss-tf fetch ./data/catss-parallel
+          catss-tf validate ./data/catss-parallel
+
+      - name: Materialize pinned BHSA and LXX modules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tf.app import use
+
+          from catss_tf import (
+              TextFabricBhsaProvider,
+              TextFabricLxxProvider,
+              compare_projection_bundles,
+              materialize_bhsa,
+              materialize_lxx,
+          )
+          from catss_tf.bhsa_schema import (
+              BHSA_CHECKOUT_COMMIT,
+              BHSA_CHECKOUT_TAG,
+              BHSA_MAX_NODE,
+              BHSA_MAX_SLOT,
+              BHSA_REPOSITORY,
+              BHSA_SECTION_TYPES,
+              BHSA_SLOT_TYPE,
+              BHSA_VERSION,
+              BhsaParentProbe,
+          )
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE,
+              LXX_MAX_SLOT,
+              LXX_NODE_COUNTS,
+              LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG,
+              LXX_REPOSITORY,
+              LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES,
+              LXX_SLOT_TYPE,
+              LXX_VERSION,
+              LxxParentProbe,
+          )
+
+          source = Path("data/catss-parallel")
+          out = Path("generated")
+          out.mkdir(exist_ok=True)
+
+          bhsa = use(
+              "ETCBC/bhsa:v1.8.1",
+              checkout="v1.8.1",
+              version="2021",
+              silent="deep",
+          )
+          bapi = bhsa.api
+          bprobe = BhsaParentProbe(
+              repository=BHSA_REPOSITORY,
+              version=BHSA_VERSION,
+              checkout_tag=BHSA_CHECKOUT_TAG,
+              checkout_commit=BHSA_CHECKOUT_COMMIT,
+              slot_type=BHSA_SLOT_TYPE,
+              max_slot=bapi.F.otype.maxSlot,
+              max_node=bapi.F.otype.maxNode,
+              section_types=tuple(bapi.T.sectionTypes),
+              feature_names=frozenset((*bapi.Fall(), *bapi.Eall())),
+          )
+          assert bprobe.max_slot == BHSA_MAX_SLOT
+          assert bprobe.max_node == BHSA_MAX_NODE
+          assert bprobe.section_types == BHSA_SECTION_TYPES
+
+          br = materialize_bhsa(
+              source,
+              out / "catss-bhsa",
+              provider=TextFabricBhsaProvider(bapi),
+              parent_probe=bprobe,
+          )
+          print("BHSA MATERIALIZATION", br.summary)
+
+          lxx = use(
+              "CenterBLC/LXX:v1.0.1",
+              checkout="v1.0.1",
+              version="1935",
+              silent="deep",
+          )
+          lapi = lxx.api
+          node_counts = {
+              node_type: len(lapi.F.otype.s(node_type))
+              for node_type in LXX_NODE_COUNTS
+          }
+          lprobe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=lapi.F.otype.maxSlot,
+              max_node=lapi.F.otype.maxNode,
+              section_types=tuple(lapi.T.sectionTypes),
+              node_counts=node_counts,
+              feature_names=frozenset((*lapi.Fall(), *lapi.Eall())),
+          )
+          assert lprobe.max_slot == LXX_MAX_SLOT
+          assert lprobe.max_node == LXX_MAX_NODE
+          assert lprobe.node_counts == LXX_NODE_COUNTS
+          assert LXX_REQUIRED_FEATURES <= lprobe.feature_names
+          assert lprobe.section_types == LXX_SECTION_TYPES
+
+          lr = materialize_lxx(
+              source,
+              out / "catss-lxx",
+              provider=TextFabricLxxProvider(lapi, lprobe),
+              parent_probe=lprobe,
+          )
+          print("LXX MATERIALIZATION", lr.summary)
+
+          report = compare_projection_bundles(
+              out / "catss-bhsa",
+              out / "catss-lxx",
+          )
+          print("CROSS PROJECTION", report.summary)
+          assert report.ok, report.findings
+          PY
+
+      - name: Execute notebook top to bottom
+        run: |
+          jupyter nbconvert \
+            --to notebook \
+            --execute docs/case-studies/magic-terminology.ipynb \
+            --ExecutePreprocessor.timeout=900 \
+            --output /tmp/magic-terminology.executed.ipynb
+
+      - name: Print notebook result outputs
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("/tmp/magic-terminology.executed.ipynb")
+          if not path.exists():
+              print("Executed notebook not produced.")
+              raise SystemExit(0)
+
+          notebook = json.loads(path.read_text())
+          for index, cell in enumerate(notebook["cells"]):
+              if cell.get("cell_type") != "code":
+                  continue
+              outputs = cell.get("outputs", [])
+              if not outputs:
+                  continue
+              print(f"\n===== CODE CELL {index} =====")
+              for output in outputs:
+                  if output.get("output_type") == "stream":
+                      print("".join(output.get("text", [])))
+                  data = output.get("data", {})
+                  plain = data.get("text/plain")
+                  if plain:
+                      print("".join(plain) if isinstance(plain, list) else plain)
+                  if output.get("output_type") == "error":
+                      print(output.get("ename"), output.get("evalue"))
+                      print("\n".join(output.get("traceback", [])))
+          PY
