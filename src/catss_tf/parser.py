@@ -744,7 +744,7 @@ def _annotation_brace_payload(raw: str, kind: str) -> str | None:
         "distributive": ("{..d",),
         "preposition_added": ("{..p",),
         "transposition_remote": ("{...",),
-        "transposition_stylistic": ("{..p^", "{..^"),
+        "transposition_stylistic": ("{..p^", "{..^", "{.."),
         "repetition": ("{..r",),
         "greek_correction": ("{c",),
         "greek_edition_difference": ("{g",),
@@ -758,7 +758,7 @@ def _annotation_brace_payload(raw: str, kind: str) -> str | None:
 
 def _brace_kind(raw: str) -> str:
     exact = {
-        "{d}": "doublet",
+        "{d}": "doublet",\n        "{d?}": "possible_doublet",\n        "{?d}": "possible_doublet",
         "{t}": "transliteration",
         "{x}": "apparent_plus_minus",
         "{*}": "greek_agrees_ketiv",
