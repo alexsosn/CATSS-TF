@@ -110,7 +110,9 @@ def build_browser_launch(
 
     all_tf_files = tuple(sorted(path for path in module_path.glob("*.tf") if path.is_file()))
     feature_files = tuple(path for path in all_tf_files if path.name.startswith("catss_"))
-    foreign_tf_files = tuple(path.name for path in all_tf_files if not path.name.startswith("catss_"))
+    foreign_tf_files = tuple(
+        path.name for path in all_tf_files if not path.name.startswith("catss_")
+    )
     if foreign_tf_files:
         raise BrowserLaunchError(
             "CATSS browser bundle contains non-CATSS TF feature file(s): "
