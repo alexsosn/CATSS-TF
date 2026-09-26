@@ -169,3 +169,18 @@ def _cardinality(mt_n: int, lxx_n: int) -> Cardinality:
     if lxx_n == 1:
         return "many_one"
     return "many_many"
+
+
+def technique_sidecar_row(record: TechniqueRecord) -> tuple[object, ...]:
+    """Render one normalized scalar technique-v1 TSV row."""
+
+    return (
+        record.source,
+        record.alignment_id,
+        record.comparison_base,
+        record.cardinality_mt_lxx,
+        record.token_balance_mt_lxx,
+        int(record.addition_vs_mt),
+        int(record.omission_vs_mt),
+        record.transposition_mt_lxx,
+    )
