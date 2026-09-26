@@ -143,6 +143,27 @@ _MEMBERSHIP_FLAGS: dict[str, str] = {
     "catss_repetition": "CATSS repetition annotation",
 }
 
+_RAW_SEMANTIC_KINDS = frozenset({
+    "abbreviation",
+    "contextual_reference",
+    "distributive",
+    "doubt",
+    "greek_correction",
+    "greek_edition_difference",
+    "letter_interchange",
+    "metathesis",
+    "preposition_added",
+    "repetition",
+    "sirach_lacuna_in_witness",
+    "source_note",
+    "transposition_remote",
+    "transposition_stylistic",
+    "verse_reference",
+    "word_division",
+    "word_join",
+    "word_separation",
+})
+
 _ANNOTATION_PAYLOAD_SPECS: dict[str, str] = {
     "catss_distributive_payload": "CATSS distributive-rendering contextual payload",
     "catss_prep_added_payload": "CATSS added-preposition contextual payload",
@@ -210,7 +231,7 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
 
     semantic_specs = {spec.kind: spec for spec in documented_specs().values()}
     for kind, semantic in sorted(semantic_specs.items()):
-        base_name = semantic_feature_name(semantic)
+        base_name = semantic_feature_name(semantic) if semantic is not None else f"catss_sem_{kind}"
         for lane in (1, 2):
             name = base_name if lane == 1 else f"{base_name}_2"
             suffix = "" if lane == 1 else " (membership lane 2)"
