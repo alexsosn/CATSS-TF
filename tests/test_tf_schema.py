@@ -814,3 +814,15 @@ def test_writer_accepts_registered_complete_semantic_features(tmp_path: pathlib.
     )
     assert (tmp_path / "module" / "catss_sem_distributive_rendering.tf").exists()
     assert (tmp_path / "module" / "catss_sem_distributive_rendering_payload.tf").exists()
+
+
+def test_conflicting_semantic_payloads_fail_closed_instead_of_overwriting() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        semantic_kinds=("repetition",),
+        semantic_payloads=(("repetition", "A"), ("repetition", "B")),
+    )
+    with pytest.raises(TfSchemaError, match="conflicting feature value"):
+        compile_tf_features(
+            projection="bhsa", max_node=10, memberships=(membership,), anchors=()
+        )
