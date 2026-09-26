@@ -180,7 +180,7 @@ def test_launch_browser_invokes_standard_tf_without_shell(
         calls.append((argv, check))
         return subprocess.CompletedProcess(argv, 7)
 
-    monkeypatch.setattr(browser.subprocess, "run", fake_run)
+    monkeypatch.setattr("catss_tf.browser.subprocess.run", fake_run)
 
     result = browser.launch_browser("bhsa", module)
 
@@ -197,7 +197,7 @@ def test_missing_tf_executable_is_reported(
     def fake_run(argv: tuple[str, ...], *, check: bool) -> subprocess.CompletedProcess[str]:
         raise FileNotFoundError(argv[0])
 
-    monkeypatch.setattr(browser.subprocess, "run", fake_run)
+    monkeypatch.setattr("catss_tf.browser.subprocess.run", fake_run)
 
     with pytest.raises(browser.BrowserLaunchError, match="Text-Fabric executable"):
         browser.launch_browser("bhsa", module)
