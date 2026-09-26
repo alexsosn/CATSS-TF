@@ -9,7 +9,9 @@ TECHNIQUE_SCHEMA_VERSION = "1"
 
 Cardinality = typing.Literal[
     "zero_zero",
+    "zero_one",
     "zero_many",
+    "one_zero",
     "many_zero",
     "one_one",
     "one_many",
@@ -159,9 +161,9 @@ def _cardinality(mt_n: int, lxx_n: int) -> Cardinality:
     if mt_n == 0 and lxx_n == 0:
         return "zero_zero"
     if mt_n == 0:
-        return "zero_many"
+        return "zero_one" if lxx_n == 1 else "zero_many"
     if lxx_n == 0:
-        return "many_zero"
+        return "one_zero" if mt_n == 1 else "many_zero"
     if mt_n == 1 and lxx_n == 1:
         return "one_one"
     if mt_n == 1:
