@@ -11,7 +11,8 @@ This repository does **not** distribute BHSA, LXX, raw CATSS data, or generated 
 
 ## Status
 
-Bootstrap/research stage. No materializer is implemented yet.
+Both CATSS projections, cross-projection consistency checks, and the initial
+translation-technique layer are implemented. v0.1 release preparation is in progress.
 
 Read:
 
@@ -62,3 +63,20 @@ CATSS morphology files are not required.
 The user is responsible for the upstream CATSS/CCAT terms that apply to acquisition and use. CATSS-TF does not redistribute the downloaded corpus. The local source directory is fingerprinted by filename, byte size, and SHA-256 before parsing, and repository tests use synthetic fixtures only.
 
 See [research.md](research.md), [design.md](design.md), and [LICENSE_SCOPE.md](LICENSE_SCOPE.md) for the rationale and data-license boundary.
+
+
+## Text-Fabric browser
+
+CATSS-TF does not implement a separate web application. Generated modules are loaded
+into the standard Text-Fabric app/browser of their parent corpus:
+
+```sh
+catss-tf browse bhsa ./generated/catss-bhsa
+catss-tf browse lxx ./generated/catss-lxx
+```
+
+The wrapper validates module/parent metadata and then invokes the normal `tf` browser.
+You can also use the direct Text-Fabric `--locations/--modules` mechanism or
+`tf.app.use()`.
+
+See [docs/browser.md](docs/browser.md) for exact pinned commands and search examples.
