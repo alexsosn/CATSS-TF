@@ -1,5 +1,6 @@
 import csv
 import dataclasses
+import hashlib
 import pathlib
 
 import pytest
@@ -184,8 +185,9 @@ def test_simple_bhsa_materialization_writes_query_native_module_and_sidecars(
 
     sources = _read_tsv(output / "catss-sources.tsv")
     assert sources[0]["source"] == "01.Genesis.par"
-    assert sources[0]["size_bytes"]
-    assert len(sources[0]["sha256"]) == 64
+    payload = (source / "01.Genesis.par").read_bytes()
+    assert sources[0]["size_bytes"] == str(len(payload))
+    assert sources[0]["sha256"] == hashlib.sha256(payload).hexdigest()
 
     assert tuple(_read_tsv(output / "catss-diagnostics.tsv")) == ()
 
