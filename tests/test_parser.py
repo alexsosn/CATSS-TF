@@ -421,3 +421,16 @@ def test_contextual_raw_annotation_preserves_payload_text() -> None:
         ("distributive", "{..dGRDIST}", True),
         ("repetition", "{..rGRREPEAT}", True),
     ]
+
+
+def test_contextual_brace_annotation_exposes_payload_separately() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\t{..dGRDIST} {..rGRREPEAT}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.payload) for a in annotations] == [
+        ("distributive", "GRDIST"),
+        ("repetition", "GRREPEAT"),
+    ]
