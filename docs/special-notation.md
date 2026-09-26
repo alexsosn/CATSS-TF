@@ -36,7 +36,7 @@ Within a projection, CATSS-TF uses resolved parent nodes and the alignment membe
 
 Sirach has a book-specific notation profile. In particular `*` means an uncertain/fragmentary letter, not the general CATSS asterisked-passage meaning; `[..]` is a Sirach lacuna/illegibility marker. Witness numbers and manuscript-addition/lacuna notation are decoded separately. Researchers should therefore query the resulting semantic kind rather than interpret the raw glyph globally.
 
-## Fail-closed behavior
+## Complete-snapshot audit\n\nRun `catss-tf validate --complete PATH` for the release gate. The command refuses a partial or extra-file snapshot before parsing, then normal validation requires zero unresolved/unknown notation unless the researcher explicitly supplies an `--allow` code. A partial directory is therefore useful for exploration but cannot produce the project’s zero-unknown completion claim.\n\n## Fail-closed behavior
 
 Unknown notation is not mapped to `other` and is not silently discarded. Validation reports it as unresolved. A complete-snapshot audit requires all configured CATSS parallel files; a partial directory cannot establish zero unknown notation.
 
