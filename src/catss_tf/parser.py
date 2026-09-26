@@ -447,11 +447,11 @@ def _extract_annotations(
         else:
             raw_kind = _brace_kind(raw)
             raw_semantics = {
-                "distributive": ("distributive_rendering", "translation_technique", True),
+                "distributive": ("distributive", "translation_technique", True),
                 "preposition_added": ("preposition_added", "preposition", True),
                 "transposition_remote": ("transposition_remote", "transposition", True),
                 "transposition_stylistic": ("transposition_stylistic", "transposition", True),
-                "repetition": ("element_repeated_in_lxx", "translation_technique", True),
+                "repetition": ("repetition", "translation_technique", True),
             }.get(raw_kind)
             if raw_semantics is None:
                 annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
