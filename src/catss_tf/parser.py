@@ -697,18 +697,18 @@ def _retroversion_kind(mt_col_b: str | None) -> str | None:
 
 
 def _mt_dot_kind(raw: str) -> str:
-    return {
+    exact = {
         ".m": "metathesis",
         ".s": "word_separation",
         ".j": "word_join",
         ".w": "word_division",
         ".z": "abbreviation",
-    }.get(
-        raw,
-        "letter_interchange"
-        if re.fullmatch(r"\\.[a-z+\\-        "letter_interchange" if raw.startswith(".") and len(raw) > 2 else "mt_strategy_siglum",()]{2,3}", raw)
-        else "mt_strategy_siglum",
-    )
+    }
+    if raw in exact:
+        return exact[raw]
+    if re.fullmatch(r"\.[a-z+\-()]{2,3}", raw):
+        return "letter_interchange"
+    return "mt_strategy_siglum"
 
 
 def _inf_abs_kind(suffix: str) -> str:
