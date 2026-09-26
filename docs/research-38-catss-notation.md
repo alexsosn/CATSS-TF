@@ -85,7 +85,7 @@ inspection is useful for discovering RED cases but is not sufficient evidence fo
 
 ## Empirical complete-snapshot audit
 
-The issue-38 CI audit downloads the configured 46 CCAT parallel files into an ephemeral runner directory and does not commit or publish them. On the 2026-09-26 upstream snapshot it accounted for all 350,426 source data lines and reported:
+The issue-38 CI audit downloads the configured 46 CCAT parallel files into an ephemeral runner directory and does not commit or publish them. On the 2026-09-26 upstream snapshot it accounted for all 350,426 source data lines. The first strict notation pass exposed one previously unknown Psalms spelling, `[119. 7]`; that became a regression test and the contextual-reference grammar was extended rather than allow-listed. The completion gate therefore requires:
 
 - `source_files=46`
 - `unaccounted_lines=0`
