@@ -212,7 +212,9 @@ def test_generated_lxx_module_loads_over_parent_warp_and_is_searchable(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+HB\tQEOS
+")
     output = tmp_path / "catss-lxx"
     provider = FakeLxxProvider((_span("θεός"),))
 
@@ -300,7 +302,9 @@ def test_declared_unsupported_a_source_is_fingerprinted_but_not_projected(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "07.JoshA.par", "Josh 1:1\nHB\tLOGOS\n")
+    _write_source(source, "07.JoshA.par", "Josh 1:1
+HB\tLOGOS
+")
     output = tmp_path / "catss-lxx"
 
     result = materialize_lxx(source, output, provider=FakeLxxProvider(()))
@@ -314,7 +318,9 @@ def test_declared_unsupported_a_source_is_fingerprinted_but_not_projected(
 
 def test_parent_mismatch_fails_before_output_publication(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+HB\tQEOS
+")
     output = tmp_path / "catss-lxx"
     bad_probe = dataclasses.replace(_probe(), version="future")
     provider = FakeLxxProvider((_span("θεός"),), probe=bad_probe)
@@ -327,7 +333,9 @@ def test_parent_mismatch_fails_before_output_publication(tmp_path: pathlib.Path)
 
 def test_mapping_failure_is_fail_closed_and_leaves_no_output(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+HB\tQEOS
+")
     output = tmp_path / "catss-lxx"
     provider = FakeLxxProvider((_span("λόγος"),))
 
@@ -339,7 +347,9 @@ def test_mapping_failure_is_fail_closed_and_leaves_no_output(tmp_path: pathlib.P
 
 def test_unknown_catss_source_is_fail_closed(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
-    _write_source(source, "99.Unknown.par", "Test 1:1\nHB\tQEOS\n")
+    _write_source(source, "99.Unknown.par", "Test 1:1
+HB\tQEOS
+")
     output = tmp_path / "catss-lxx"
 
     with pytest.raises(LxxMaterializationError, match="unknown CATSS source"):
@@ -350,7 +360,9 @@ def test_unknown_catss_source_is_fail_closed(tmp_path: pathlib.Path) -> None:
 
 def test_existing_destination_is_not_overwritten(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+HB\tQEOS
+")
     output = tmp_path / "catss-lxx"
     output.mkdir()
     marker = output / "keep.txt"
@@ -369,7 +381,9 @@ def test_allowed_validation_finding_is_retained_in_diagnostics_sidecar(
     _write_source(
         source,
         "01.Genesis.par",
-        "Gen 1:1\nHB {zzUNKNOWN}\tQEOS\n",
+        "Gen 1:1
+HB {zzUNKNOWN}\tQEOS
+",
     )
     output = tmp_path / "catss-lxx"
 
@@ -392,7 +406,9 @@ def test_mid_write_failure_removes_temporary_bundle(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+HB\tQEOS
+")
     output = tmp_path / "catss-lxx"
 
     def fail_tsv(
@@ -416,7 +432,9 @@ def test_sidecar_writer_quotes_raw_tab_provenance(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+HB\tQEOS
+")
     output = tmp_path / "catss-lxx"
 
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
@@ -433,7 +451,9 @@ def test_lettered_subverse_minus_anchor_stays_on_subverse_node(
     _write_source(
         source,
         "18.Esther.par",
-        "Esth 1:1\nHB\t--- '' [1:1a]\n",
+        "Esth 1:1
+HB\t--- '' [1:1a]
+",
     )
     output = tmp_path / "catss-lxx"
     provider = FakeLxxProvider(
@@ -462,7 +482,9 @@ def test_lxx_plus_materializer_emits_explicit_addition_vs_mt_feature(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\n--+\tLOGOS\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+--+\tLOGOS
+")
     output = tmp_path / "catss-lxx"
 
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("λόγος"),)))
@@ -481,7 +503,9 @@ def test_lxx_does_not_project_mt_scoped_annotation_onto_greek_word(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB {..dGRDIST}\tQEOS\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+HB {..dGRDIST}\tQEOS
+")
     output = tmp_path / "catss-lxx"
 
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
@@ -494,8 +518,11 @@ def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS {..rGRREPEAT}\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1
+HB\tQEOS {..rGRREPEAT}
+")
     output = tmp_path / "catss-lxx"
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
     assert "1\t1" in (output / "catss_sem_repetition.tf").read_text(encoding="utf-8")
-    payload_text = (output / "catss_sem_repetition_payload.tf").read_text(encoding="utf-8")\n    assert "1\\tGRREPEAT" in payload_text
+    payload_text = (output / "catss_sem_repetition_payload.tf").read_text(encoding="utf-8")
+    assert "1\\tGRREPEAT" in payload_text
