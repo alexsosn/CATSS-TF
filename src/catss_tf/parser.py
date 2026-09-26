@@ -770,7 +770,7 @@ def _brace_kind(raw: str) -> str:
         "{?}": "doubt",
         "{x}": "apparent_plus_minus",
         "{*}": "greek_agrees_ketiv",
-        "{**}": "greek_agrees_qere",
+        "{**}": "greek_agrees_qere",\n        "{**?}": "possible_greek_agrees_qere",\n        "{#}": "continuation_marker",
         "{p}": "greek_preverb",
         "{s}": "comparative_superlative",
         "{---%}": "asterisked_passage",
