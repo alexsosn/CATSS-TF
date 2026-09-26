@@ -491,7 +491,17 @@ def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
     materialize_bhsa(
         source,
         output,
-        provider=FakeBhsaProvider((_verse(),)),
+        provider=FakeBhsaProvider(
+            (
+                dataclasses.replace(
+                    _verse(),
+                    words=(
+                        _verse().words[0],
+                        dataclasses.replace(_verse().words[0], node=3),
+                    ),
+                ),
+            )
+        ),
         parent_probe=_probe(),
     )
     assert "1\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
