@@ -145,9 +145,7 @@ def feature(api, available, name, node):
 
 def memberships(api, available, node):
     for suffix in ("", "_2"):
-        alignment_id = feature(
-            api, available, f"catss_alignment_id{suffix}", node
-        )
+        alignment_id = feature(api, available, f"catss_alignment_id{suffix}", node)
         if alignment_id is None:
             continue
         source = feature(api, available, f"catss_source{suffix}", node)
