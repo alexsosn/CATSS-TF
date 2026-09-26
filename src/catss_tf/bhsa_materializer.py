@@ -306,6 +306,8 @@ def _projection_facts(
         for mapping in report.word_mappings:
             context = _require_context(contexts, mapping.alignment_id)
             alignment = context.alignment
+            reading = alignment.mt_readings[mapping.mt_index]
+            explicit_maqaf = "-" in reading.primary
             membership = TfMembership(
                 node=mapping.bhsa_node,
                 source=document.source_name,
@@ -314,7 +316,7 @@ def _projection_facts(
                 mt_n=alignment.mt_count,
                 lxx_n=alignment.lxx_count,
                 mt_i=mapping.mt_index + 1,
-                mt_segment=mapping.segment_index + 1,
+                mt_segment=mapping.segment_index + 1 if explicit_maqaf else None,
                 lxx_i=None,
                 line_first=min(alignment.source_lines),
                 line_last=max(alignment.source_lines),
@@ -514,7 +516,7 @@ def _mapping_rows(
                 lane,
                 membership.mapping_kind,
                 mt_index + 1,
-                segment_index + 1,
+                membership.mt_segment,
                 None,
             )
         )
