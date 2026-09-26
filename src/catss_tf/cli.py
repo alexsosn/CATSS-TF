@@ -98,7 +98,8 @@ def main(argv: collections.abc.Sequence[str] | None = None) -> int:
                 if finding.line_no is not None
                 else finding.source_name
             )
-            print(f"{finding.severity} {finding.code} {location}")
+            raw = f" raw={finding.raw!r}" if finding.raw is not None else ""
+            print(f"{finding.severity} {finding.code} {location}{raw}")
         return 0 if report.ok else 1
 
     if args.command == "browse":
