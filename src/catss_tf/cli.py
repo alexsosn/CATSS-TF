@@ -4,6 +4,7 @@ import argparse
 import collections.abc
 import pathlib
 
+from catss_tf.browser import BrowserLaunchError, launch_browser
 from catss_tf.parser import parse_parallel_file
 from catss_tf.source import (
     CCAT_USER_DECLARATION_URL,
@@ -36,6 +37,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="explicitly allow an unresolved finding code; may be repeated",
     )
 
+    browse = subparsers.add_parser(
+        "browse",
+        help="launch a generated CATSS module in the standard Text-Fabric browser",
+    )
+    browse.add_argument("projection", choices=("bhsa", "lxx"))
+    browse.add_argument("module", help="generated local CATSS TF module directory")
+    browse.add_argument(
+        "--noweb",
+        action="store_true",
+        help="forward Text-Fabric -noweb (run server without opening the browser)",
+    )
+
     return parser
 
 
@@ -64,6 +77,17 @@ def main(argv: collections.abc.Sequence[str] | None = None) -> int:
             )
             print(f"{finding.severity} {finding.code} {location}")
         return 0 if report.ok else 1
+
+    if args.command == "browse":
+        try:
+            return launch_browser(
+                args.projection,
+                args.module,
+                noweb=args.noweb,
+            )
+        except BrowserLaunchError as exc:
+            print(f"CATSS-TF browser error: {exc}")
+            return 2
 
     raise AssertionError(f"unhandled command: {args.command}")
 
