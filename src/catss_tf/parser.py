@@ -634,6 +634,17 @@ def _extract_annotations(
                     )
                 else:
                     annotations.append(Annotation(side=side, kind="unknown", raw=raw))
+            elif inner.startswith("c") and len(inner) > 1:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind="greek_correction",
+                        raw=raw,
+                        family="textual",
+                        contextual=True,
+                        payload=inner[1:],
+                    )
+                )
             elif notation_spec(raw, book=book) is None:
                 annotations.append(Annotation(side=side, kind="unknown", raw=raw))
     return annotations
