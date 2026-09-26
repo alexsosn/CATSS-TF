@@ -522,7 +522,7 @@ def _extract_annotations(
                 )
             )
     if book == "Sir":
-        for match in (() if book == "Sir" else _SQUARE_GROUP.finditer(cell)):
+        for match in _SQUARE_GROUP.finditer(cell):
             raw = match.group(0)
             key = "[..]" if raw == "[..]" else "[]"
             spec = notation_spec(key, book=book)
