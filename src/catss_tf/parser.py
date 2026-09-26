@@ -964,4 +964,7 @@ def alignment_id_for(
                 elif (
                     _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None
                     or (raw.startswith("[[") and raw.endswith("]]"))
+                elif (
+                    _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None
+                    or (raw.startswith("[[") and raw.endswith("]]"))
                 ):
