@@ -14,6 +14,7 @@ from catss_tf.tf_schema import SIDECAR_COLUMNS
 _REQUIRED_SIDECARS = tuple(SIDECAR_COLUMNS)
 _CANONICAL_TABLES = {
     "catss-alignments.tsv": "canonical_alignment_mismatch",
+    "catss-technique.tsv": "technique_mismatch",
     "catss-annotations.tsv": "annotation_mismatch",
     "catss-source-lines.tsv": "source_line_mismatch",
     "catss-diagnostics.tsv": "diagnostic_mismatch",
@@ -447,6 +448,7 @@ def _projection_rows_for_source(bundle: _Bundle, source: str) -> int:
         row.get("source") == source
         for table in (
             "catss-alignments.tsv",
+            "catss-technique.tsv",
             "catss-annotations.tsv",
             "catss-mappings.tsv",
             "catss-anchors.tsv",

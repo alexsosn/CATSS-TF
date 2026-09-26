@@ -5,6 +5,7 @@ import pathlib
 import typing
 
 from catss_tf.source import CATSS_PARALLEL_FILENAMES
+from catss_tf.technique import TECHNIQUE_SCHEMA_VERSION, TechniqueError, derive_technique_state
 
 SCHEMA_VERSION = "1"
 WARP_FEATURES = frozenset({"otype", "oslots", "otext"})
@@ -85,6 +86,29 @@ _LANE_CORE: dict[str, tuple[ValueType, str]] = {
     "catss_retro_kind": ("str", "normalized CATSS column-B retroversion kind"),
 }
 
+_TECHNIQUE_LANE_CORE: dict[str, tuple[ValueType, str]] = {
+    "catss_tt_cardinality_mt_lxx": (
+        "str",
+        "derived MT↔LXX token-cardinality class",
+    ),
+    "catss_tt_token_balance_mt_lxx": (
+        "str",
+        "derived MT↔LXX token-count balance; not a semantic expansion judgment",
+    ),
+    "catss_tt_transposition_mt_lxx": (
+        "str",
+        "derived CATSS transposition-evidence class for MT↔LXX",
+    ),
+    "catss_tt_addition_vs_mt": (
+        "int",
+        "derived flag: CATSS explicitly marks Greek material as LXX addition versus MT",
+    ),
+    "catss_tt_omission_vs_mt": (
+        "int",
+        "derived flag: CATSS explicitly marks MT material as omitted in LXX",
+    ),
+}
+
 _MEMBERSHIP_FLAGS: dict[str, str] = {
     "catss_lxx_plus": "CATSS LXX-plus alignment",
     "catss_lxx_minus": "CATSS LXX-minus alignment",
@@ -136,7 +160,11 @@ def lane_feature_name(base_name: str, lane: int) -> str:
 
     if lane not in {1, 2}:
         raise TfSchemaError(f"membership lane must be 1 or 2, got {lane}")
-    if base_name not in _LANE_CORE and base_name not in _MEMBERSHIP_FLAGS:
+    if (
+        base_name not in _LANE_CORE
+        and base_name not in _TECHNIQUE_LANE_CORE
+        and base_name not in _MEMBERSHIP_FLAGS
+    ):
         raise TfSchemaError(f"unknown lane feature {base_name!r}")
     return base_name if lane == 1 else f"{base_name}_2"
 
@@ -145,6 +173,12 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
     specs: dict[str, TfFeatureSpec] = {}
 
     for base_name, (value_type, description) in _LANE_CORE.items():
+        for lane in (1, 2):
+            name = lane_feature_name(base_name, lane)
+            lane_description = description if lane == 1 else f"{description} (membership lane 2)"
+            specs[name] = TfFeatureSpec(name, value_type, lane_description)
+
+    for base_name, (value_type, description) in _TECHNIQUE_LANE_CORE.items():
         for lane in (1, 2):
             name = lane_feature_name(base_name, lane)
             lane_description = description if lane == 1 else f"{description} (membership lane 2)"
@@ -202,6 +236,16 @@ SIDECAR_COLUMNS: dict[str, tuple[str, ...]] = {
         "trans_local",
         "trans_remote",
         "trans_style",
+    ),
+    "catss-technique.tsv": (
+        "source",
+        "alignment_id",
+        "comparison_base",
+        "cardinality_mt_lxx",
+        "token_balance_mt_lxx",
+        "addition_vs_mt",
+        "omission_vs_mt",
+        "transposition_mt_lxx",
     ),
     "catss-annotations.tsv": (
         "source",
@@ -400,6 +444,32 @@ def _compile_membership(
     for flag in _effective_flags(membership):
         _put(features, lane_feature_name(flag, lane), node, 1)
 
+    try:
+        technique = derive_technique_state(
+            mt_n=membership.mt_n,
+            lxx_n=membership.lxx_n,
+            is_lxx_plus="catss_lxx_plus" in membership.flags,
+            is_lxx_minus="catss_lxx_minus" in membership.flags,
+            trans_local="catss_trans_local" in membership.flags,
+            trans_remote="catss_trans_remote" in membership.flags,
+            trans_style="catss_trans_style" in membership.flags,
+        )
+    except TechniqueError as exc:
+        raise TfSchemaError(f"technique derivation failed: {exc}") from exc
+
+    technique_values: dict[str, FeatureValue] = {
+        "catss_tt_cardinality_mt_lxx": technique.cardinality_mt_lxx,
+        "catss_tt_token_balance_mt_lxx": technique.token_balance_mt_lxx,
+        "catss_tt_transposition_mt_lxx": technique.transposition_mt_lxx,
+    }
+    if technique.addition_vs_mt:
+        technique_values["catss_tt_addition_vs_mt"] = 1
+    if technique.omission_vs_mt:
+        technique_values["catss_tt_omission_vs_mt"] = 1
+
+    for base_name, value in technique_values.items():
+        _put(features, lane_feature_name(base_name, lane), node, value)
+
 
 def _effective_flags(membership: TfMembership) -> frozenset[str]:
     flags = set(membership.flags)
@@ -573,6 +643,8 @@ def _write_feature_file(
         f"@parentRepo={_header_value(metadata.parent_repo)}",
         f"@parentVersion={_header_value(metadata.parent_version)}",
     ]
+    if spec.name.startswith("catss_tt_"):
+        headers.append(f"@catssTechniqueSchema={TECHNIQUE_SCHEMA_VERSION}")
     if metadata.parent_release:
         headers.append(f"@parentRelease={_header_value(metadata.parent_release)}")
     if metadata.parent_commit:

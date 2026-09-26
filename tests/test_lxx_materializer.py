@@ -456,3 +456,22 @@ def test_lettered_subverse_minus_anchor_stays_on_subverse_node(
     assert anchors[0]["parent_node"] == "3"
     assert anchors[0]["anchor_kind"] == "lxx_minus"
     assert "3\t1" in (output / "catss_lxx_minus_n.tf").read_text(encoding="utf-8")
+
+
+def test_lxx_plus_materializer_emits_explicit_addition_vs_mt_feature(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n--+\tLOGOS\n")
+    output = tmp_path / "catss-lxx"
+
+    materialize_lxx(source, output, provider=FakeLxxProvider((_span("λόγος"),)))
+
+    assert "1\t1" in (output / "catss_tt_addition_vs_mt.tf").read_text(encoding="utf-8")
+    assert "1\tzero_one" in (output / "catss_tt_cardinality_mt_lxx.tf").read_text(encoding="utf-8")
+
+    rows = _read_tsv(output / "catss-technique.tsv")
+    assert rows[0]["comparison_base"] == "mt_lxx"
+    assert rows[0]["addition_vs_mt"] == "1"
+    assert rows[0]["omission_vs_mt"] == "0"
+    assert rows[0]["token_balance_mt_lxx"] == "not_applicable"

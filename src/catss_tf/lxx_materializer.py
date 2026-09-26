@@ -29,6 +29,7 @@ from catss_tf.source import (
     SourceFileFingerprint,
     inspect_parallel_source,
 )
+from catss_tf.technique import TechniqueError, derive_alignment_technique, technique_sidecar_row
 from catss_tf.tf_schema import (
     SIDECAR_COLUMNS,
     TfAnchorEvent,
@@ -140,16 +141,20 @@ def materialize_lxx(
             raise LxxMaterializationError(f"LXX mapping failed for {document.source_name}: {codes}")
         supported.append((document, report))
 
-    (
-        memberships,
-        anchors,
-        alignment_rows,
-        annotation_rows,
-        source_line_rows,
-        mapping_memberships,
-        anchor_rows,
-        diagnostic_rows,
-    ) = _projection_facts(supported)
+    try:
+        (
+            memberships,
+            anchors,
+            alignment_rows,
+            technique_rows,
+            annotation_rows,
+            source_line_rows,
+            mapping_memberships,
+            anchor_rows,
+            diagnostic_rows,
+        ) = _projection_facts(supported)
+    except TechniqueError as exc:
+        raise LxxMaterializationError(f"technique derivation failed: {exc}") from exc
 
     features = compile_tf_features(
         projection="lxx",
@@ -164,6 +169,7 @@ def materialize_lxx(
 
     sidecars: dict[str, list[tuple[object, ...]]] = {
         "catss-alignments.tsv": alignment_rows,
+        "catss-technique.tsv": technique_rows,
         "catss-annotations.tsv": annotation_rows,
         "catss-mappings.tsv": mapping_rows,
         "catss-anchors.tsv": anchor_rows,
@@ -255,6 +261,7 @@ def _projection_facts(
     list[tuple[object, ...]],
     list[tuple[object, ...]],
     list[tuple[object, ...]],
+    list[tuple[object, ...]],
     list[TfMembership],
     list[tuple[object, ...]],
     list[tuple[object, ...]],
@@ -262,6 +269,7 @@ def _projection_facts(
     memberships: list[TfMembership] = []
     anchors: list[TfAnchorEvent] = []
     alignment_rows: list[tuple[object, ...]] = []
+    technique_rows: list[tuple[object, ...]] = []
     annotation_rows: list[tuple[object, ...]] = []
     source_line_rows: list[tuple[object, ...]] = []
     mapping_memberships: list[TfMembership] = []
@@ -275,6 +283,11 @@ def _projection_facts(
             for alignment in verse.alignments:
                 context = contexts[alignment.alignment_id]
                 alignment_rows.append(_alignment_sidecar_row(context))
+                technique_rows.append(
+                    technique_sidecar_row(
+                        derive_alignment_technique(document.source_name, alignment)
+                    )
+                )
                 annotation_rows.extend(
                     (
                         document.source_name,
@@ -349,6 +362,7 @@ def _projection_facts(
         )
 
     alignment_rows.sort(key=lambda row: (str(row[0]), _required_int_sort(row[5]), str(row[1])))
+    technique_rows.sort(key=lambda row: (str(row[0]), str(row[1])))
     annotation_rows.sort(
         key=lambda row: (
             str(row[0]),
@@ -376,6 +390,7 @@ def _projection_facts(
         memberships,
         anchors,
         alignment_rows,
+        technique_rows,
         annotation_rows,
         source_line_rows,
         mapping_memberships,

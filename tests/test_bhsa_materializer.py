@@ -424,3 +424,40 @@ def test_maqaf_expansion_emits_segment_only_when_explicit(
         ("1", "1", "1"),
         ("2", "1", "2"),
     ]
+
+
+def test_bhsa_materializer_emits_queryable_technique_features_and_sidecar(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS LOGOS\n")
+    output = tmp_path / "catss-bhsa"
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(g_cons="אב"),)),
+        parent_probe=_probe(),
+    )
+
+    assert "1\tone_many" in (output / "catss_tt_cardinality_mt_lxx.tf").read_text(encoding="utf-8")
+    assert "1\tlxx_more" in (output / "catss_tt_token_balance_mt_lxx.tf").read_text(
+        encoding="utf-8"
+    )
+    assert "@catssTechniqueSchema=1" in (output / "catss_tt_cardinality_mt_lxx.tf").read_text(
+        encoding="utf-8"
+    )
+
+    rows = _read_tsv(output / "catss-technique.tsv")
+    assert rows == [
+        {
+            "source": "01.Genesis.par",
+            "alignment_id": rows[0]["alignment_id"],
+            "comparison_base": "mt_lxx",
+            "cardinality_mt_lxx": "one_many",
+            "token_balance_mt_lxx": "lxx_more",
+            "addition_vs_mt": "0",
+            "omission_vs_mt": "0",
+            "transposition_mt_lxx": "none_marked",
+        }
+    ]

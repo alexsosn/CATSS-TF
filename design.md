@@ -1864,3 +1864,118 @@ report.ok is true only when finding_count == 0.
 ### 22.9 Determinism
 
 Findings sort by source, alignment_id, table, code, message. Summary counts are independent of TSV row order.
+
+
+## 23. Translation-technique derived layer
+
+### 23.1 Contract separation
+
+```text
+CATSS canonical/source facts  -> catss_*
+deterministic derived facts   -> catss_tt_*
+```
+
+Technique-v1 never rewrites source facts.
+
+### 23.2 Per-alignment derived record
+
+```text
+TechniqueRecord
+  source
+  alignment_id
+  comparison_base = mt_lxx
+  cardinality_mt_lxx
+  token_balance_mt_lxx
+  addition_vs_mt: bool
+  omission_vs_mt: bool
+  transposition_mt_lxx
+```
+
+Closed values:
+
+```text
+cardinality:
+  zero_zero | zero_one | zero_many |
+  one_zero | many_zero |
+  one_one | one_many | many_one | many_many
+
+token_balance:
+  equal | lxx_more | lxx_fewer | not_applicable
+
+transposition:
+  none_marked | local | remote | stylistic | multiple | not_applicable
+```
+
+### 23.3 Fail-closed consistency rules
+
+Technique derivation rejects contradictory canonical states:
+
+- `mt_n=0,lxx_n>0` without either `is_lxx_plus` or explicit transposition evidence;
+- `mt_n>0,lxx_n=0` without either `is_lxx_minus` or explicit transposition evidence;
+- `is_lxx_plus` when MT is non-empty;
+- `is_lxx_minus` when Greek is non-empty;
+- negative counts.
+
+`zero_zero` is representable as cardinality evidence but produces no addition/omission flag and `not_applicable` balance/order.
+
+### 23.4 TF features
+
+Each membership lane receives:
+
+```text
+catss_tt_cardinality_mt_lxx
+catss_tt_token_balance_mt_lxx
+catss_tt_transposition_mt_lxx
+catss_tt_addition_vs_mt        # sparse int=1
+catss_tt_omission_vs_mt        # sparse int=1
+```
+
+Lane 2 uses the normal `_2` suffix.
+
+Descriptions explicitly say “derived” and name the comparison base.
+
+### 23.5 Structural nodes
+
+Technique-v1 does not invent alignment nodes or duplicate existing anchor semantics.
+
+For plus/minus rows without a word target on one projection:
+
+- existing `catss_lxx_plus_n` / `catss_lxx_minus_n` remain the query-native structural counters;
+- exact derived classification remains in `catss-technique.tsv`.
+
+### 23.6 Sidecar
+
+`catss-technique.tsv`:
+
+```text
+source
+alignment_id
+comparison_base
+cardinality_mt_lxx
+token_balance_mt_lxx
+addition_vs_mt
+omission_vs_mt
+transposition_mt_lxx
+```
+
+Boolean columns are `0|1`. One row per canonical alignment. No packed collections.
+
+### 23.7 Materializer integration
+
+BHSA and LXX materializers derive technique rows from the same canonical `AlignmentRecord` used for source sidecars.
+
+Word-node technique TF features are compiled from the corresponding `TfMembership` source facts, guaranteeing lane identity matches existing CATSS membership lanes.
+
+### 23.8 Consistency
+
+`catss-technique.tsv` is a canonical cross-projection table for common-supported sources. Any row difference is `technique_mismatch`.
+
+### 23.9 Explicit non-goals
+
+Technique-v1 does not claim:
+
+- semantic expansion/contraction from token counts;
+- Hebrew↔Greek lemma identity;
+- Hebrew↔Greek morphology equivalence;
+- reviser↔Old-Greek lexical/morphological difference;
+- unmarked CATSS rows have identical word order.

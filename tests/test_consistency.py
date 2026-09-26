@@ -356,3 +356,17 @@ def test_missing_sidecar_and_header_mismatch_are_typed_findings(tmp_path: pathli
         "missing_sidecar",
         "sidecar_header_mismatch",
     }
+
+
+def test_consistency_detects_derived_technique_drift(tmp_path: pathlib.Path) -> None:
+    bhsa, lxx = _materialize_common_bundle_pair(tmp_path)
+
+    def corrupt(rows: list[dict[str, str]]) -> None:
+        rows[0]["cardinality_mt_lxx"] = "many_many"
+
+    _rewrite_tsv(lxx / "catss-technique.tsv", corrupt)
+    report = compare_projection_bundles(bhsa, lxx)
+
+    assert report.ok is False
+    assert report.summary.canonical_mismatches == 1
+    assert any(f.code == "technique_mismatch" for f in report.findings)
