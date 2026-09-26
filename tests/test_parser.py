@@ -381,3 +381,16 @@ def test_mt_readings_structure_inline_aramaic_and_doubt_markers() -> None:
     assert second.doubtful is False
     assert second.aramaic_section is True
     assert doc.verses[0].alignments[0].mt_tokens == ("MLK", "DBR")
+
+
+def test_parser_decodes_documented_contextual_influence_annotation():
+    document = parse_parallel_text(
+        "Ge 1:1\nBR> {XTM}\tλογος\n",
+        source_name="01.Genesis.par",
+    )
+
+    annotation = document.verses[0].alignments[0].annotations[0]
+    assert annotation.kind == "contextual_influence"
+    assert annotation.family == "translation_technique"
+    assert annotation.contextual is True
+    assert annotation.raw == "{XTM}"
