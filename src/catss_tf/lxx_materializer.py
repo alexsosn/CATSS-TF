@@ -539,13 +539,8 @@ def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[
             continue
         by_kind.setdefault(annotation.kind, set()).add(annotation.payload)
     return tuple(
-        sorted(
-            (kind, next(iter(values)))
-            for kind, values in by_kind.items()
-            if len(values) == 1
-        )
+        sorted((kind, next(iter(values))) for kind, values in by_kind.items() if len(values) == 1)
     )
-
 
 def _alignment_sidecar_row(context: _AlignmentContext) -> tuple[object, ...]:
     alignment = context.alignment
