@@ -463,7 +463,7 @@ def _extract_annotations(
             )
             continue
         if raw == "{!}":
-            suffix_match = re.match(r"[a-z+\\-]*", cell[match.end() :])
+            suffix_match = re.match(r"[a-z+-]*", cell[match.end() :])
             suffix = suffix_match.group(0) if suffix_match is not None else ""
             inf_abs_raw = raw + suffix
             annotations.append(
