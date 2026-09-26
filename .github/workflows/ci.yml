@@ -26,3 +26,26 @@ jobs:
       - run: ruff format --check .
       - run: mypy
       - run: pytest -q
+
+
+  release-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+      - run: python scripts/verify_release.py
+      - run: python -m build
+      - run: python -m twine check dist/*
+      - run: python -m venv /tmp/catss-tf-release-smoke
+      - run: /tmp/catss-tf-release-smoke/bin/pip install --no-deps dist/*.whl
+      - run: /tmp/catss-tf-release-smoke/bin/catss-tf --version
+      - run: >-
+          /tmp/catss-tf-release-smoke/bin/python -c
+          "import catss_tf; from catss_tf import materialize_bhsa, materialize_lxx,
+          compare_projection_bundles, TextFabricBhsaProvider, TextFabricLxxProvider;
+          assert catss_tf.__version__ == '0.1.0'"

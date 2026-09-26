@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  pull_request:
+    paths:
+      - "release/VERSION"
+      - "pyproject.toml"
+      - "src/catss_tf/__init__.py"
+      - "CHANGELOG.md"
+      - "RELEASE_NOTES.md"
+      - ".github/workflows/release.yml"
+  push:
+    branches: [main]
+    paths:
+      - "release/VERSION"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy
+      - run: pytest -q
+      - run: python scripts/verify_release.py
+      - run: python -m build
+      - run: python -m twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'push'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist
+      - name: Publish immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(cat release/VERSION)"
+          TAG="v${VERSION}"
+
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            echo "Refusing to overwrite existing tag ${TAG}" >&2
+            exit 1
+          fi
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Refusing to overwrite existing release ${TAG}" >&2
+            exit 1
+          fi
+
+          gh release create "${TAG}" dist/* \
+            --target "${GITHUB_SHA}" \
+            --title "CATSS-TF ${TAG}" \
+            --notes-file RELEASE_NOTES.md
