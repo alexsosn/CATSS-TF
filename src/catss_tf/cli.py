@@ -4,6 +4,7 @@ import argparse
 import collections.abc
 import pathlib
 
+from catss_tf import __version__
 from catss_tf.browser import BrowserLaunchError, launch_browser
 from catss_tf.parser import parse_parallel_file
 from catss_tf.source import (
@@ -16,6 +17,11 @@ from catss_tf.validation import ValidationSummary, validate_documents
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="catss-tf")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     fetch = subparsers.add_parser(
