@@ -749,3 +749,16 @@ def test_technique_sidecar_contract_is_scalar_and_explicitly_based() -> None:
         "omission_vs_mt",
         "transposition_mt_lxx",
     )
+
+
+def test_annotation_sidecar_contract_exposes_typed_semantics_and_payload() -> None:
+    assert SIDECAR_COLUMNS["catss-annotations.tsv"] == (
+        "source",
+        "alignment_id",
+        "side",
+        "kind",
+        "family",
+        "contextual",
+        "payload",
+        "raw",
+    )
