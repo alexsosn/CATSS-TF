@@ -336,6 +336,7 @@ def _projection_facts(
                 annotation_payloads=_annotation_payloads(alignment, side="lxx"),
                 semantic_kinds=_semantic_kinds(alignment, side="lxx"),
                 semantic_scopes=_semantic_scopes(alignment, side="lxx"),
+                semantic_scoped_payloads=_semantic_scoped_payloads(alignment, side="lxx"),
                 semantic_payloads=_semantic_payloads(alignment, side="lxx"),
             )
             memberships.append(membership)
@@ -510,9 +511,11 @@ def _semantic_scopes(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[st
     return tuple(sorted(scopes))
 
 
-def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[str, str], ...]:
+def _semantic_scoped_payloads(
+    alignment: AlignmentRecord, *, side: str
+) -> tuple[tuple[str, str, str], ...]:
     payloads = {
-        (annotation.kind, annotation.payload)
+        (annotation.kind, annotation.side, annotation.payload)
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
         and annotation.payload is not None
@@ -522,6 +525,26 @@ def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[
         )
     }
     return tuple(sorted(payloads))
+
+
+def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[str, str], ...]:
+    by_kind: dict[str, set[str]] = {}
+    for annotation in alignment.annotations:
+        if (
+            annotation.kind == "unknown"
+            or annotation.payload is None
+            or (side == "mt" and annotation.side == "lxx")
+            or (side == "lxx" and annotation.side != "lxx")
+        ):
+            continue
+        by_kind.setdefault(annotation.kind, set()).add(annotation.payload)
+    return tuple(
+        sorted(
+            (kind, next(iter(values)))
+            for kind, values in by_kind.items()
+            if len(values) == 1
+        )
+    )
 
 
 def _alignment_sidecar_row(context: _AlignmentContext) -> tuple[object, ...]:
