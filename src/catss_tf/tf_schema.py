@@ -143,7 +143,7 @@ _MEMBERSHIP_FLAGS: dict[str, str] = {
     "catss_repetition": "CATSS repetition annotation",
 }
 
-_RAW_SEMANTIC_KINDS = frozenset({
+_RAW_SEMANTIC_KINDS = frozenset(\n    {
     "abbreviation",
     "contextual_reference",
     "distributive",
@@ -162,7 +162,7 @@ _RAW_SEMANTIC_KINDS = frozenset({
     "word_division",
     "word_join",
     "word_separation",
-})
+}\n)
 
 _ANNOTATION_PAYLOAD_SPECS: dict[str, str] = {
     "catss_distributive_payload": "CATSS distributive-rendering contextual payload",
