@@ -52,3 +52,32 @@ These meanings must not be assigned globally. In particular general `*` = asteri
 ## Open empirical gate
 
 The glossary describes the Libronix representation, while CATSS-TF parses raw CATSS `.par` files. A bounded inventory of a user-acquired raw CATSS snapshot is still required to map every Libronix label to its exact raw `.par` spelling and to prove zero unknowns. Offline tests may use only synthetic fragments.
+
+
+## Raw `.par` empirical encoding layer
+
+The raw CCAT dump does not use the Libronix display labels literally. Independent inspection of
+the upstream files and the open CATSS parser research identifies these raw encodings:
+
+- local/non-local transposition uses `^` / `^^^`, with wrapper forms `{..^TEXT}` and
+  `{...TEXT}`;
+- `{..dTEXT}`, `{..rTEXT}`, and `{..pTEXT}` carry distributive, repetition, and
+  added-preposition payloads;
+- MT strategy codes `.m/.s/.j/.w/.z` encode documented metathesis/separation/join/division/
+  abbreviation, while longer dot codes such as `.kb`, `.rd`, and `.dr` encode interchange
+  of cited letters and must retain those letters as payload;
+- raw `{!}SUFFIX` encodes the documented infinitive-absolute family (`I:...`);
+- column-B `%p-`, `%p+`, and `%p` distinguish omission, addition, and a general
+  preposition/particle difference; `=+` marks a number difference;
+- upstream Sirach contains `{t?}`, an uncertain transliteration form absent from the supplied
+  display glossary.
+
+The independent parser research also records corrupt/export-anomaly lines in the public dump.
+Those are evidence for fail-closed validation, not permission to silently normalize source data.
+
+## Audit status
+
+Offline CI proves the decoder contracts on synthetic fixtures. The public upstream host is
+intermittently timing out from automation, so a final corpus-wide zero-unknown claim is made only
+after all 46 configured files are acquired and validated as one snapshot. A partial/cache-backed
+inspection is useful for discovering RED cases but is not sufficient evidence for completion.
