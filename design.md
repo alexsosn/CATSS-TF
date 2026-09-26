@@ -1808,3 +1808,59 @@ Tests must cover both:
 2. documented transposition alignment + carrier sharing one word slot.
 
 The latter must expose two independent scalar lanes and two sidecar mapping rows.
+
+## 22. Cross-projection consistency
+
+### 22.1 Artifact boundary
+
+compare_projection_bundles(bhsa_directory, lxx_directory) compares two completed schema-v1 bundles. Required sidecars are catss-sources.tsv, catss-alignments.tsv, catss-annotations.tsv, catss-mappings.tsv, catss-anchors.tsv, catss-source-lines.tsv, and catss-diagnostics.tsv.
+
+Missing or malformed required tables are findings; no parent corpus is loaded.
+
+### 22.2 Source gate
+
+The two catss-sources.tsv tables must have identical source keys and identical size_bytes + sha256. Each present source is classified through both frozen source profiles as common, bhsa_only, or lxx_only. Unknown/unclassifiable source is a finding.
+
+### 22.3 Canonical table equality
+
+For common sources, complete normalized rows from catss-alignments.tsv, catss-annotations.tsv, catss-source-lines.tsv, and catss-diagnostics.tsv are compared as multisets after exact frozen-header validation. Row order alone is not semantic.
+
+For projection-exclusive sources, absence of canonical rows from the unsupported bundle is expected.
+
+### 22.4 Mapping and anchor index
+
+Projection rows are indexed by (source, alignment_id). BHSA mappings provide mt_i coverage; LXX mappings provide lxx_i coverage. Anchor rows provide anchor_kind. LXX mapping rows also provide mapping_kind for transposition-carrier classification.
+
+Every mapping or anchor alignment_id must exist in that projection's canonical alignment table.
+
+### 22.5 Expected state machine
+
+- mt_n>0 and lxx_n>0: BHSA mappings + LXX mappings.
+- lxx_plus=1: BHSA lxx_plus anchor + LXX mappings.
+- lxx_minus=1: BHSA mappings + LXX lxx_minus anchor.
+- lxx_n=0, trans_remote=1, not lxx_minus: BHSA mappings when mt_n>0 + LXX transposition_placeholder anchor.
+- mt_n=0, lxx_n>0, not lxx_plus: no BHSA representation + LXX mappings whose mapping_kind includes transposition_carrier.
+
+Any other absent/present combination is unexpected_projection_gap unless a later schema version explicitly classifies it.
+
+### 22.6 Source-side coverage
+
+For required BHSA word mappings, set(mt_i) must equal {1..mt_n}. Multiple rows for one mt_i are permitted because explicit maqaf segments can map one CATSS element to multiple BHSA slots.
+
+For required LXX word mappings, set(lxx_i) must equal {1..lxx_n}. Indices outside canonical range are findings.
+
+### 22.7 Typed findings
+
+Initial codes: missing_sidecar, sidecar_header_mismatch, source_set_mismatch, source_fingerprint_mismatch, unknown_source_profile, canonical_alignment_mismatch, annotation_mismatch, source_line_mismatch, diagnostic_mismatch, orphan_projection_row, mt_index_coverage_mismatch, lxx_index_coverage_mismatch, anchor_kind_mismatch, unexpected_projection_gap.
+
+No finding embeds JSON.
+
+### 22.8 Summary
+
+Scalar fields: source_files, common_sources, bhsa_only_sources, lxx_only_sources, common_alignments, ordinary_shared_alignments, lxx_plus_asymmetries, lxx_minus_asymmetries, transposition_placeholder_asymmetries, transposition_carrier_asymmetries, fingerprint_mismatches, canonical_mismatches, index_mismatches, anchor_mismatches, unexpected_projection_gaps, finding_count.
+
+report.ok is true only when finding_count == 0.
+
+### 22.9 Determinism
+
+Findings sort by source, alignment_id, table, code, message. Summary counts are independent of TSV row order.
