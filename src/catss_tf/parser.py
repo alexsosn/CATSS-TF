@@ -432,8 +432,33 @@ def _extract_annotations(
     side: typing.Literal["mt_a", "mt_b", "lxx"], cell: str, *, book: str
 ) -> list[Annotation]:
     annotations: list[Annotation] = []
+    double_brace_spans: set[tuple[int, int]] = set()
+    if book == "Sir":
+        for match in _SIRACH_DOUBLE_BRACE.finditer(cell):
+            raw = match.group(0)
+            double_brace_spans.add(match.span())
+            spec = notation_spec("{{}}", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw=raw, family=spec.family)
+                )
+
     for match in _BRACE_BLOCK.finditer(cell):
+        if any(start <= match.start() and match.end() <= end for start, end in double_brace_spans):
+            continue
         raw = match.group(0)
+        if book == "Sir" and re.fullmatch(r"{(?:10|[1-9])\\??}", raw):
+            witness = raw[1:-1].rstrip("?")
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind="sirach_lacuna_in_witness",
+                    raw=raw,
+                    family="sirach_manuscript",
+                    payload=witness,
+                )
+            )
+            continue
         if raw == "{!}":
             suffix_match = re.match(r"[a-z+\\-]*", cell[match.end() :])
             suffix = suffix_match.group(0) if suffix_match is not None else ""
