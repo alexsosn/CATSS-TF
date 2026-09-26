@@ -1670,3 +1670,10 @@ and the final output path. It does not duplicate all sidecar contents in a resul
 Discovery and scholarly input identity are separate steps. The materializer uses the existing source inspector to establish the selected filename set, then reads each selected file once. Size/SHA-256 and parser text derive from that same byte payload.
 
 This prevents a time-of-check/time-of-use mismatch between `catss-sources.tsv` and the actual parser input.
+
+
+### 20.10 Sparse maqaf segment semantics
+
+`BhsaWordMapping.segment_index` is an implementation index for every mapping. `catss_mt_segment` is emitted only when the corresponding canonical CATSS MT reading explicitly contains maqaf. Ordinary one-slot words leave the feature empty.
+
+This keeps `catss_mt_segment` queryable as evidence of source segmentation rather than a generic always-1 position.
