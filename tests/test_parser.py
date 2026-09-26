@@ -533,6 +533,7 @@ def test_sirach_brace_manuscript_markup_keeps_raw_and_witness_payload() -> None:
         ("{{}}", "sirach_manuscript_addition", None),
     ]
 
+
 def test_stylistic_preposition_transposition_preserves_context_payload() -> None:
     document = parse_parallel_text(
         "Gen 1:1\nHB {..p^TARGET}\tQEOS\n",
