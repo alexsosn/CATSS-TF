@@ -6,7 +6,6 @@ import tomllib
 
 import catss_tf
 
-
 ROOT = pathlib.Path(__file__).parents[1]
 
 
