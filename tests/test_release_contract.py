@@ -7,7 +7,6 @@ import pytest
 import catss_tf
 from catss_tf import cli
 
-
 ROOT = pathlib.Path(__file__).parents[1]
 RELEASE_VERSION = "0.1.0"
 
