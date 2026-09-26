@@ -825,3 +825,24 @@ def test_conflicting_semantic_payloads_fail_closed_instead_of_overwriting() -> N
     )
     with pytest.raises(TfSchemaError, match="conflicting feature value"):
         compile_tf_features(projection="bhsa", max_node=10, memberships=(membership,), anchors=())
+
+
+def test_researcher_can_load_and_query_semantic_features_with_text_fabric(
+    tmp_path: pathlib.Path,
+) -> None:
+    module = tmp_path / "module"
+    write_tf_module(
+        module,
+        {
+            "catss_sem_distributive_rendering": {1: 1},
+            "catss_sem_distributive_rendering_payload": {1: "Gen 1:2"},
+        },
+        metadata=_metadata(),
+        max_node=10,
+    )
+
+    api = Fabric(locations=str(module), silent="deep").load(
+        "catss_sem_distributive_rendering catss_sem_distributive_rendering_payload"
+    )
+    assert api.F.catss_sem_distributive_rendering.v(1) == 1
+    assert api.F.catss_sem_distributive_rendering_payload.v(1) == "Gen 1:2"
