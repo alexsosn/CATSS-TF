@@ -18,14 +18,14 @@ browser integration.
 Install core software:
 
 ```sh
-pip install \\
+pip install \
   https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
 Install with Text-Fabric integration:
 
 ```sh
-pip install \\
+pip install \
   "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
 ```
 
@@ -39,11 +39,12 @@ Read:
 
 1. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
 2. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
-3. [CHANGELOG.md](CHANGELOG.md)
-4. [research.md](research.md)
-5. [design.md](design.md)
-6. [plan.md](plan.md)
-7. [AGENTS.md](AGENTS.md)
+3. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
+4. [CHANGELOG.md](CHANGELOG.md)
+5. [research.md](research.md)
+6. [design.md](design.md)
+7. [plan.md](plan.md)
+8. [AGENTS.md](AGENTS.md)
 
 ## Architectural boundary
 
