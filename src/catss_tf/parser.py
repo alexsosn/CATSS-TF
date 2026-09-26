@@ -961,3 +961,7 @@ def alignment_id_for(
     )
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:20]
     return f"catss:{source_name}:{digest}"
+                elif (
+                    _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None
+                    or (raw.startswith("[[") and raw.endswith("]]"))
+                ):
