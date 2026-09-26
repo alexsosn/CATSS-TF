@@ -268,6 +268,9 @@ def test_sidecar_contracts_are_normalized_repeated_row_tables() -> None:
         "alignment_id",
         "side",
         "kind",
+        "family",
+        "contextual",
+        "payload",
         "raw",
     )
     assert "alignment_id" in SIDECAR_COLUMNS["catss-mappings.tsv"]
