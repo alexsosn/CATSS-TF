@@ -510,8 +510,11 @@ def _semantic_kinds(alignment: AlignmentRecord, *, side: str) -> tuple[str, ...]
     kinds = {
         annotation.kind
         for annotation in alignment.annotations
-        if (side == "mt" and annotation.side != "lxx")
-        or (side == "lxx" and annotation.side == "lxx")
+        if annotation.kind != "unknown"
+        and (
+            (side == "mt" and annotation.side != "lxx")
+            or (side == "lxx" and annotation.side == "lxx")
+        )
     }
     return tuple(sorted(kinds))
 
@@ -520,14 +523,14 @@ def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[
     payloads = {
         (annotation.kind, annotation.payload)
         for annotation in alignment.annotations
-        if annotation.payload is not None
+        if annotation.kind != "unknown"
+        and annotation.payload is not None
         and (
             (side == "mt" and annotation.side != "lxx")
             or (side == "lxx" and annotation.side == "lxx")
         )
     }
     return tuple(sorted(payloads))
-
 
 def _alignment_sidecar_row(context: _AlignmentContext) -> tuple[object, ...]:
     alignment = context.alignment
