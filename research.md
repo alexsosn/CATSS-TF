@@ -1037,3 +1037,275 @@ Source:
 - https://github.com/codykingham/CATSS_parsers/blob/master/regex_patterns.py
 
 **Decision:** known marks receive structured annotation kinds and are removed from Greek lexical candidates; doubt marks preserve a `doubt` annotation while leaving the underlying word available for exact surface mapping. Explicitly unknown marks remain `kind=unknown` and therefore continue to block default validation rather than being guessed.
+
+
+## R-071 — Native TF node features are scalar and last-write-wins
+
+Text-Fabric feature files support node-feature values of type `str` or `int`. A node feature assigns one value to one node; multiple assignments to the same node do not create a collection—the last assignment wins. Modules are wefts constructed around an existing warp and may be loaded alongside the parent dataset.
+
+Sources:
+
+- https://annotation.github.io/text-fabric/tf/about/fileformats.html
+- https://annotation.github.io/text-fabric/tf/about/datamodel.html
+- https://annotation.github.io/text-fabric/tf/core/fabric.html
+
+The current Text-Fabric source reports version 13.1.0.
+
+**Decision:** CATSS-TF never stores JSON, delimiter-packed lists, or repeated same-feature assignments as a substitute for multi-valued data. Routine TF features are sparse scalar `int`/`str` values.
+
+## R-072 — v0.1 word-node alignment multiplicity is structurally bounded at two
+
+The resolved mapping contracts now provide enough evidence to stop guessing about membership multiplicity.
+
+### BHSA projection
+
+Inside one CATSS source, the strict BHSA verse resolver maps a BHSA word slot to at most one CATSS alignment identity. The v0.1 source profile maps more than one CATSS source onto the same BHSA parent book only for:
+
+- Joshua B + A;
+- Judges B + A;
+- Daniel OG + Theodotion.
+
+All other BHSA parent books have one CATSS source. Therefore a BHSA word node can have at most **two** alignment memberships under the declared v0.1 source profile.
+
+### LXX projection
+
+The LXX source profile maps at most one supported CATSS source onto a given parent word universe: Joshua A and Judges A are unsupported, Daniel OG and Theodotion target different CenterBLC books, and Ezra/Nehemiah occupy disjoint chapter ranges inside `2Esdr`.
+
+Inside one source, the #9 solver forbids word overlap except for one documented complementary transposition pair: a semantic Greek-side transposition wrapper and its MT-side printed-position carrier. Pairwise conflict rules prevent a third overlapping ordinary/transposition membership.
+
+Therefore a CenterBLC word node can also have at most **two** v0.1 alignment memberships.
+
+**Decision:** word-node CATSS detail uses two explicit scalar membership lanes. A third membership is a hard `membership_overflow` schema error requiring a reviewed schema revision. It is never serialized as a list.
+
+## R-073 — Membership lane ordering must be semantic and deterministic
+
+Two lanes are useful only if lane assignment is reproducible.
+
+**Decision:** memberships on one node sort by:
+
+1. CATSS source rank from the canonical 46-file source list;
+2. mapping-role priority, with semantic/exact alignment before a `transposition_carrier`;
+3. stable `alignment_id`;
+4. source-side token/segment index as final deterministic tie-breakers.
+
+Lane 1 uses unsuffixed feature names. Lane 2 uses the same feature names with suffix `_2`.
+
+Examples:
+
+```text
+catss_alignment_id
+catss_source
+catss_lxx_n
+catss_mapping
+
+catss_alignment_id_2
+catss_source_2
+catss_lxx_n_2
+catss_mapping_2
+```
+
+`catss_alignment_n` records the number of memberships on the node.
+
+For Joshua/Judges, the numbered CATSS filenames make B precede A. For Daniel, OG precedes Theodotion. For an LXX transposition pair, the semantic alignment precedes its structural carrier.
+
+## R-074 — Alignment cardinality and projected slot segmentation are different dimensions
+
+The #7 maqaf hardening established that one CATSS MT alignment element may project to more than one BHSA word slot.
+
+**Decision:**
+
+- `catss_mt_n` = number of CATSS MT alignment elements in the source alignment;
+- `catss_lxx_n` = number of CATSS Greek lexical elements in the source alignment;
+- `catss_mt_i` = 1-based MT element position represented by the current BHSA word mapping;
+- `catss_mt_segment` = 1-based segment within an explicit CATSS maqaf compound;
+- `catss_lxx_i` = 1-based Greek element position represented by the current LXX word mapping.
+
+Projected BHSA slot count is not overloaded into `catss_mt_n`.
+
+## R-075 — Empty-side alignment multiplicity is aggregate on TF structural nodes
+
+A verse may contain arbitrarily many LXX-plus or LXX-minus groups. Unlike word-node membership, this multiplicity is not bounded at two.
+
+**Decision:** exact per-group empty-side provenance is not forced into a TF node value. Existing parent structural nodes receive sparse scalar aggregates:
+
+BHSA verse nodes:
+- `catss_lxx_plus_n` — number of Hebrew-empty/LXX-plus alignment groups;
+- `catss_lxx_plus_token_n` — total Greek lexical tokens in those groups.
+
+CenterBLC verse/subverse nodes:
+- `catss_lxx_minus_n` — number of Greek-empty/LXX-minus groups;
+- `catss_transposition_placeholder_n` — number of Greek-empty transposition placeholder groups.
+
+Per-group IDs remain in normalized sidecars.
+
+## R-076 — Lossless provenance belongs in normalized TSV sidecars, not feature blobs
+
+Some CATSS structures are inherently one-to-many: source lines, annotations, mapping rows, and arbitrary counts of empty-side groups. Hiding them in JSON/list strings would make TF queries opaque.
+
+**Decision:** each materialized module carries deterministic tabular sidecars:
+
+`catss-alignments.tsv`
+: one row per canonical alignment, with scalar source/verse/cardinality/flag/raw-column fields.
+
+`catss-annotations.tsv`
+: one row per annotation (`alignment_id, side, kind, raw`).
+
+`catss-mappings.tsv`
+: one row per parent-node mapping, including projection, parent node, alignment ID, mapping kind, and source-side indices.
+
+`catss-anchors.tsv`
+: one row per empty-side structural anchor.
+
+`catss-sources.tsv`
+: one row per source file fingerprint.
+
+`catss-diagnostics.tsv`
+: typed validation/mapping findings when explicitly retained.
+
+TSV cells are scalar; repeated structures use repeated rows. Cross-projection joins use `alignment_id`, never a foreign parent node number.
+
+## R-077 — Query-common CATSS concepts get dedicated scalar TF features
+
+The parser already normalizes stable CATSS concepts. Re-parsing raw sigla at query time would defeat the purpose of a TF module.
+
+**Decision:** each membership lane may expose:
+
+Identity/provenance:
+- `catss_alignment_id` (str)
+- `catss_source` (str)
+- `catss_mapping` (str)
+- `catss_line_first`, `catss_line_last`, `catss_line_n` (int)
+
+Cardinality/position:
+- `catss_mt_n`, `catss_lxx_n` (int)
+- `catss_mt_i`, `catss_mt_segment`, `catss_lxx_i` (int where applicable)
+
+Textual/alignment state:
+- `catss_retro_kind` (str)
+- sparse integer flags for plus/minus, retroversion, Ketiv/Qere, local/remote/stylistic transposition, doublet, transliteration, apparent plus/minus, Ketiv/Qere agreement, Greek preverb, comparative/superlative, asterisked passage, doubt, Greek-edition difference, Greek correction, added preposition, distributive rendering, repetition, and the documented MT strategy sigla.
+
+A sparse boolean feature has value `1` when true and no value when false.
+
+Common multi-membership questions get aggregate scalar counters such as `catss_alignment_n`, `catss_retro_members`, `catss_trans_style_members`, and `catss_doubt_members`.
+
+## R-078 — Module metadata carries reproducibility context; node features do not duplicate parent data
+
+Every CATSS feature file receives metadata including:
+
+- CATSS-TF schema version;
+- projection (`bhsa` or `lxx`);
+- parent repository/version/release identity;
+- CATSS source kind;
+- feature description/value type;
+- software identifier/version.
+
+The materializer-level manifest/sidecars carry source SHA-256s and run-specific timestamps.
+
+**Decision:** CATSS modules never copy parent text, lemma, morphology, book/chapter/verse values, or foreign-corpus node IDs merely for convenience. Users query those directly from the installed parent corpus.
+
+## R-079 — Module-load tests must use Text-Fabric itself
+
+Text-Fabric's `Fabric(locations=..., modules=[parent,module])` loads ordinary module features over a parent warp.
+
+**Decision:** #10 includes an offline synthetic parent warp plus generated CATSS module features and loads them with Text-Fabric itself. The test verifies:
+
+- module has no `otype` or `oslots`;
+- string and integer CATSS features load on existing parent nodes;
+- parent warp remains authoritative;
+- lane-2 features remain independently queryable;
+- structural-node aggregate features load without creating nodes.
+
+
+## R-080 — Exact physical source-line provenance must remain normalized, not summarized away
+
+The parser IR preserves every physical source line number and raw line contributing to a logical CATSS alignment. Word-node TF features intentionally expose only scalar summaries (`catss_line_first`, `catss_line_last`, `catss_line_n`) because arbitrary line collections do not belong in one TF string value.
+
+That summary is query-friendly but is not by itself the complete physical provenance.
+
+**Decision:** schema v1 adds a normalized repeated-row sidecar:
+
+`catss-source-lines.tsv`
+
+with columns:
+
+```text
+source
+alignment_id
+line_no
+raw
+```
+
+One physical source line produces one row. Tabs/newlines in raw content are handled by standard TSV quoting/escaping in the materializer writer, not by delimiter-packed ad-hoc strings.
+
+## R-081 — Aggregate anchor events need identity before counting
+
+Verse/subverse aggregate counters intentionally collapse arbitrary numbers of empty-side alignments, but aggregation must not make duplicate input records invisible.
+
+A bare `(node, kind, token_n)` event cannot distinguish two real alignments from the same alignment accidentally emitted twice.
+
+**Decision:** every `TfAnchorEvent` carries canonical `source` and `alignment_id` in addition to node/kind/token count. The compiler:
+
+- validates that source belongs to the canonical CATSS source set;
+- validates that alignment identity is namespaced to that same source;
+- rejects a repeated `(source, alignment_id)` anchor as `duplicate_anchor`;
+- only then increments structural aggregate features.
+
+Exact anchor identities remain in `catss-anchors.tsv`; TF nodes keep only scalar aggregate counts.
+
+## R-082 — Source and alignment identity are one provenance invariant
+
+CATSS alignment IDs are constructed as `catss:<source basename>:<digest>`. Treating the `source` field and `alignment_id` field as independent would permit internally inconsistent module rows that still sort and serialize successfully.
+
+**Decision:** every TF membership and anchor must satisfy:
+
+```text
+alignment_id starts with "catss:" + source + ":"
+```
+
+A mismatch is a hard schema error before feature compilation.
+
+
+## R-083 — One alignment identity may occur at most once on one parent word node
+
+Resolver outputs are token/segment-granular, but under both v0.1 mapping contracts one CATSS alignment cannot legitimately map two of its own source-side positions to the same parent word node:
+
+- BHSA maqaf segments map to distinct BHSA word slots;
+- LXX lexical tokens map to distinct CenterBLC word slots;
+- documented transposition overlap uses two different CATSS alignment identities.
+
+If two mapping records with the same `(source, alignment_id)` reach one parent word node, that indicates a materializer/resolver bug rather than true two-lane membership.
+
+**Decision:** schema compilation rejects this as `duplicate_alignment_membership`. `catss_alignment_n` therefore counts distinct CATSS alignment identities, not token-level mapping rows.
+
+## R-084 — TF module writing is clean-target only
+
+A weft-only writer that overwrites only currently generated feature files can leave stale CATSS features from an earlier materialization when the new run no longer emits one of those features.
+
+That creates false query results while all newly written files appear valid.
+
+**Decision:** `write_tf_module()` accepts a new or TF-empty target directory only. Existing warp files remain a specific hard error; any other pre-existing `*.tf` file is also rejected. Materializers that want replacement semantics must build in a clean temporary directory and replace the finished output atomically.
+
+
+## R-085 — Mapping diagnostics remain structured in sidecars
+
+Resolver findings already distinguish location and compared values; reducing them to `code + message` would force downstream tooling to parse prose and would discard exact mismatch context.
+
+**Decision:** `catss-diagnostics.tsv` uses scalar columns for:
+
+```text
+stage
+severity
+code
+source
+chapter
+verse
+position
+alignment_id
+line_no
+side
+catss_value
+parent_value
+message
+```
+
+Fields unavailable for a particular validation/mapping finding remain empty cells. No mismatch context is embedded as JSON or reconstructed from the human-readable message.

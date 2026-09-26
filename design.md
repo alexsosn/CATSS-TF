@@ -1210,3 +1210,305 @@ Thus canonical verse material and lettered additions are never mixed in one plac
 - finding counts by typed code through the findings stream.
 
 The release gate in R-061 can therefore run on user-acquired CATSS without a second mapping path.
+
+
+## 19. Text-Fabric feature schema v1
+
+### 19.1 Design rule
+
+Text-Fabric is the **query surface**, not the lossless serialization of CATSS.
+
+```text
+CATSS parser/resolvers
+        |
+        +--> scalar TF node features  -> routine F./S.search queries
+        |
+        +--> normalized TSV sidecars -> lossless one-to-many provenance
+```
+
+No CATSS TF feature value contains JSON or a delimiter-packed collection.
+
+### 19.2 Word membership lanes
+
+A parent word node has `catss_alignment_n=1|2`.
+
+Lane 1 uses base names; lane 2 appends `_2`.
+
+Core lane fields:
+
+```text
+catss_alignment_id       str
+catss_source             str
+catss_mapping            str
+catss_mt_n               int
+catss_lxx_n              int
+catss_mt_i               int   # BHSA where applicable, 1-based
+catss_mt_segment         int   # BHSA maqaf segment, 1-based
+catss_lxx_i              int   # LXX where applicable, 1-based
+catss_line_first         int
+catss_line_last          int
+catss_line_n             int
+catss_retro_kind         str
+```
+
+Every field has a lane-2 counterpart, e.g. `catss_alignment_id_2`, `catss_mt_n_2`.
+
+### 19.3 Sparse membership flags
+
+Stable source concepts are integer-presence features (`1` = true; absence = false):
+
+```text
+catss_lxx_plus
+catss_lxx_minus
+catss_retro
+catss_ketiv
+catss_qere
+catss_trans_local
+catss_trans_remote
+catss_trans_style
+catss_doublet
+catss_translit
+catss_apparent_pm
+catss_agrees_ketiv
+catss_agrees_qere
+catss_metathesis
+catss_word_separation
+catss_word_join
+catss_word_division
+catss_abbreviation
+catss_greek_preverb
+catss_comparative
+catss_asterisked
+catss_doubt
+catss_greek_diff
+catss_greek_correction
+catss_prep_added
+catss_distributive
+catss_repetition
+```
+
+Lane 2 uses `_2` suffix.
+
+Unknown sigla are never converted to guessed boolean features.
+
+### 19.4 Aggregate membership counters
+
+For generic queries that should not care which lane contains a property:
+
+```text
+catss_alignment_n
+catss_retro_members
+catss_ketiv_members
+catss_qere_members
+catss_lxx_plus_members
+catss_lxx_minus_members
+catss_trans_local_members
+catss_trans_remote_members
+catss_trans_style_members
+catss_doubt_members
+```
+
+These are integer counts of memberships on the current word node.
+
+### 19.5 Structural anchor aggregates
+
+BHSA verse nodes:
+
+```text
+catss_lxx_plus_n
+catss_lxx_plus_token_n
+```
+
+CenterBLC verse/subverse nodes:
+
+```text
+catss_lxx_minus_n
+catss_transposition_placeholder_n
+```
+
+Exact anchor alignment IDs live in `catss-anchors.tsv`.
+
+### 19.6 Deterministic lane assignment
+
+Canonical source rank comes from `CATSS_PARALLEL_FILENAMES`.
+
+Within a source, mapping-role priority is:
+
+```text
+exact / ketiv_qere / qere / transposition_alignment
+before
+transposition_carrier
+```
+
+Remaining ties use `alignment_id`, then source-side mapping indices.
+
+A third distinct alignment membership on one word node raises a hard schema error. Materializers do not silently demote it to a sidecar-only membership.
+
+### 19.7 Sidecar relational schema
+
+`catss-alignments.tsv` columns:
+
+```text
+source
+alignment_id
+book
+chapter
+verse
+line_first
+line_last
+line_n
+mt_raw
+mt_col_a
+mt_col_b
+retro_kind
+mt_n
+lxx_raw
+lxx_n
+lxx_plus
+lxx_minus
+ketiv
+qere
+trans_local
+trans_remote
+trans_style
+```
+
+`catss-annotations.tsv`:
+
+```text
+source
+alignment_id
+side
+kind
+raw
+```
+
+`catss-mappings.tsv`:
+
+```text
+projection
+source
+alignment_id
+parent_node
+lane
+mapping_kind
+mt_i
+mt_segment
+lxx_i
+```
+
+`catss-anchors.tsv`:
+
+```text
+projection
+source
+alignment_id
+parent_node
+anchor_kind
+token_n
+```
+
+`catss-sources.tsv`:
+
+```text
+source
+size_bytes
+sha256
+```
+
+`catss-source-lines.tsv`:
+
+```text
+source
+alignment_id
+line_no
+raw
+```
+
+This table preserves exact physical-line provenance as repeated rows; TF word features retain only the query-oriented first/last/count summary.
+
+`catss-diagnostics.tsv`:
+
+```text
+stage
+severity
+code
+source
+chapter
+verse
+position
+alignment_id
+line_no
+side
+catss_value
+parent_value
+message
+```
+
+Fields not applicable to a row are empty TSV cells, not encoded sentinels. TSV writers use standard quoting for cells containing tabs/newlines; no custom delimiter-packed collection syntax is introduced.
+
+### 19.8 Feature metadata
+
+Each feature has at minimum:
+
+```text
+@valueType=int|str
+@description=...
+@catssSchema=1
+@catssProjection=bhsa|lxx
+@catssSourceKind=catss-parallel
+@writtenBy=CATSS-TF
+@parentRepo=...
+@parentVersion=...
+```
+
+Release/tag/commit metadata are included when defined by the parent profile.
+
+### 19.9 Warp safety
+
+A CATSS module writer must reject attempts to emit:
+
+- `otype`
+- `oslots`
+- `otext`
+
+and any node outside the validated parent `1..maxNode` range.
+
+The module contains wefts only.
+
+### 19.10 Schema implementation boundary
+
+#10 implements a generic schema compiler:
+
+```text
+TfMembership[] + TfAnchorEvent[]
+       |
+       v
+query-native node feature tables
+       +
+feature metadata
+```
+
+BHSA/LXX-specific materializers (#11/#12) translate resolver outputs + canonical parser records into these generic memberships/events and write the TSV sidecars.
+
+
+### 19.11 Provenance invariants
+
+Both `TfMembership` and `TfAnchorEvent` carry canonical CATSS source identity.
+
+For every record:
+
+```text
+alignment_id = catss:<source>:...
+```
+
+must hold. A source/ID mismatch is a hard schema error.
+
+Anchor events also remain alignment-identifiable until after duplicate checking. Structural counters are incremented only after a unique `(source, alignment_id)` anchor has been established, preventing accidental double counting while keeping the TF surface aggregate-only.
+
+
+### 19.12 Duplicate-alignment and clean-write invariants
+
+A parent word node may not receive more than one mapping row for the same canonical `(source, alignment_id)`. Token or maqaf-segment indices distinguish provenance inside the alignment, but they do not create additional alignment memberships on the same parent node. Such input is rejected as `duplicate_alignment_membership`.
+
+The generic TF writer is clean-target only. It refuses a target directory containing any existing `*.tf` file, preventing stale feature files from surviving rematerialization. Higher-level materializers should write to a fresh temporary directory and publish the completed module as one replacement operation.
