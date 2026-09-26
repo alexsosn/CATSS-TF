@@ -75,8 +75,12 @@ def derive_technique_state(
 
     if is_lxx_plus and mt_n != 0:
         raise TechniqueError("CATSS LXX-plus contradicts a non-empty MT side")
+    if is_lxx_plus and lxx_n == 0:
+        raise TechniqueError("CATSS LXX-plus requires Greek lexical material")
     if is_lxx_minus and lxx_n != 0:
         raise TechniqueError("CATSS LXX-minus contradicts a non-empty Greek side")
+    if is_lxx_minus and mt_n == 0:
+        raise TechniqueError("CATSS LXX-minus requires MT lexical material")
     transposition_marked = trans_local or trans_remote or trans_style
     if mt_n == 0 and lxx_n > 0 and not is_lxx_plus and not transposition_marked:
         raise TechniqueError(
