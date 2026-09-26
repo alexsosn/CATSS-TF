@@ -394,3 +394,17 @@ def test_parser_decodes_documented_contextual_influence_annotation() -> None:
     assert annotation.family == "translation_technique"
     assert annotation.contextual is True
     assert annotation.raw == "{XTM}"
+
+
+def test_parser_maps_raw_catss_brace_syntax_to_documented_semantics() -> None:
+    document = parse_parallel_text(
+        "Ge 1:1\nBR>\tλογος {..dABC} {..pABC} {...ABC} {..rABC}\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.family, a.contextual) for a in annotations] == [
+        ("distributive_rendering", "translation_technique", True),
+        ("preposition_added", "preposition", True),
+        ("transposition_remote", "transposition", True),
+        ("element_repeated_in_lxx", "translation_technique", True),
+    ]
