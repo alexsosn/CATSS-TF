@@ -1881,7 +1881,7 @@ A current PyPI search does not show a `catss-tf` project. The v0.1 publication w
 **Decision:** v0.1 documentation must not advertise bare `pip install catss-tf` or `pip install catss-tf[tf]`. Installation is documented from the exact GitHub Release wheel (or an equivalent explicit release artifact URL). Agora #16 can pin this immutable release artifact/tag. PyPI publication, if desired later, is a separate distribution decision with its own trusted-publisher setup.
 
 
-## R-133 — The current CATSS source/LXX contracts already include Hebrew-bearing non-BHSA books
+## R-133 — The current CATSS source/LXX contracts already include non-BHSA parallel books
 
 **Rechecked:** 2026-09-26.
 
@@ -1902,6 +1902,9 @@ The raw CCAT Psalm 151 parallel file is especially useful evidence: it contains 
 and Greek lexical material on the same CATSS rows, not merely a Greek-only text. The
 current CCAT directory also exposes `27.Sirach.par` as a 289 KiB parallel source, and
 the CATSS parser prior art contains file-specific repair evidence for that source.
+`42.Baruch.par` is also part of the current parallel source contract, but this audit did
+not separately establish the textual basis of its left-hand column; no stronger claim
+about that column is made here.
 
 Sources:
 
