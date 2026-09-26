@@ -848,3 +848,20 @@ def test_researcher_can_load_and_query_semantic_features_with_text_fabric(
     assert api.F.catss_sem_distributive_rendering.v(1) == 1
     payload = api.F.catss_sem_distributive_rendering_payload.v(1)
     assert payload == "Gen 1:2"
+
+
+def test_distinct_mt_a_mt_b_payloads_coexist_query_natively() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        semantic_kinds=("distributive",),
+        semantic_scopes=(("distributive", "mt_a"), ("distributive", "mt_b")),
+        semantic_scoped_payloads=(
+            ("distributive", "mt_a", "A"),
+            ("distributive", "mt_b", "B"),
+        ),
+    )
+    compiled = compile_tf_features(
+        projection="bhsa", max_node=10, memberships=(membership,), anchors=()
+    )
+    assert compiled["catss_sem_distributive_mt_a_payload"] == {1: "A"}
+    assert compiled["catss_sem_distributive_mt_b_payload"] == {1: "B"}
