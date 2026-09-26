@@ -628,3 +628,124 @@ def test_module_writer_rejects_stale_existing_tf_features(tmp_path: pathlib.Path
             metadata=_metadata(),
             max_node=1,
         )
+
+
+def test_technique_features_compile_in_same_membership_lane() -> None:
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(_membership(mt_n=1, lxx_n=2),),
+        anchors=(),
+    )
+
+    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "one_many"}
+    assert compiled["catss_tt_token_balance_mt_lxx"] == {1: "lxx_more"}
+    assert compiled["catss_tt_transposition_mt_lxx"] == {1: "none_marked"}
+    assert "catss_tt_addition_vs_mt" not in compiled
+    assert "catss_tt_omission_vs_mt" not in compiled
+
+
+def test_technique_lane_two_tracks_source_lane_two() -> None:
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(
+            _membership(
+                source="06.JoshB.par",
+                alignment_id="catss:06.JoshB.par:a",
+                mt_n=1,
+                lxx_n=1,
+            ),
+            _membership(
+                source="07.JoshA.par",
+                alignment_id="catss:07.JoshA.par:b",
+                mt_n=2,
+                lxx_n=1,
+            ),
+        ),
+        anchors=(),
+    )
+
+    assert compiled["catss_source"] == {1: "06.JoshB.par"}
+    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "one_one"}
+    assert compiled["catss_source_2"] == {1: "07.JoshA.par"}
+    assert compiled["catss_tt_cardinality_mt_lxx_2"] == {1: "many_one"}
+    assert compiled["catss_tt_token_balance_mt_lxx_2"] == {1: "lxx_fewer"}
+
+
+def test_lxx_plus_word_membership_gets_explicit_derived_addition_flag() -> None:
+    compiled = compile_tf_features(
+        projection="lxx",
+        max_node=10,
+        memberships=(
+            _membership(
+                mt_n=0,
+                lxx_n=1,
+                mt_i=None,
+                mt_segment=None,
+                lxx_i=1,
+                flags=frozenset({"catss_lxx_plus"}),
+            ),
+        ),
+        anchors=(),
+    )
+
+    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "zero_many"}
+    assert compiled["catss_tt_token_balance_mt_lxx"] == {1: "not_applicable"}
+    assert compiled["catss_tt_transposition_mt_lxx"] == {1: "not_applicable"}
+    assert compiled["catss_tt_addition_vs_mt"] == {1: 1}
+    assert "catss_tt_omission_vs_mt" not in compiled
+
+
+def test_lxx_minus_bhsa_membership_gets_explicit_derived_omission_flag() -> None:
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(
+            _membership(
+                mt_n=1,
+                lxx_n=0,
+                flags=frozenset({"catss_lxx_minus"}),
+            ),
+        ),
+        anchors=(),
+    )
+
+    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "many_zero"}
+    assert compiled["catss_tt_omission_vs_mt"] == {1: 1}
+    assert "catss_tt_addition_vs_mt" not in compiled
+
+
+def test_transposition_carrier_is_not_derived_as_addition() -> None:
+    compiled = compile_tf_features(
+        projection="lxx",
+        max_node=10,
+        memberships=(
+            _membership(
+                mt_n=0,
+                lxx_n=1,
+                mt_i=None,
+                mt_segment=None,
+                lxx_i=1,
+                mapping_kind="transposition_carrier",
+                flags=frozenset({"catss_trans_remote"}),
+            ),
+        ),
+        anchors=(),
+    )
+
+    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "zero_many"}
+    assert "catss_tt_addition_vs_mt" not in compiled
+
+
+def test_technique_sidecar_contract_is_scalar_and_explicitly_based() -> None:
+    assert SIDECAR_COLUMNS["catss-technique.tsv"] == (
+        "source",
+        "alignment_id",
+        "comparison_base",
+        "cardinality_mt_lxx",
+        "token_balance_mt_lxx",
+        "addition_vs_mt",
+        "omission_vs_mt",
+        "transposition_mt_lxx",
+    )
