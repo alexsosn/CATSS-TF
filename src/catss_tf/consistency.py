@@ -215,9 +215,7 @@ def compare_projection_bundles(
     transposition_carrier_asymmetries = 0
 
     for source in sorted(canonical_equal_sources):
-        identities = sorted(
-            identity for identity in bhsa_alignment_rows if identity[0] == source
-        )
+        identities = sorted(identity for identity in bhsa_alignment_rows if identity[0] == source)
         common_alignments += len(identities)
 
         for identity in identities:
@@ -240,13 +238,9 @@ def compare_projection_bundles(
                 index_mismatches += _check_index_coverage(
                     identity, lmaps, "lxx_i", lxx_n, "lxx", findings
                 )
-                anchor_mismatches += _check_anchor(
-                    identity, banchors, "lxx_plus", "bhsa", findings
-                )
+                anchor_mismatches += _check_anchor(identity, banchors, "lxx_plus", "bhsa", findings)
                 anchor_mismatches += _check_no_anchor(identity, lanchors, "lxx", findings)
-                unexpected_projection_gaps += _check_no_mapping(
-                    identity, bmaps, "bhsa", findings
-                )
+                unexpected_projection_gaps += _check_no_mapping(identity, bmaps, "bhsa", findings)
                 continue
 
             if lxx_minus:
@@ -254,13 +248,9 @@ def compare_projection_bundles(
                 index_mismatches += _check_index_coverage(
                     identity, bmaps, "mt_i", mt_n, "bhsa", findings
                 )
-                anchor_mismatches += _check_anchor(
-                    identity, lanchors, "lxx_minus", "lxx", findings
-                )
+                anchor_mismatches += _check_anchor(identity, lanchors, "lxx_minus", "lxx", findings)
                 anchor_mismatches += _check_no_anchor(identity, banchors, "bhsa", findings)
-                unexpected_projection_gaps += _check_no_mapping(
-                    identity, lmaps, "lxx", findings
-                )
+                unexpected_projection_gaps += _check_no_mapping(identity, lmaps, "lxx", findings)
                 continue
 
             if lxx_n == 0 and trans_remote:
@@ -296,9 +286,7 @@ def compare_projection_bundles(
                     unexpected_projection_gaps += _check_no_mapping(
                         identity, bmaps, "bhsa", findings
                     )
-                    anchor_mismatches += _check_no_anchor(
-                        identity, banchors, "bhsa", findings
-                    )
+                    anchor_mismatches += _check_no_anchor(identity, banchors, "bhsa", findings)
                     anchor_mismatches += _check_no_anchor(identity, lanchors, "lxx", findings)
                 else:
                     unexpected_projection_gaps += 1
@@ -413,9 +401,7 @@ def _load_bundle(
                         source=None,
                         alignment_id=None,
                         table=name,
-                        message=(
-                            f"{projection} header is {actual!r}; expected {expected!r}"
-                        ),
+                        message=(f"{projection} header is {actual!r}; expected {expected!r}"),
                     )
                 )
                 tables[name] = ()
