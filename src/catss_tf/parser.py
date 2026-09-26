@@ -434,6 +434,20 @@ def _extract_annotations(
     annotations: list[Annotation] = []
     for match in _BRACE_BLOCK.finditer(cell):
         raw = match.group(0)
+        if raw == "{!}":
+            suffix_match = re.match(r"[a-z+\\-]*", cell[match.end() :])
+            suffix = suffix_match.group(0) if suffix_match is not None else ""
+            inf_abs_raw = raw + suffix
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=_inf_abs_kind(suffix),
+                    raw=inf_abs_raw,
+                    family="infinitive_absolute",
+                    payload=suffix or None,
+                )
+            )
+            continue
         spec = notation_spec(raw, book=book)
         if spec is not None:
             annotations.append(
@@ -474,7 +488,16 @@ def _extract_annotations(
     if side in {"mt_a", "mt_b"}:
         for match in _MT_DOT_SIGLUM.finditer(cell):
             raw = match.group(1)
-            annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
+            kind = _mt_dot_kind(raw)
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=kind,
+                    raw=raw,
+                    family="segmentation" if kind != "letter_interchange" else "reconstruction",
+                    payload=raw[1:] if kind == "letter_interchange" else None,
+                )
+            )
     if side == "lxx":
         for match in _DOUBT_MARKER.finditer(cell):
             annotations.append(Annotation(side=side, kind="doubt", raw=match.group(0)))
@@ -536,6 +559,10 @@ def _retroversion_kind(mt_col_b: str | None) -> str | None:
         return "active_to_passive"
     if probe.startswith("%vpa"):
         return "passive_to_active"
+    if probe.startswith("%p-"):
+        return "preposition_omission"
+    if probe.startswith("%p+"):
+        return "preposition_addition"
     if probe.startswith("%p"):
         return "preposition_difference"
     if probe.startswith("@"):
@@ -546,6 +573,8 @@ def _retroversion_kind(mt_col_b: str | None) -> str | None:
         return "vocalization"
     if probe.startswith("r"):
         return "incomplete"
+    if probe.startswith("+"):
+        return "number_difference"
     return "plain"
 
 
@@ -556,7 +585,29 @@ def _mt_dot_kind(raw: str) -> str:
         ".j": "word_join",
         ".w": "word_division",
         ".z": "abbreviation",
-    }.get(raw, "mt_strategy_siglum")
+    }.get(raw, "letter_interchange" if raw.startswith(".") and len(raw) > 2 else "mt_strategy_siglum")
+
+
+def _inf_abs_kind(suffix: str) -> str:
+    return {
+        "": "infinitive_absolute",
+        "+": "inf_abs_without_mt_inf_abs",
+        "-": "inf_abs_rendered_finite_verb",
+        "--": "inf_abs_and_main_verb_omitted",
+        "ad": "inf_abs_rendered_finite_verb_adverb",
+        "aj": "inf_abs_rendered_finite_verb_adjective",
+        "n": "inf_abs_rendered_finite_verb_noun",
+        "na": "inf_abs_rendered_accusative_noun",
+        "nad": "inf_abs_rendered_different_accusative_noun",
+        "nd": "inf_abs_rendered_dative_noun",
+        "nd+": "inf_abs_dative_without_mt_inf_abs",
+        "ndd": "inf_abs_rendered_different_dative_noun",
+        "p": "inf_abs_rendered_participle",
+        "p+": "inf_abs_participle_without_mt_inf_abs",
+        "pc": "inf_abs_rendered_participle_compositum",
+        "pd": "inf_abs_rendered_different_verb_participle",
+        "v": "inf_abs_rendered_verb",
+    }.get(suffix, "unknown")
 
 
 def _annotation_brace_payload(raw: str, kind: str) -> str | None:
