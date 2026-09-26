@@ -146,7 +146,7 @@ _MEMBERSHIP_FLAGS: dict[str, str] = {
 _RAW_SEMANTIC_KINDS = frozenset(
     {
         "abbreviation",
-        "contextual_reference",
+        "contextual_reference",\n        "contextual_greek_reading",\n        "continuation_marker",
         "distributive",
         "doublet_transposed",
         "doubt",
@@ -156,10 +156,10 @@ _RAW_SEMANTIC_KINDS = frozenset(
         "metathesis",
         "possible_doublet",
         "preposition_marker",
-        "preposition_added",
+        "possible_greek_agrees_qere",\n        "preposition_added",
         "repetition",
         "sirach_lacuna_in_witness",
-        "source_note",
+        "source_corruption_note",\n        "source_format_note",\n        "source_note",
         "transposition_remote",
         "transposition_stylistic",
         "verse_reference",
