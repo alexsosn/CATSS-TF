@@ -820,7 +820,7 @@ def _brace_kind(raw: str) -> str:
         return "source_format_note"
     if any(ord(character) < 32 for character in inner):
         return "source_corruption_note"
-    if re.search(r"[A-Z][A-Z()=/| ]+", inner):
+    if inner and inner[0].isupper() and re.search(r"[A-Z][A-Z()=/| ]+", inner):
         return "contextual_greek_reading"
     return "unknown"
 
