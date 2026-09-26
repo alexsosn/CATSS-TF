@@ -1663,3 +1663,10 @@ ignored_validation_findings
 ```
 
 and the final output path. It does not duplicate all sidecar contents in a result blob.
+
+
+### 20.9 Source snapshot consistency
+
+Discovery and scholarly input identity are separate steps. The materializer uses the existing source inspector to establish the selected filename set, then reads each selected file once. Size/SHA-256 and parser text derive from that same byte payload.
+
+This prevents a time-of-check/time-of-use mismatch between `catss-sources.tsv` and the actual parser input.
