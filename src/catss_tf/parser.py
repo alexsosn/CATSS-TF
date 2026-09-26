@@ -741,20 +741,19 @@ def _annotation_brace_payload(raw: str, kind: str) -> str | None:
     """Extract contextual payload from encoded CATSS brace families."""
 
     prefixes = {
-        "distributive": "{..d",
-        "preposition_added": "{..p",
-        "transposition_remote": "{...",
-        "transposition_stylistic": "{..^",
-        "repetition": "{..r",
-        "greek_correction": "{c",
-        "greek_edition_difference": "{g",
+        "distributive": ("{..d",),
+        "preposition_added": ("{..p",),
+        "transposition_remote": ("{...",),
+        "transposition_stylistic": ("{..p^", "{..^"),
+        "repetition": ("{..r",),
+        "greek_correction": ("{c",),
+        "greek_edition_difference": ("{g",),
     }
-    prefix = prefixes.get(kind)
-    if prefix is None or not raw.startswith(prefix) or not raw.endswith("}"):
-        return None
-    payload = raw[len(prefix) : -1]
-    return payload or None
-
+    for prefix in prefixes.get(kind, ()):
+        if raw.startswith(prefix) and raw.endswith("}"):
+            payload = raw[len(prefix) : -1]
+            return payload or None
+    return None
 
 def _brace_kind(raw: str) -> str:
     exact = {
