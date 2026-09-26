@@ -16,7 +16,7 @@ _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
 _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
 _CONTEXTUAL_REFERENCE_VALUE = re.compile(
-    r"^(?:[A-Za-z]{1,3}\s*)?\d+[A-Za-z]?(?:[.:\s,-]\s*\d+[A-Za-z]?)*\??$"
+    r"^(?:[A-Za-z]{1,3}[.]?\\s*)?\\d+[A-Za-z]{0,2}(?:[.:\\s,-]\\s*\\d+[A-Za-z]{0,2})*\\??$"
 )
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
@@ -801,6 +801,15 @@ def _brace_kind(raw: str) -> str:
         return "greek_correction"
     if raw.startswith("{g"):
         return "greek_edition_difference"
+    inner = raw[1:-1]
+    if re.fullmatch(r"=\\d+", inner):
+        return "contextual_reference"
+    if re.fullmatch(r"[.]\\d+[.]d.+", inner):
+        return "source_format_note"
+    if any(ord(character) < 32 for character in inner):
+        return "source_corruption_note"
+    if re.search(r"[A-Z][A-Z()=/\\\\| ]+", inner):
+        return "contextual_greek_reading"
     return "unknown"
 
 
