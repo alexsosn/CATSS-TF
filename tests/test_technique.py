@@ -33,9 +33,9 @@ HB\tLOGOS
     ("mt_n", "lxx_n", "expected"),
     (
         (0, 0, "zero_zero"),
-        (0, 1, "zero_many"),
+        (0, 1, "zero_one"),
         (0, 3, "zero_many"),
-        (1, 0, "many_zero"),
+        (1, 0, "one_zero"),
         (3, 0, "many_zero"),
         (1, 1, "one_one"),
         (1, 2, "one_many"),
@@ -226,7 +226,7 @@ def test_alignment_derivation_preserves_canonical_identity() -> None:
 
     assert technique.source == "01.Genesis.par"
     assert technique.alignment_id == alignment.alignment_id
-    assert technique.cardinality_mt_lxx == "zero_many"
+    assert technique.cardinality_mt_lxx == "zero_one"
     assert technique.addition_vs_mt is True
 
 
@@ -253,7 +253,7 @@ def test_zero_side_transposition_carrier_is_not_misclassified_as_addition() -> N
         trans_style=False,
     )
 
-    assert state.cardinality_mt_lxx == "zero_many"
+    assert state.cardinality_mt_lxx == "zero_one"
     assert state.addition_vs_mt is False
     assert state.omission_vs_mt is False
     assert state.token_balance_mt_lxx == "not_applicable"
@@ -271,6 +271,6 @@ def test_zero_side_transposition_placeholder_is_not_misclassified_as_omission() 
         trans_style=False,
     )
 
-    assert state.cardinality_mt_lxx == "many_zero"
+    assert state.cardinality_mt_lxx == "one_zero"
     assert state.addition_vs_mt is False
     assert state.omission_vs_mt is False
