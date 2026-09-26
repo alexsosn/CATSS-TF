@@ -521,6 +521,48 @@ def _extract_annotations(
                     payload=raw[1:] if kind == "letter_interchange" else None,
                 )
             )
+    if book == "Sir":
+        for match in (() if book == "Sir" else _SQUARE_GROUP.finditer(cell)):
+            raw = match.group(0)
+            key = "[..]" if raw == "[..]" else "[]"
+            spec = notation_spec(key, book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=spec.kind,
+                        raw=raw,
+                        family=spec.family,
+                        payload=raw.lstrip("[").rstrip("]") or None,
+                    )
+                )
+        for match in re.finditer(r"(?<!\\S)(10|[1-9])(?=\\s|$)", cell):
+            raw = match.group(1)
+            spec = notation_spec(raw, book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw=raw, family=spec.family)
+                )
+        for match in re.finditer(r">(?:10|[1-9])", cell):
+            raw = match.group(0)
+            spec = notation_spec(">", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=spec.kind,
+                        raw=raw,
+                        family=spec.family,
+                        payload=raw[1:],
+                    )
+                )
+        for match in re.finditer(r"(?<!\\*)\\*(?!\\*)", cell):
+            spec = notation_spec("*", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw="*", family=spec.family)
+                )
+
     if side == "lxx":
         for match in _DOUBT_MARKER.finditer(cell):
             annotations.append(Annotation(side=side, kind="doubt", raw=match.group(0)))
