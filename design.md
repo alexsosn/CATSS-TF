@@ -1909,8 +1909,8 @@ transposition:
 
 Technique derivation rejects contradictory canonical states:
 
-- `mt_n=0,lxx_n>0` without `is_lxx_plus`;
-- `mt_n>0,lxx_n=0` without `is_lxx_minus`;
+- `mt_n=0,lxx_n>0` without either `is_lxx_plus` or explicit transposition evidence;
+- `mt_n>0,lxx_n=0` without either `is_lxx_minus` or explicit transposition evidence;
 - `is_lxx_plus` when MT is non-empty;
 - `is_lxx_minus` when Greek is non-empty;
 - negative counts.
