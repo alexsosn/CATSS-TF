@@ -480,6 +480,8 @@ def _extract_annotations(
             inner = raw.lstrip("[").rstrip("]")
             if any(character.isdigit() for character in inner):
                 annotations.append(Annotation(side=side, kind="verse_reference", raw=raw))
+            elif notation_spec(raw, book=book) is None:
+                annotations.append(Annotation(side=side, kind="unknown", raw=raw))
     return annotations
 
 
