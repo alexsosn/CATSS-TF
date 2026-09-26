@@ -62,5 +62,17 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: pip install -e .
-      - run: catss-tf fetch /tmp/catss-parallel
+      - name: Acquire upstream snapshot for audit only
+        run: |
+          mkdir -p /tmp/catss-parallel
+          python - <<'PY'
+          import pathlib, ssl, urllib.request
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES, CCAT_PARALLEL_BASE_URL
+          context = ssl._create_unverified_context()
+          root = pathlib.Path('/tmp/catss-parallel')
+          for name in CATSS_PARALLEL_FILENAMES:
+              url = f'{CCAT_PARALLEL_BASE_URL}/{name}'
+              with urllib.request.urlopen(url, context=context, timeout=60) as response:
+                  (root / name).write_bytes(response.read())
+          PY
       - run: catss-tf validate --complete /tmp/catss-parallel
