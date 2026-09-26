@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from catss_tf.parser import parse_parallel_text
 
 
@@ -160,7 +162,7 @@ HB {d} {t} {x} {*} {**}\tGR [2] <note>
     kinds = {annotation.kind for annotation in row.annotations}
     assert {"doublet", "transliteration", "apparent_plus_minus"} <= kinds
     assert {"greek_agrees_ketiv", "greek_agrees_qere"} <= kinds
-    assert {"verse_reference", "note"} <= kinds
+    assert {"verse_reference", "source_note"} <= kinds
 
 
 def test_special_and_single_chapter_headers_are_parsed() -> None:
@@ -269,7 +271,7 @@ HB .m .s .j .w .z .xx\tGR
         "word_join",
         "word_division",
         "abbreviation",
-        "mt_strategy_siglum",
+        "letter_interchange",
     ]
 
 
@@ -381,3 +383,248 @@ def test_mt_readings_structure_inline_aramaic_and_doubt_markers() -> None:
     assert second.doubtful is False
     assert second.aramaic_section is True
     assert doc.verses[0].alignments[0].mt_tokens == ("MLK", "DBR")
+
+
+def test_parser_decodes_documented_contextual_influence_annotation() -> None:
+    document = parse_parallel_text(
+        "Ge 1:1\nBR> {XTM}\tλογος\n",
+        source_name="01.Genesis.par",
+    )
+
+    annotation = document.verses[0].alignments[0].annotations[0]
+    assert annotation.kind == "contextual_influence"
+    assert annotation.family == "translation_technique"
+    assert annotation.contextual is True
+    assert annotation.raw == "{XTM}"
+
+
+def test_parser_maps_raw_catss_brace_syntax_to_documented_semantics() -> None:
+    document = parse_parallel_text(
+        "Ge 1:1\nBR>\tλογος {..dABC} {..pABC} {...ABC} {..rABC}\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.family, a.contextual) for a in annotations] == [
+        ("distributive", "translation_technique", True),
+        ("preposition_added", "preposition", True),
+        ("transposition_remote", "transposition", True),
+        ("repetition", "translation_technique", True),
+    ]
+
+
+def test_contextual_raw_annotation_preserves_payload_text() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\t{..dGRDIST} {..rGRREPEAT}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.raw, a.contextual) for a in annotations] == [
+        ("distributive", "{..dGRDIST}", True),
+        ("repetition", "{..rGRREPEAT}", True),
+    ]
+
+
+def test_contextual_brace_annotation_exposes_payload_separately() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\t{..dGRDIST} {..rGRREPEAT}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.payload) for a in annotations] == [
+        ("distributive", "GRDIST"),
+        ("repetition", "GRREPEAT"),
+    ]
+
+
+def test_sirach_uncertain_transliteration_annotation_is_typed() -> None:
+    document = parse_parallel_text(
+        "Sir 2:13\n[..]\tOU)AI\\ {t?}\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    annotation = next(a for a in annotations if a.raw == "{t?}")
+    assert annotation.kind == "uncertain_transliteration"
+    assert annotation.family == "translation_technique"
+
+
+def test_raw_mt_strategy_codes_keep_specific_semantics() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB .kb\tGR\nHB =%p-\tGR\nHB =%p+\tGR\nHB =+\tGR\nHB {!}-\tGR\n",
+        source_name="99.Test.par",
+    )
+
+    alignments = document.verses[0].alignments
+    assert alignments[0].annotations[0].kind == "letter_interchange"
+    assert alignments[0].annotations[0].payload == "kb"
+    assert alignments[1].retroversion_kind == "preposition_omission"
+    assert alignments[2].retroversion_kind == "preposition_addition"
+    assert alignments[3].retroversion_kind == "number_difference"
+    inf_abs = next(a for a in alignments[4].annotations if a.raw == "{!}-")
+    assert inf_abs.kind == "inf_abs_rendered_finite_verb"
+    assert inf_abs.family == "infinitive_absolute"
+
+
+def test_contextual_reference_markup_is_typed_without_false_invalid_reference() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB <sp26.35ap>\tGR [e6.16] [2.46k,10.26a] [[30:11]]\n",
+        source_name="99.Test.par",
+    )
+
+    alignment = document.verses[0].alignments[0]
+    by_raw = {a.raw: a for a in alignment.annotations}
+    assert by_raw["<sp26.35ap>"].kind == "samaritan_apparatus_reference"
+    assert by_raw["<sp26.35ap>"].family == "reference"
+    assert by_raw["[e6.16]"].kind == "contextual_reference"
+    assert by_raw["[e6.16]"].payload == "e6.16"
+    assert by_raw["[2.46k,10.26a]"].kind == "contextual_reference"
+    assert by_raw["[[30:11]]"].kind == "verse_reference"
+    assert document.diagnostics == ()
+
+
+def test_greek_editorial_wrappers_expose_payload() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\tGR {c?PU/LHS} {gREADING}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.payload) for a in annotations] == [
+        ("greek_correction", "?PU/LHS"),
+        ("greek_edition_difference", "READING"),
+    ]
+
+
+def test_sirach_mt_manuscript_markup_is_not_silently_dropped() -> None:
+    document = parse_parallel_text(
+        "Sir 2:13\n[..] 3\tOU)AI\\\n[BN]* >7\tLOGOS\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = [
+        annotation
+        for alignment in document.verses[0].alignments
+        for annotation in alignment.annotations
+    ]
+    assert sorted((a.raw, a.kind) for a in annotations) == sorted(
+        [
+            ("[..]", "sirach_lacuna_or_illegible"),
+            ("3", "sirach_witness_geniza_a"),
+            ("[BN]", "sirach_reconstructed_letters"),
+            ("*", "sirach_uncertain_fragmentary_letter"),
+            (">7", "sirach_reading_lacking_in_witness"),
+        ]
+    )
+
+
+def test_sirach_brace_manuscript_markup_keeps_raw_and_witness_payload() -> None:
+    document = parse_parallel_text(
+        "Sir 3:1\nHB {7} {72} {?1} {{}}\tGR\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert sorted((a.raw, a.kind, a.payload) for a in annotations) == [
+        ("{72}", "sirach_manuscript_addition", "72"),
+        ("{7}", "sirach_manuscript_addition", "7"),
+        ("{?1}", "sirach_manuscript_addition", "?1"),
+        ("{{}}", "sirach_manuscript_addition", None),
+    ]
+
+
+def test_stylistic_preposition_transposition_preserves_context_payload() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB {..p^TARGET}\tQEOS\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    match = next(item for item in annotations if item.kind == "transposition_stylistic")
+    assert match.payload == "TARGET"
+
+
+def test_raw_uncertain_doublet_and_stylistic_transposition_are_typed() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB {d?} {..?YDY}\tGR\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    by_raw = {item.raw: item for item in annotations}
+    assert by_raw["{d?}"].kind == "possible_doublet"
+    assert by_raw["{..?YDY}"].kind == "transposition_stylistic"
+    assert by_raw["{..?YDY}"].payload == "?YDY"
+
+
+def test_beta_code_letter_interchange_sigla_are_typed_and_stop_before_angle_note() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB .$c .h-<ge10.4>\tGR\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    dot = {item.raw: item for item in annotations if item.raw.startswith(".")}
+    assert dot[".$c"].kind == "letter_interchange"
+    assert dot[".h-"].kind == "letter_interchange"
+    assert all(item.kind != "unknown_mt_strategy_siglum" for item in annotations)
+
+
+def test_contextual_square_references_accept_catss_book_prefix_and_uncertainty() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tGR [cc35.21] [ne 8.4] [[5.1?]]\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    refs = [item for item in annotations if item.family == "reference"]
+    assert {item.payload for item in refs} >= {"cc35.21", "ne 8.4", "5.1?"}
+    assert all(item.kind != "unknown" for item in annotations)
+
+
+def test_snapshot_special_notation_variants_are_typed_not_unknown() -> None:
+    cases = (
+        ("Exod", "HB {t.}\tGR", "transliteration"),
+        ("Deut", "HB {pm}\tGR", "preposition_marker"),
+        ("Deut", "HB {dt}\tGR", "doublet_transposed"),
+        ("Jer", "HB {z}\tGR", "ziegler_variant"),
+        ("Dan", "HB\tGR {?}", "doubt"),
+        ("Isa", "HB {?..^L/HM}\tGR", "transposition_stylistic"),
+        ("Josh", "HB\tGR [[20.8 c6.63]]", "contextual_reference"),
+    )
+    for book, row, expected in cases:
+        document = parse_parallel_text(
+            f"{book} 1:1\n{row}\n",
+            source_name="99.Test.par",
+        )
+        annotations = document.verses[0].alignments[0].annotations
+        assert all(item.kind != "unknown" for item in annotations)
+        assert any(item.kind == expected for item in annotations)
+
+
+@pytest.mark.parametrize(
+    ("source_name", "raw"),
+    [
+        ("05.Deut.par", "{!}na+"),
+        ("06.JoshB.par", "{=51}"),
+        ("06.JoshB.par", "{TOU= SWTHRI/OU}"),
+        ("09.JudgesA.par", "{**?}"),
+        ("14.2Kings.par", "{H)=GEN}"),
+        ("16.2Chron.par", "[v.8]"),
+        ("16.2Chron.par", "{TOU=}"),
+        ("17.1Esdras.par", "[cc.35.27]"),
+        ("17.1Esdras.par", "[e.14]"),
+        ("19.Neh.par", "{PU/LHS}"),
+        ("20.Psalms.par", "{.1.dU(PE\\R}"),
+        ("23.Prov.par", "{U(POLH/NION}"),
+        ("26.Job.par", "{O(LO/RRIZOI}"),
+        ("26.Job.par", "{E)PI\\ TOU/TW|}"),
+        ("26.Job.par", "{A)PO\\ PROSW/POU AU)TOU=}"),
+        ("26.Job.par", "{#}"),
+        ("26.Job.par", "{QUMOU=}"),
+        ("30.Amos.par", "[cGH=S]"),
+        ("30.Amos.par", "[cGUNAI=KES]"),
+        ("45.DanielOG.par", "[37cc]"),
+    ],
+)
+def test_empirical_special_notation_is_never_unknown(source_name: str, raw: str) -> None:
+    doc = parse_parallel_text(f"Test 1:1\nHB\tGR {raw}\n", source_name="99.Test.par")
+    annotations = doc.verses[0].alignments[0].annotations
+    assert all(annotation.kind != "unknown" for annotation in annotations)

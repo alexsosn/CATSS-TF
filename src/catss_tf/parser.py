@@ -6,15 +6,21 @@ import pathlib
 import re
 import typing
 
+from catss_tf.notation import notation_spec
+
 _VERSE_HEADER = re.compile(r"^\s*([0-9A-Za-z][0-9A-Za-z/]*)\s+(?:(\d+):)?(\d+)\s*$")
 _COLUMN_SPACES = re.compile(r"\s{2,}")
 _BRACE_BLOCK = re.compile(r"\{[^{}]*\}")
+_SIRACH_DOUBLE_BRACE = re.compile(r"\{\{[^{}]*\}\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
 _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
+_CONTEXTUAL_REFERENCE_VALUE = re.compile(
+    r"^(?:[A-Za-z]{1,3}[.]?[ ]*)?[0-9]+[A-Za-z]{0,2}(?:[.: ,-][ ]*[0-9]+[A-Za-z]{0,2})*[?]?$"
+)
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
-_MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s]+)")
+_MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
 _DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
@@ -27,6 +33,9 @@ class Annotation:
     side: typing.Literal["mt_a", "mt_b", "lxx"]
     kind: str
     raw: str
+    family: str | None = None
+    contextual: bool = False
+    payload: str | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -329,9 +338,13 @@ def _build_alignment(
 
     annotations = tuple(
         [
-            *_extract_annotations("mt_a", mt_col_a),
-            *(_extract_annotations("mt_b", mt_col_b) if mt_col_b is not None else []),
-            *_extract_annotations("lxx", lxx_raw),
+            *_extract_annotations("mt_a", mt_col_a, book=verse.book),
+            *(
+                _extract_annotations("mt_b", mt_col_b, book=verse.book)
+                if mt_col_b is not None
+                else []
+            ),
+            *_extract_annotations("lxx", lxx_raw, book=verse.book),
         ]
     )
 
@@ -420,26 +433,220 @@ def _join_continued_cells(cells: typing.Iterable[str]) -> str:
 
 
 def _extract_annotations(
-    side: typing.Literal["mt_a", "mt_b", "lxx"], cell: str
+    side: typing.Literal["mt_a", "mt_b", "lxx"], cell: str, *, book: str
 ) -> list[Annotation]:
     annotations: list[Annotation] = []
+    double_brace_spans: set[tuple[int, int]] = set()
+    if book == "Sir":
+        for match in _SIRACH_DOUBLE_BRACE.finditer(cell):
+            raw = match.group(0)
+            double_brace_spans.add(match.span())
+            spec = notation_spec("{{}}", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw=raw, family=spec.family)
+                )
+
     for match in _BRACE_BLOCK.finditer(cell):
+        if any(start <= match.start() and match.end() <= end for start, end in double_brace_spans):
+            continue
         raw = match.group(0)
-        annotations.append(Annotation(side=side, kind=_brace_kind(raw), raw=raw))
+        if book == "Sir" and re.fullmatch(r"{[?0-9]+}", raw):
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind="sirach_manuscript_addition",
+                    raw=raw,
+                    family="sirach_manuscript",
+                    payload=raw[1:-1],
+                )
+            )
+            continue
+        if raw == "{!}":
+            suffix_match = re.match(r"[a-z+-]*", cell[match.end() :])
+            suffix = suffix_match.group(0) if suffix_match is not None else ""
+            inf_abs_raw = raw + suffix
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=_inf_abs_kind(suffix),
+                    raw=inf_abs_raw,
+                    family="infinitive_absolute",
+                    payload=suffix or None,
+                )
+            )
+            continue
+        spec = notation_spec(raw, book=book)
+        if spec is not None:
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=spec.kind,
+                    raw=raw,
+                    family=spec.family,
+                    contextual=spec.contextual,
+                )
+            )
+        else:
+            raw_kind = _brace_kind(raw)
+            raw_semantics = {
+                "possible_doublet": ("possible_doublet", "translation_technique", True),
+                "distributive": ("distributive", "translation_technique", True),
+                "preposition_added": ("preposition_added", "preposition", True),
+                "transposition_remote": ("transposition_remote", "transposition", True),
+                "transposition_stylistic": ("transposition_stylistic", "transposition", True),
+                "repetition": ("repetition", "translation_technique", True),
+                "greek_correction": ("greek_correction", "textual", True),
+                "greek_edition_difference": ("greek_edition_difference", "textual", True),
+                "contextual_reference": ("contextual_reference", "reference", True),
+                "contextual_greek_reading": ("contextual_greek_reading", "textual", True),
+                "source_format_note": ("source_format_note", "provenance", True),
+                "source_corruption_note": ("source_corruption_note", "provenance", True),
+            }.get(raw_kind)
+            if raw_semantics is None:
+                annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
+            else:
+                kind, family, contextual = raw_semantics
+                payload = _annotation_brace_payload(raw, raw_kind)
+                if payload is None and contextual:
+                    payload = raw[1:-1] or None
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=kind,
+                        raw=raw,
+                        family=family,
+                        contextual=contextual,
+                        payload=payload,
+                    )
+                )
     for match in _ANGLE_NOTE.finditer(cell):
-        annotations.append(Annotation(side=side, kind="note", raw=match.group(0)))
+        raw = match.group(0)
+        spec = notation_spec(raw, book=book)
+        if spec is not None:
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=spec.kind,
+                    raw=raw,
+                    family=spec.family,
+                    contextual=spec.contextual,
+                    payload=raw[1:-1] or None,
+                )
+            )
+        else:
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind="source_note",
+                    raw=raw,
+                    family="reference",
+                    contextual=True,
+                    payload=raw[1:-1] or None,
+                )
+            )
     if side in {"mt_a", "mt_b"}:
         for match in _MT_DOT_SIGLUM.finditer(cell):
             raw = match.group(1)
-            annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
+            kind = _mt_dot_kind(raw)
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=kind,
+                    raw=raw,
+                    family="segmentation" if kind != "letter_interchange" else "reconstruction",
+                    payload=raw[1:] if kind == "letter_interchange" else None,
+                )
+            )
+    if book == "Sir":
+        for match in _SQUARE_GROUP.finditer(cell):
+            raw = match.group(0)
+            key = "[..]" if raw == "[..]" else "[]"
+            spec = notation_spec(key, book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=spec.kind,
+                        raw=raw,
+                        family=spec.family,
+                        payload=raw.lstrip("[").rstrip("]") or None,
+                    )
+                )
+        for match in re.finditer(r"(?<!\S)(10|[1-9])(?=\s|$)", cell):
+            raw = match.group(1)
+            spec = notation_spec(raw, book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw=raw, family=spec.family)
+                )
+        for match in re.finditer(r">(?:10|[1-9])", cell):
+            raw = match.group(0)
+            spec = notation_spec(">", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=spec.kind,
+                        raw=raw,
+                        family=spec.family,
+                        payload=raw[1:],
+                    )
+                )
+        for _match in re.finditer(r"(?<!\*)\*(?!\*)", cell):
+            spec = notation_spec("*", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw="*", family=spec.family)
+                )
+
     if side == "lxx":
-        for match in _DOUBT_MARKER.finditer(cell):
+        doubt_text = _BRACE_BLOCK.sub(" ", cell)
+        for match in _DOUBT_MARKER.finditer(doubt_text):
             annotations.append(Annotation(side=side, kind="doubt", raw=match.group(0)))
         for match in _SQUARE_GROUP.finditer(cell):
             raw = match.group(0)
             inner = raw.lstrip("[").rstrip("]")
             if any(character.isdigit() for character in inner):
-                annotations.append(Annotation(side=side, kind="verse_reference", raw=raw))
+                if _GREEK_REFERENCE_VALUE.fullmatch(inner) is not None:
+                    annotations.append(
+                        Annotation(
+                            side=side,
+                            kind="verse_reference",
+                            raw=raw,
+                            family="reference",
+                            contextual=True,
+                            payload=inner,
+                        )
+                    )
+                elif _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None or (
+                    raw.startswith("[[") and raw.endswith("]]")
+                ):
+                    annotations.append(
+                        Annotation(
+                            side=side,
+                            kind="contextual_reference",
+                            raw=raw,
+                            family="reference",
+                            contextual=True,
+                            payload=inner,
+                        )
+                    )
+                else:
+                    annotations.append(Annotation(side=side, kind="unknown", raw=raw))
+            elif inner.startswith("c") and len(inner) > 1:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind="greek_correction",
+                        raw=raw,
+                        family="textual",
+                        contextual=True,
+                        payload=inner[1:],
+                    )
+                )
+            elif notation_spec(raw, book=book) is None:
+                annotations.append(Annotation(side=side, kind="unknown", raw=raw))
     return annotations
 
 
@@ -458,14 +665,15 @@ def _extract_greek_references(
             continue
         parsed = _GREEK_REFERENCE_VALUE.fullmatch(inner)
         if parsed is None:
-            diagnostics.append(
-                ParseDiagnostic(
-                    code="invalid_lxx_reference",
-                    line_no=line_no,
-                    raw_line=raw_line,
-                    message=f"unsupported CATSS Greek reference syntax: {raw}",
+            if _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is None:
+                diagnostics.append(
+                    ParseDiagnostic(
+                        code="invalid_lxx_reference",
+                        line_no=line_no,
+                        raw_line=raw_line,
+                        message=f"unsupported CATSS Greek reference syntax: {raw}",
+                    )
                 )
-            )
             continue
         suffix = parsed.group(3) or None
         references.append(
@@ -491,6 +699,10 @@ def _retroversion_kind(mt_col_b: str | None) -> str | None:
         return "active_to_passive"
     if probe.startswith("%vpa"):
         return "passive_to_active"
+    if probe.startswith("%p-"):
+        return "preposition_omission"
+    if probe.startswith("%p+"):
+        return "preposition_addition"
     if probe.startswith("%p"):
         return "preposition_difference"
     if probe.startswith("@"):
@@ -501,33 +713,91 @@ def _retroversion_kind(mt_col_b: str | None) -> str | None:
         return "vocalization"
     if probe.startswith("r"):
         return "incomplete"
+    if probe.startswith("+"):
+        return "number_difference"
     return "plain"
 
 
 def _mt_dot_kind(raw: str) -> str:
-    return {
+    exact = {
         ".m": "metathesis",
         ".s": "word_separation",
         ".j": "word_join",
         ".w": "word_division",
         ".z": "abbreviation",
-    }.get(raw, "mt_strategy_siglum")
+    }
+    if raw in exact:
+        return exact[raw]
+    if re.fullmatch(r"\.[A-Za-z$&()+\-]{1,4}", raw):
+        return "letter_interchange"
+    return "mt_strategy_siglum"
+
+
+def _inf_abs_kind(suffix: str) -> str:
+    return {
+        "": "infinitive_absolute",
+        "+": "inf_abs_without_mt_inf_abs",
+        "-": "inf_abs_rendered_finite_verb",
+        "--": "inf_abs_and_main_verb_omitted",
+        "ad": "inf_abs_rendered_finite_verb_adverb",
+        "aj": "inf_abs_rendered_finite_verb_adjective",
+        "n": "inf_abs_rendered_finite_verb_noun",
+        "na": "inf_abs_rendered_accusative_noun",
+        "na+": "inf_abs_accusative_without_mt_inf_abs",
+        "nad": "inf_abs_rendered_different_accusative_noun",
+        "nd": "inf_abs_rendered_dative_noun",
+        "nd+": "inf_abs_dative_without_mt_inf_abs",
+        "ndd": "inf_abs_rendered_different_dative_noun",
+        "p": "inf_abs_rendered_participle",
+        "p+": "inf_abs_participle_without_mt_inf_abs",
+        "pc": "inf_abs_rendered_participle_compositum",
+        "pd": "inf_abs_rendered_different_verb_participle",
+        "v": "inf_abs_rendered_verb",
+    }.get(suffix, "unknown")
+
+
+def _annotation_brace_payload(raw: str, kind: str) -> str | None:
+    """Extract contextual payload from encoded CATSS brace families."""
+
+    prefixes = {
+        "distributive": ("{..d",),
+        "preposition_added": ("{..p",),
+        "transposition_remote": ("{...",),
+        "transposition_stylistic": ("{..p^", "{?..^", "{..^", "{.."),
+        "repetition": ("{..r",),
+        "greek_correction": ("{c",),
+        "greek_edition_difference": ("{g",),
+    }
+    for prefix in prefixes.get(kind, ()):
+        if raw.startswith(prefix) and raw.endswith("}"):
+            payload = raw[len(prefix) : -1]
+            return payload or None
+    return None
 
 
 def _brace_kind(raw: str) -> str:
     exact = {
         "{d}": "doublet",
+        "{d?}": "possible_doublet",
+        "{?d}": "possible_doublet",
         "{t}": "transliteration",
+        "{t.}": "transliteration",
+        "{dt}": "doublet_transposed",
+        "{pm}": "preposition_marker",
+        "{z}": "ziegler_variant",
+        "{?}": "doubt",
         "{x}": "apparent_plus_minus",
         "{*}": "greek_agrees_ketiv",
         "{**}": "greek_agrees_qere",
+        "{**?}": "possible_greek_agrees_qere",
+        "{#}": "continuation_marker",
         "{p}": "greek_preverb",
         "{s}": "comparative_superlative",
         "{---%}": "asterisked_passage",
     }
     if raw in exact:
         return exact[raw]
-    if raw.startswith("{..^") or raw.startswith("{..p^"):
+    if raw.startswith(("{..^", "{..p^", "{?..^")):
         return "transposition_stylistic"
     if raw.startswith("{..."):
         return "transposition_remote"
@@ -537,10 +807,21 @@ def _brace_kind(raw: str) -> str:
         return "distributive"
     if raw.startswith("{..r"):
         return "repetition"
+    if raw.startswith("{.."):
+        return "transposition_stylistic"
     if raw.startswith("{c"):
         return "greek_correction"
     if raw.startswith("{g"):
         return "greek_edition_difference"
+    inner = raw[1:-1]
+    if re.fullmatch(r"=[0-9]+", inner):
+        return "contextual_reference"
+    if re.fullmatch(r"[.][0-9]+[.]d.+", inner):
+        return "source_format_note"
+    if any(ord(character) < 32 for character in inner):
+        return "source_corruption_note"
+    if inner and inner[0].isupper() and re.search(r"[A-Z][A-Z()=/| ]+", inner):
+        return "contextual_greek_reading"
     return "unknown"
 
 

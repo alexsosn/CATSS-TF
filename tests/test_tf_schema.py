@@ -82,7 +82,8 @@ def test_feature_contract_uses_only_scalar_int_and_str_values() -> None:
     assert FEATURE_SPECS
     assert {spec.value_type for spec in FEATURE_SPECS.values()} <= {"int", "str"}
     assert not {"otype", "oslots", "otext"} & set(FEATURE_SPECS)
-    assert all("json" not in name and "list" not in name for name in FEATURE_SPECS)
+    assert all("json" not in name for name in FEATURE_SPECS)
+    assert all(not name.endswith(("_list", "_lists")) for name in FEATURE_SPECS)
 
 
 def test_lane_two_feature_names_are_explicit_scalars() -> None:
@@ -268,6 +269,9 @@ def test_sidecar_contracts_are_normalized_repeated_row_tables() -> None:
         "alignment_id",
         "side",
         "kind",
+        "family",
+        "contextual",
+        "payload",
         "raw",
     )
     assert "alignment_id" in SIDECAR_COLUMNS["catss-mappings.tsv"]
@@ -749,3 +753,98 @@ def test_technique_sidecar_contract_is_scalar_and_explicitly_based() -> None:
         "omission_vs_mt",
         "transposition_mt_lxx",
     )
+
+
+def test_annotation_sidecar_contract_exposes_typed_semantics_and_payload() -> None:
+    assert SIDECAR_COLUMNS["catss-annotations.tsv"] == (
+        "source",
+        "alignment_id",
+        "side",
+        "kind",
+        "family",
+        "contextual",
+        "payload",
+        "raw",
+    )
+
+
+def test_typed_annotation_payloads_compile_as_distinct_query_native_features() -> None:
+    membership = dataclasses.replace(
+        _membership(flags=frozenset({"catss_distributive", "catss_repetition"})),
+        annotation_payloads=(
+            ("catss_distributive_payload", "GRDIST"),
+            ("catss_repetition_payload", "GRREPEAT"),
+        ),
+    )
+
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(membership,),
+        anchors=(),
+    )
+
+    assert compiled["catss_distributive"] == {1: 1}
+    assert compiled["catss_repetition"] == {1: 1}
+    assert compiled["catss_distributive_payload"] == {1: "GRDIST"}
+    assert compiled["catss_repetition_payload"] == {1: "GRREPEAT"}
+
+
+def test_semantic_features_are_dynamic_scalar_tf_features_without_packing() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        semantic_kinds=("distributive_rendering", "gender_switch"),
+        semantic_payloads=(("distributive_rendering", "Gen 1:2"),),
+    )
+    compiled = compile_tf_features(
+        projection="bhsa", max_node=10, memberships=(membership,), anchors=()
+    )
+    assert compiled["catss_sem_distributive_rendering"] == {1: 1}
+    assert compiled["catss_sem_gender_switch"] == {1: 1}
+    assert compiled["catss_sem_distributive_rendering_payload"] == {1: "Gen 1:2"}
+
+
+def test_writer_accepts_registered_complete_semantic_features(tmp_path: pathlib.Path) -> None:
+    write_tf_module(
+        tmp_path / "module",
+        {
+            "catss_sem_distributive_rendering": {1: 1},
+            "catss_sem_distributive_rendering_payload": {1: "Gen 1:2"},
+        },
+        metadata=_metadata(),
+        max_node=10,
+    )
+    assert (tmp_path / "module" / "catss_sem_distributive_rendering.tf").exists()
+    assert (tmp_path / "module" / "catss_sem_distributive_rendering_payload.tf").exists()
+
+
+def test_conflicting_semantic_payloads_fail_closed_instead_of_overwriting() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        semantic_kinds=("repetition",),
+        semantic_payloads=(("repetition", "A"), ("repetition", "B")),
+    )
+    with pytest.raises(TfSchemaError, match="conflicting feature value"):
+        compile_tf_features(projection="bhsa", max_node=10, memberships=(membership,), anchors=())
+
+
+def test_researcher_can_load_and_query_semantic_features_with_text_fabric(
+    tmp_path: pathlib.Path,
+) -> None:
+    module = tmp_path / "module"
+    write_tf_module(
+        module,
+        {
+            "catss_sem_distributive_rendering": {1: 1},
+            "catss_sem_distributive_rendering_payload": {1: "Gen 1:2"},
+        },
+        metadata=_metadata(),
+        max_node=10,
+    )
+
+    api = Fabric(locations=str(module), silent="deep").load(
+        "catss_sem_distributive_rendering catss_sem_distributive_rendering_payload"
+    )
+    assert api.F.catss_sem_distributive_rendering.v(1) == 1
+    payload = api.F.catss_sem_distributive_rendering_payload.v(1)
+    assert payload == "Gen 1:2"

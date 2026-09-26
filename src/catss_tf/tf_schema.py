@@ -4,6 +4,7 @@ import dataclasses
 import pathlib
 import typing
 
+from catss_tf.notation import documented_specs, semantic_feature_name
 from catss_tf.source import CATSS_PARALLEL_FILENAMES
 from catss_tf.technique import TECHNIQUE_SCHEMA_VERSION, TechniqueError, derive_technique_state
 
@@ -46,6 +47,9 @@ class TfMembership:
     line_n: int
     retro_kind: str | None
     flags: frozenset[str] = frozenset()
+    annotation_payloads: tuple[tuple[str, str], ...] = ()
+    semantic_kinds: tuple[str, ...] = ()
+    semantic_payloads: tuple[tuple[str, str], ...] = ()
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -139,6 +143,47 @@ _MEMBERSHIP_FLAGS: dict[str, str] = {
     "catss_repetition": "CATSS repetition annotation",
 }
 
+_RAW_SEMANTIC_KINDS = frozenset(
+    {
+        "abbreviation",
+        "contextual_reference",
+        "contextual_greek_reading",
+        "continuation_marker",
+        "distributive",
+        "doublet_transposed",
+        "doubt",
+        "greek_correction",
+        "greek_edition_difference",
+        "inf_abs_accusative_without_mt_inf_abs",
+        "letter_interchange",
+        "metathesis",
+        "possible_doublet",
+        "preposition_marker",
+        "possible_greek_agrees_qere",
+        "preposition_added",
+        "repetition",
+        "sirach_lacuna_in_witness",
+        "source_corruption_note",
+        "source_format_note",
+        "source_note",
+        "transposition_remote",
+        "transposition_stylistic",
+        "verse_reference",
+        "word_division",
+        "word_join",
+        "word_separation",
+        "ziegler_variant",
+    }
+)
+
+_ANNOTATION_PAYLOAD_SPECS: dict[str, str] = {
+    "catss_distributive_payload": "CATSS distributive-rendering contextual payload",
+    "catss_prep_added_payload": "CATSS added-preposition contextual payload",
+    "catss_repetition_payload": "CATSS repetition contextual payload",
+    "catss_trans_remote_payload": "CATSS remote-transposition contextual payload",
+    "catss_trans_style_payload": "CATSS stylistic-transposition contextual payload",
+}
+
 _AGGREGATE_BY_FLAG = {flag: f"{flag}_members" for flag in _MEMBERSHIP_FLAGS}
 
 _ANCHOR_SPECS: dict[str, tuple[ValueType, str]] = {
@@ -189,6 +234,33 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
             name = lane_feature_name(base_name, lane)
             lane_description = description if lane == 1 else f"{description} (membership lane 2)"
             specs[name] = TfFeatureSpec(name, "int", lane_description)
+
+    for name, description in _ANNOTATION_PAYLOAD_SPECS.items():
+        for lane in (1, 2):
+            lane_name = name if lane == 1 else f"{name}_2"
+            lane_description = description if lane == 1 else f"{description} (membership lane 2)"
+            specs[lane_name] = TfFeatureSpec(lane_name, "str", lane_description)
+
+    semantic_specs = {spec.kind: spec for spec in documented_specs().values()}
+    semantic_kinds = set(semantic_specs) | set(_RAW_SEMANTIC_KINDS)
+    for kind in sorted(semantic_kinds):
+        semantic = semantic_specs.get(kind)
+        base_name = semantic_feature_name(semantic) if semantic is not None else f"catss_sem_{kind}"
+        for lane in (1, 2):
+            name = base_name if lane == 1 else f"{base_name}_2"
+            suffix = "" if lane == 1 else " (membership lane 2)"
+            specs[name] = TfFeatureSpec(
+                name,
+                "int",
+                f"CATSS semantic annotation: {kind}{suffix}",
+            )
+            payload_base = f"{base_name}_payload"
+            payload_name = payload_base if lane == 1 else f"{payload_base}_2"
+            specs[payload_name] = TfFeatureSpec(
+                payload_name,
+                "str",
+                f"CATSS semantic payload for {kind}{suffix}",
+            )
 
     specs["catss_alignment_n"] = TfFeatureSpec(
         "catss_alignment_n",
@@ -252,6 +324,9 @@ SIDECAR_COLUMNS: dict[str, tuple[str, ...]] = {
         "alignment_id",
         "side",
         "kind",
+        "family",
+        "contextual",
+        "payload",
         "raw",
     ),
     "catss-mappings.tsv": (
@@ -437,6 +512,20 @@ def _compile_membership(
         "catss_line_n": membership.line_n,
         "catss_retro_kind": membership.retro_kind,
     }
+    for kind in membership.semantic_kinds:
+        feature_name = f"catss_sem_{kind}" if lane == 1 else f"catss_sem_{kind}_2"
+        _put(features, feature_name, node, 1)
+    for kind, payload in membership.semantic_payloads:
+        base_name = f"catss_sem_{kind}_payload"
+        feature_name = base_name if lane == 1 else f"{base_name}_2"
+        _put(features, feature_name, node, payload)
+
+    for payload_name, payload in membership.annotation_payloads:
+        if payload_name not in _ANNOTATION_PAYLOAD_SPECS:
+            raise TfSchemaError(f"unknown annotation payload feature {payload_name!r}")
+        feature_name = payload_name if lane == 1 else f"{payload_name}_2"
+        _put(features, feature_name, node, payload)
+
     for base_name, value in values.items():
         if value is not None:
             _put(features, lane_feature_name(base_name, lane), node, value)
@@ -564,7 +653,14 @@ def _put(
     node: int,
     value: FeatureValue,
 ) -> None:
-    features.setdefault(feature, {})[node] = value
+    data = features.setdefault(feature, {})
+    existing = data.get(node)
+    if existing is not None and existing != value:
+        raise TfSchemaError(
+            f"conflicting feature value for {feature} on parent node {node}: "
+            f"{existing!r} != {value!r}"
+        )
+    data[node] = value
 
 
 def _increment(

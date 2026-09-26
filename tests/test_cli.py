@@ -51,7 +51,7 @@ def test_validate_command_fails_on_unresolved_markup(
 
     output = capsys.readouterr().out
     assert "unresolved_count=1" in output
-    assert "unresolved unknown_annotation 01.First.par:2" in output
+    assert "unresolved unknown_annotation 01.First.par:2 raw='{zzUNKNOWN}'" in output
 
 
 def test_validate_command_can_explicitly_allow_a_finding_code(
@@ -95,3 +95,15 @@ def test_browse_command_forwards_projection_module_and_noweb(
 
     assert cli.main(["browse", "bhsa", str(module), "--noweb"]) == 9
     assert seen == [("bhsa", module, True)]
+
+
+def test_validate_complete_rejects_partial_snapshot(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "01.Genesis.par").write_text("Gen 1:1\nHB\tGR\n", encoding="utf-8")
+
+    assert cli.main(["validate", str(tmp_path), "--complete"]) == 2
+
+    output = capsys.readouterr().out
+    assert "complete_snapshot=false" in output
+    assert "missing_source_files=" in output

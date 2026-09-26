@@ -298,6 +298,9 @@ def _projection_facts(
                         alignment.alignment_id,
                         annotation.side,
                         annotation.kind,
+                        annotation.family,
+                        int(annotation.contextual),
+                        annotation.payload,
                         annotation.raw,
                     )
                     for annotation in alignment.annotations
@@ -335,7 +338,10 @@ def _projection_facts(
                 line_last=max(alignment.source_lines),
                 line_n=len(alignment.source_lines),
                 retro_kind=alignment.retroversion_kind,
-                flags=_alignment_flags(alignment),
+                flags=_alignment_flags(alignment, side="mt"),
+                annotation_payloads=_annotation_payloads(alignment, side="mt"),
+                semantic_kinds=_semantic_kinds(alignment, side="mt"),
+                semantic_payloads=_semantic_payloads(alignment, side="mt"),
             )
             memberships.append(membership)
             mapping_facts.append((membership, mapping.mt_index, mapping.segment_index))
@@ -449,7 +455,7 @@ def _require_context(
     return context
 
 
-def _alignment_flags(alignment: AlignmentRecord) -> frozenset[str]:
+def _alignment_flags(alignment: AlignmentRecord, *, side: str = "both") -> frozenset[str]:
     flags: set[str] = set()
     if alignment.is_lxx_plus:
         flags.add("catss_lxx_plus")
@@ -469,11 +475,62 @@ def _alignment_flags(alignment: AlignmentRecord) -> frozenset[str]:
         flags.add("catss_doubt")
 
     for annotation in alignment.annotations:
+        if side == "mt" and annotation.side == "lxx":
+            continue
+        if side == "lxx" and annotation.side != "lxx":
+            continue
         flag = _ANNOTATION_FLAG.get(annotation.kind)
         if flag is not None:
             flags.add(flag)
 
     return frozenset(flags)
+
+
+def _annotation_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[str, str], ...]:
+    payload_feature = {
+        "distributive": "catss_distributive_payload",
+        "preposition_added": "catss_prep_added_payload",
+        "repetition": "catss_repetition_payload",
+        "transposition_remote": "catss_trans_remote_payload",
+        "transposition_stylistic": "catss_trans_style_payload",
+    }
+    result: list[tuple[str, str]] = []
+    for annotation in alignment.annotations:
+        if side == "mt" and annotation.side == "lxx":
+            continue
+        if side == "lxx" and annotation.side != "lxx":
+            continue
+        feature = payload_feature.get(annotation.kind)
+        if feature is not None and annotation.payload is not None:
+            result.append((feature, annotation.payload))
+    return tuple(result)
+
+
+def _semantic_kinds(alignment: AlignmentRecord, *, side: str) -> tuple[str, ...]:
+    kinds = {
+        annotation.kind
+        for annotation in alignment.annotations
+        if annotation.kind != "unknown"
+        and (
+            (side == "mt" and annotation.side != "lxx")
+            or (side == "lxx" and annotation.side == "lxx")
+        )
+    }
+    return tuple(sorted(kinds))
+
+
+def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[str, str], ...]:
+    payloads = {
+        (annotation.kind, annotation.payload)
+        for annotation in alignment.annotations
+        if annotation.kind != "unknown"
+        and annotation.payload is not None
+        and (
+            (side == "mt" and annotation.side != "lxx")
+            or (side == "lxx" and annotation.side == "lxx")
+        )
+    }
+    return tuple(sorted(payloads))
 
 
 def _alignment_sidecar_row(context: _AlignmentContext) -> tuple[object, ...]:

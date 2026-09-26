@@ -2204,3 +2204,8 @@ Real-data integration output remains local and is never uploaded by CI.
 - fail-closed unresolved mappings;
 - maximum two query-native membership lanes in schema-v1;
 - no cross-language lemma/morphology comparison in technique-v1.
+
+
+## 25. Complete CATSS special-notation semantics
+
+The parser preserves exact raw notation and decodes it through a closed, book-sensitive semantic catalogue. Query-native materialization uses one sparse scalar feature per semantic kind, `catss_sem_<kind>`, plus `catss_sem_<kind>_payload` for contextual payloads. No JSON or delimiter-packed semantic collections are used. Hebrew/Aramaic-side annotations project only to BHSA memberships and Greek-side annotations only to LXX memberships. Cross-projection correspondence remains the shared stable `catss_alignment_id`; foreign parent node IDs are never encoded as edges. Sirach uses its own collision-sensitive profile. Provenance TSVs preserve raw source notation but are not the semantic query API. Unknown notation is fail-closed, and `catss-tf validate --complete` requires exactly the configured 46-file snapshot before a zero-unknown audit can be claimed.

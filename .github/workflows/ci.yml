@@ -49,3 +49,38 @@ jobs:
           "import catss_tf; from catss_tf import materialize_bhsa, materialize_lxx,
           compare_projection_bundles, TextFabricBhsaProvider, TextFabricLxxProvider;
           assert catss_tf.__version__ == '0.1.0'"
+
+
+  complete-catss-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e .
+      - name: Acquire upstream snapshot for audit only
+        run: |
+          mkdir -p /tmp/catss-parallel
+          python - <<'PY'
+          import pathlib, ssl, urllib.request
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES, CCAT_PARALLEL_BASE_URL
+          context = ssl._create_unverified_context()
+          root = pathlib.Path('/tmp/catss-parallel')
+          for name in CATSS_PARALLEL_FILENAMES:
+              url = f'{CCAT_PARALLEL_BASE_URL}/{name}'
+              with urllib.request.urlopen(url, context=context, timeout=60) as response:
+                  (root / name).write_bytes(response.read())
+          PY
+      - name: Assert complete notation coverage
+        run: |
+          set +e
+          catss-tf validate --complete /tmp/catss-parallel | tee /tmp/catss-audit.txt
+          set -e
+          grep -qx 'complete_snapshot=true' /tmp/catss-audit.txt
+          grep -qx 'source_files=46' /tmp/catss-audit.txt
+          grep -qx 'unaccounted_lines=0' /tmp/catss-audit.txt
+          grep -qx 'unknown_annotations=0' /tmp/catss-audit.txt
