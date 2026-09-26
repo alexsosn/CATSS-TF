@@ -449,15 +449,14 @@ def _extract_annotations(
         if any(start <= match.start() and match.end() <= end for start, end in double_brace_spans):
             continue
         raw = match.group(0)
-        if book == "Sir" and re.fullmatch(r"{(?:10|[1-9])\\??}", raw):
-            witness = raw[1:-1].rstrip("?")
+        if book == "Sir" and re.fullmatch(r"{[?0-9]+}", raw):
             annotations.append(
                 Annotation(
                     side=side,
-                    kind="sirach_lacuna_in_witness",
+                    kind="sirach_manuscript_addition",
                     raw=raw,
                     family="sirach_manuscript",
-                    payload=witness,
+                    payload=raw[1:-1],
                 )
             )
             continue
