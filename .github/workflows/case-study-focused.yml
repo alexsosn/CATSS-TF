@@ -1,0 +1,151 @@
+name: Case study focused smoke
+
+on:
+  push:
+    branches:
+      - issue-41-magic-terminology-notebook
+
+permissions:
+  contents: read
+
+jobs:
+  focused-notebook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CATSS_LXX_MODULE: ${{ github.workspace }}/generated/catss-lxx
+      CATSS_BHSA_MODULE: ${{ github.workspace }}/generated/catss-bhsa
+      GHPERS: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[tf]" "text-fabric[github]>=13.1,<14" pandas jupyter
+
+      - name: Acquire focused CATSS sources
+        run: |
+          mkdir -p ./data/catss-parallel
+          for name in 02.Exodus.par 05.Deut.par 41.Jer.par 44.Ezekiel.par; do
+            echo "fetching $name"
+            # TEMPORARY smoke workaround for #44; never production.
+            curl --fail --silent --show-error --insecure \
+              "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel/$name" \
+              --output "./data/catss-parallel/$name"
+          done
+
+      - name: Load BHSA and materialize focused module
+        run: |
+          date -u
+          python - <<'PY'
+          from pathlib import Path
+          from tf.app import use
+          from catss_tf import TextFabricBhsaProvider, materialize_bhsa
+          from catss_tf.bhsa_schema import (
+              BHSA_CHECKOUT_COMMIT, BHSA_CHECKOUT_TAG, BHSA_REPOSITORY,
+              BHSA_SECTION_TYPES, BHSA_SLOT_TYPE, BHSA_VERSION, BhsaParentProbe,
+          )
+          A = use("ETCBC/bhsa:v1.8.1", checkout="v1.8.1", version="2021")
+          api = A.api
+          assert api is not None
+          probe = BhsaParentProbe(
+              repository=BHSA_REPOSITORY,
+              version=BHSA_VERSION,
+              checkout_tag=BHSA_CHECKOUT_TAG,
+              checkout_commit=BHSA_CHECKOUT_COMMIT,
+              slot_type=BHSA_SLOT_TYPE,
+              max_slot=api.F.otype.maxSlot,
+              max_node=api.F.otype.maxNode,
+              section_types=tuple(api.T.sectionTypes),
+              feature_names=frozenset((*api.Fall(), *api.Eall())),
+          )
+          result = materialize_bhsa(
+              Path("data/catss-parallel"),
+              Path("generated/catss-bhsa"),
+              provider=TextFabricBhsaProvider(api),
+              parent_probe=probe,
+              allowed_validation_codes={"unknown_annotation", "unknown_mt_strategy_siglum"},
+          )
+          print("BHSA", result.summary)
+          PY
+          date -u
+
+      - name: Load LXX and materialize focused module
+        run: |
+          date -u
+          python - <<'PY'
+          from pathlib import Path
+          from tf.app import use
+          from catss_tf import TextFabricLxxProvider, materialize_lxx
+          from catss_tf.lxx_schema import (
+              LXX_NODE_COUNTS, LXX_RELEASE_COMMIT, LXX_RELEASE_TAG, LXX_REPOSITORY,
+              LXX_SECTION_TYPES, LXX_SLOT_TYPE, LXX_VERSION, LxxParentProbe,
+          )
+          A = use("CenterBLC/LXX:v1.0.1", checkout="v1.0.1", version="1935")
+          api = A.api
+          assert api is not None
+          node_counts = {t: len(api.F.otype.s(t)) for t in LXX_NODE_COUNTS}
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=api.F.otype.maxSlot,
+              max_node=api.F.otype.maxNode,
+              section_types=tuple(api.T.sectionTypes),
+              node_counts=node_counts,
+              feature_names=frozenset((*api.Fall(), *api.Eall())),
+          )
+          result = materialize_lxx(
+              Path("data/catss-parallel"),
+              Path("generated/catss-lxx"),
+              provider=TextFabricLxxProvider(api, probe),
+              allowed_validation_codes={"unknown_annotation", "unknown_mt_strategy_siglum"},
+          )
+          print("LXX", result.summary)
+          PY
+          date -u
+
+      - name: Execute notebook
+        run: |
+          jupyter nbconvert \
+            --to notebook \
+            --execute docs/case-studies/magic-terminology.ipynb \
+            --ExecutePreprocessor.timeout=900 \
+            --output /tmp/magic-terminology.executed.ipynb
+
+      - name: Print notebook outputs
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("/tmp/magic-terminology.executed.ipynb")
+          if not p.exists():
+              print("Executed notebook not produced.")
+              raise SystemExit(0)
+          nb = json.loads(p.read_text())
+          for i, cell in enumerate(nb["cells"]):
+              if cell.get("cell_type") != "code":
+                  continue
+              outs = cell.get("outputs", [])
+              if not outs:
+                  continue
+              print(f"\n===== CELL {i} =====")
+              for out in outs:
+                  if out.get("output_type") == "stream":
+                      print("".join(out.get("text", [])))
+                  plain = out.get("data", {}).get("text/plain")
+                  if plain:
+                      print("".join(plain) if isinstance(plain, list) else plain)
+                  if out.get("output_type") == "error":
+                      print(out.get("ename"), out.get("evalue"))
+                      print("\n".join(out.get("traceback", [])))
+          PY
