@@ -1979,3 +1979,138 @@ Technique-v1 does not claim:
 - Hebrew↔Greek morphology equivalence;
 - reviser↔Old-Greek lexical/morphological difference;
 - unmarked CATSS rows have identical word order.
+
+
+## 24. Standard Text-Fabric browser integration
+
+### 24.1 Architecture
+
+```text
+                     generated local module
+                     /work/catss-bhsa
+                              |
+                              v
+ETCBC/bhsa v1.8.1 app + locations=/work + modules=catss-bhsa
+                              |
+                              v
+                    standard TF browser
+```
+
+and independently:
+
+```text
+CenterBLC/LXX v1.0.1 app + local catss-lxx module
+                              |
+                              v
+                    standard TF browser
+```
+
+CATSS-TF does not own a third warp, app, renderer, server, section model, or writing system.
+
+### 24.2 Frozen launch profiles
+
+```text
+projection  app                         checkout  version
+bhsa        ETCBC/bhsa:v1.8.1           v1.8.1    2021
+lxx         CenterBLC/LXX:v1.0.1        v1.0.1    1935
+```
+
+These values come from the same parent profiles used by the resolvers/materializers.
+
+### 24.3 Local module path decomposition
+
+For module directory `M`:
+
+```text
+location = M.parent
+module   = M.name
+```
+
+The standard TF command receives:
+
+```text
+--locations=<location>
+--modules=<module>
+```
+
+The directory itself must contain at least one `catss_*.tf` node-feature file and no warp files.
+
+### 24.4 Bundle preflight
+
+Before launch, CATSS-TF reads TF metadata headers from all `catss_*.tf` files and requires one consistent tuple:
+
+```text
+catssProjection
+parentRepo
+parentVersion
+parentRelease
+catssSchema
+writtenBy
+```
+
+It rejects:
+
+- empty/non-directory paths;
+- no CATSS TF feature files;
+- `otype.tf`, `oslots.tf`, or `otext.tf`;
+- mixed/inconsistent CATSS metadata across files;
+- projection mismatch;
+- parent repo/version/release mismatch.
+
+This catches accidental `catss-lxx` → BHSA loading before Text-Fabric sees the module.
+
+### 24.5 CLI
+
+```text
+catss-tf browse bhsa /work/modules/catss-bhsa
+catss-tf browse lxx /work/modules/catss-lxx
+catss-tf browse bhsa /work/modules/catss-bhsa --noweb
+```
+
+The command invokes the normal `tf` executable. It does not open sockets or browsers itself.
+
+### 24.6 Equivalent direct Text-Fabric commands
+
+BHSA:
+
+```text
+tf ETCBC/bhsa:v1.8.1 \
+  --checkout=v1.8.1 \
+  --version=2021 \
+  --locations=/work/modules \
+  --modules=catss-bhsa
+```
+
+LXX:
+
+```text
+tf CenterBLC/LXX:v1.0.1 \
+  --checkout=v1.0.1 \
+  --version=1935 \
+  --locations=/work/modules \
+  --modules=catss-lxx
+```
+
+### 24.7 Equivalent Python API
+
+```python
+from tf.app import use
+
+A = use(
+    "ETCBC/bhsa:v1.8.1",
+    checkout="v1.8.1",
+    version="2021",
+    locations="/work/modules",
+    modules="catss-bhsa",
+)
+```
+
+The LXX form substitutes the frozen LXX app/release/version/module.
+
+### 24.8 Browser/search contract
+
+CATSS browser UX is the ordinary parent corpus UX plus additional features. Search templates operate on scalar schema-v1/technique-v1 features; no browser-specific data encoding is introduced.
+
+### 24.9 Agora boundary
+
+Agora may later discover/install/invoke CATSS-TF materializers. It is not involved in Text-Fabric browser startup, app configuration, display, or search.
