@@ -11,7 +11,6 @@ from catss_tf.lxx_schema import LxxSourceStatus
 from catss_tf.lxx_schema import classify_catss_source as classify_lxx_source
 from catss_tf.tf_schema import SIDECAR_COLUMNS
 
-
 _REQUIRED_SIDECARS = tuple(SIDECAR_COLUMNS)
 _CANONICAL_TABLES = {
     "catss-alignments.tsv": "canonical_alignment_mismatch",
