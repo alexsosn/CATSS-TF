@@ -621,7 +621,10 @@ def _mt_dot_kind(raw: str) -> str:
         ".j": "word_join",
         ".w": "word_division",
         ".z": "abbreviation",
-    }.get(raw, "letter_interchange" if raw.startswith(".") and len(raw) > 2 else "mt_strategy_siglum")
+    }.get(
+        raw,
+        "letter_interchange" if raw.startswith(".") and len(raw) > 2 else "mt_strategy_siglum",
+    )
 
 
 def _inf_abs_kind(suffix: str) -> str:
