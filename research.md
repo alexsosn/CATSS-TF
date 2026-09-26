@@ -1448,3 +1448,123 @@ BHSA resolver mappings always carry a zero-based `segment_index`, including ordi
 Writing `1` for every ordinary word would erase that distinction and make queries for segmented CATSS elements return false positives.
 
 **Decision:** the materializer inspects the already parsed MT reading. If its primary identity contains explicit `-` maqaf segmentation, resolver `segment_index` becomes 1-based `catss_mt_segment`; otherwise the TF/TSV field is empty.
+
+
+## R-096 — LXX materialization is the symmetric schema-v1 projection, not a second resolver
+
+Issue #9 already proves CATSS Greek lexical elements against exact CenterBLC word slots and classifies empty Greek-side structures as structural anchors. Re-reading raw Greek or repeating placement logic inside the materializer would create a second, divergent interpretation path.
+
+**Decision:** `catss-lxx` materialization consumes only:
+
+- canonical parser records for source/provenance/flags;
+- `LxxWordMapping` records for word membership;
+- `LxxReferenceAnchor` records for Greek-empty structural events;
+- validation findings already attached to the resolver report.
+
+No BETA-code decoding, surface matching, reference repair, or transposition placement happens in the materializer.
+
+## R-097 — LXX schema memberships are Greek-position memberships
+
+A proven `LxxWordMapping` identifies one CATSS Greek lexical element and one CenterBLC word slot.
+
+**Decision:** each mapping becomes:
+
+```text
+node          = lxx_node
+source        = CATSS source filename
+alignment_id  = canonical CATSS id
+mapping_kind  = exact | transposition_alignment | transposition_carrier
+mt_n          = AlignmentRecord.mt_count
+lxx_n         = AlignmentRecord.lxx_count
+mt_i          = empty
+mt_segment    = empty
+lxx_i         = mapping.lxx_index + 1
+line_*        = source-line summary
+retro_kind    = AlignmentRecord.retroversion_kind
+flags         = normalized alignment / annotation facts
+```
+
+Two complementary transposition mappings may legitimately occupy the same CenterBLC word node. Schema-v1 lane ordering already guarantees `transposition_alignment` precedes `transposition_carrier`.
+
+## R-098 — Greek-empty alignments stay structural on the LXX side
+
+Resolver anchors represent CATSS rows with no local Greek lexical word:
+
+- `lxx_minus`;
+- `transposition_placeholder`.
+
+**Decision:** they become `TfAnchorEvent` values on the exact resolver-supplied CenterBLC verse/subverse node with `token_n=0`.
+
+TF exposes only scalar aggregate counters:
+
+- `catss_lxx_minus_n`;
+- `catss_transposition_placeholder_n`.
+
+Exact alignment identities remain repeated rows in `catss-anchors.tsv`.
+
+## R-099 — Source provenance remains acquisition-wide, projection provenance remains supported-only
+
+CenterBLC v0.1 explicitly excludes Joshua A and Judges A while retaining 44 CATSS sources.
+
+**Decision:**
+
+- `catss-sources.tsv` fingerprints every inspected CATSS `.par` input;
+- alignment/annotation/source-line/mapping/anchor rows are emitted only for LXX-supported sources;
+- `07.JoshA` and `09.JudgesA` are counted as declared unsupported, not mapping failures;
+- unknown source names remain hard errors.
+
+This matches the BHSA materializer's provenance model without pretending unsupported A-edition material belongs to the CenterBLC parent.
+
+## R-100 — The provider's parent probe is the LXX release gate
+
+Unlike the BHSA resolver protocol, `LxxVerseProvider` already carries `parent_probe`, and the resolver validates it before mapping.
+
+**Decision:** `materialize_lxx()` validates `provider.parent_probe` itself before any output publication and uses that same probe as the provenance metadata source. There is no separate independently supplied parent-probe parameter that could disagree with the provider.
+
+The accepted v0.1 metadata are still the frozen profile constants:
+
+- `CenterBLC/LXX`;
+- TF version `1935`;
+- release `v1.0.1`;
+- release commit `f32a98eddf7eb239aa73ab863d70381e416d5076`.
+
+## R-101 — LXX mapping sidecars preserve resolver mapping kind and Greek index directly
+
+The schema mapping table already has projection-neutral columns.
+
+**Decision:** each LXX mapping row is:
+
+```text
+projection = lxx
+source
+alignment_id
+parent_node
+lane
+mapping_kind
+mt_i       = empty
+mt_segment = empty
+lxx_i      = 1-based resolver lxx_index
+```
+
+Lane is derived from the compiled TF features, not independently guessed by the materializer. This guarantees sidecar lane identity and TF lane identity cannot diverge silently.
+
+## R-102 — Atomic bundle semantics are identical across projections
+
+The BHSA materializer established a clean, load-tested pattern: snapshot source bytes, fail all gates before publication, write to a fresh sibling temporary directory, and rename only after all TF/TSV files have closed successfully.
+
+**Decision:** `catss-lxx` uses the same publication semantics and sidecar writer contract. The destination must not pre-exist; partial output is deleted after any exception.
+
+Generated CenterBLC/CATSS module bytes remain runtime artifacts and are not committed to the software repository.
+
+## R-103 — LXX end-to-end tests must prove the two-lane transposition case
+
+Simple one-lane loadability is insufficient on the LXX side because the resolver intentionally permits one documented overlap: a semantic transposition alignment and its printed-position carrier can share the same CenterBLC word node.
+
+**Decision:** #12 CI must prove end-to-end that:
+
+- both mappings survive materialization;
+- lane 1 has `catss_mapping=transposition_alignment`;
+- lane 2 has `catss_mapping_2=transposition_carrier`;
+- `catss_alignment_n=2`;
+- both rows remain separately represented in `catss-mappings.tsv`;
+- no packed list/JSON feature is introduced.
