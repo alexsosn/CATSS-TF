@@ -574,3 +574,23 @@ def test_contextual_square_references_accept_catss_book_prefix_and_uncertainty()
     refs = [item for item in annotations if item.family == "reference"]
     assert {item.payload for item in refs} >= {"cc35.21", "ne 8.4", "5.1?"}
     assert all(item.kind != "unknown" for item in annotations)
+
+
+def test_snapshot_special_notation_variants_are_typed_not_unknown() -> None:
+    cases = (
+        ("Exod", "HB {t.}\tGR", "transliteration"),
+        ("Deut", "HB {pm}\tGR", "preposition_marker"),
+        ("Deut", "HB {dt}\tGR", "doublet_transposed"),
+        ("Jer", "HB {z}\tGR", "ziegler_variant"),
+        ("Dan", "HB\tGR {?}", "doubt"),
+        ("Isa", "HB {?..^L/HM}\tGR", "transposition_stylistic"),
+        ("Josh", "HB\tGR [[20.8 c6.63]]", "contextual_reference"),
+    )
+    for book, row, expected in cases:
+        document = parse_parallel_text(
+            f"{book} 1:1\n{row}\n",
+            source_name="99.Test.par",
+        )
+        annotations = document.alignments[0].annotations
+        assert all(item.kind != "unknown" for item in annotations)
+        assert any(item.kind == expected for item in annotations)
