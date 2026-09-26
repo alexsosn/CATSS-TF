@@ -1439,3 +1439,12 @@ A materializer that fingerprints a file and later reopens it for parsing has a p
 5. pass that decoded text to the parser.
 
 The materialization manifest is rebuilt from these exact byte snapshots. Later changes to the filesystem cannot alter what was parsed or what fingerprint is recorded for that run.
+
+
+## R-095 — `catss_mt_segment` is sparse and means explicit maqaf segmentation only
+
+BHSA resolver mappings always carry a zero-based `segment_index`, including ordinary one-slot CATSS readings where the index is trivially zero. Schema v1 gives `catss_mt_segment` a narrower scholarly meaning: position **within an explicit CATSS maqaf compound**.
+
+Writing `1` for every ordinary word would erase that distinction and make queries for segmented CATSS elements return false positives.
+
+**Decision:** the materializer inspects the already parsed MT reading. If its primary identity contains explicit `-` maqaf segmentation, resolver `segment_index` becomes 1-based `catss_mt_segment`; otherwise the TF/TSV field is empty.
