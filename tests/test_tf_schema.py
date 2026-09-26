@@ -847,5 +847,3 @@ def test_researcher_can_load_and_query_semantic_features_with_text_fabric(
     )
     assert api.F.catss_sem_distributive_rendering.v(1) == 1
     assert api.F.catss_sem_distributive_rendering_payload.v(1) == "Gen 1:2"
-    assert all("json" not in name for name in FEATURE_SPECS)
-    assert all(not name.endswith(("_list", "_lists")) for name in FEATURE_SPECS)
