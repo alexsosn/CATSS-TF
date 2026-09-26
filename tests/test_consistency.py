@@ -1,3 +1,4 @@
+import collections.abc
 import csv
 import pathlib
 
@@ -190,7 +191,7 @@ L/KM\tU(MI=N
 
 def _rewrite_tsv(
     path: pathlib.Path,
-    mutate: callable,
+    mutate: collections.abc.Callable[[list[dict[str, str]]], None],
 ) -> None:
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
