@@ -734,7 +734,7 @@ def test_transposition_carrier_is_not_derived_as_addition() -> None:
         anchors=(),
     )
 
-    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "zero_many"}
+    assert compiled["catss_tt_cardinality_mt_lxx"] == {1: "zero_one"}
     assert "catss_tt_addition_vs_mt" not in compiled
 
 
