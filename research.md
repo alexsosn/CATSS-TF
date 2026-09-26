@@ -1872,3 +1872,10 @@ The available GitHub connector can merge reviewed code but does not expose relea
 5. attaches only sdist/wheel software artifacts and uses `RELEASE_NOTES.md`.
 
 This keeps publication reproducible without broadening CATSS-TF's data-distribution boundary.
+
+
+## R-132 — v0.1 publication is GitHub Release, not PyPI
+
+A current PyPI search does not show a `catss-tf` project. The v0.1 publication workflow creates an immutable GitHub Release and attaches the built wheel/sdist, but it does not publish to PyPI.
+
+**Decision:** v0.1 documentation must not advertise bare `pip install catss-tf` or `pip install catss-tf[tf]`. Installation is documented from the exact GitHub Release wheel (or an equivalent explicit release artifact URL). Agora #16 can pin this immutable release artifact/tag. PyPI publication, if desired later, is a separate distribution decision with its own trusted-publisher setup.
