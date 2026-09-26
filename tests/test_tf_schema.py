@@ -99,13 +99,14 @@ def test_single_membership_compiles_query_native_features() -> None:
         max_node=10,
         memberships=(
             _membership(
+                retro_kind="plain",
                 flags=frozenset(
                     {
                         "catss_retro",
                         "catss_trans_style",
                         "catss_doubt",
                     }
-                )
+                ),
             ),
         ),
         anchors=(),
