@@ -786,3 +786,17 @@ def test_annotation_sidecar_contract_exposes_typed_semantics_and_payload() -> No
     assert compiled["catss_repetition"] == {1: 1}
     assert compiled["catss_distributive_payload"] == {1: "GRDIST"}
     assert compiled["catss_repetition_payload"] == {1: "GRREPEAT"}
+
+
+def test_semantic_features_are_dynamic_scalar_tf_features_without_packing() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        semantic_kinds=("distributive_rendering", "gender_switch"),
+        semantic_payloads=(("distributive_rendering", "Gen 1:2"),),
+    )
+    compiled = compile_tf_features(
+        projection="bhsa", max_node=10, memberships=(membership,), anchors=()
+    )
+    assert compiled["catss_sem_distributive_rendering"] == {1: 1}
+    assert compiled["catss_sem_gender_switch"] == {1: 1}
+    assert compiled["catss_sem_distributive_rendering_payload"] == {1: "Gen 1:2"}
