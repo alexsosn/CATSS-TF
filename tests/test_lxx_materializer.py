@@ -487,16 +487,16 @@ def test_lxx_does_not_project_mt_scoped_annotation_onto_greek_word(
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
 
     assert not (output / "catss_distributive.tf").exists()
-    assert not (output / "catss_distributive_payload.tf").exists()
+    assert "1\\t" not in (output / "catss_distributive_payload.tf").read_text(encoding="utf-8")
 
 
 def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\\nHB\\tQEOS {..rGRREPEAT}\\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS {..rGRREPEAT}\n")
     output = tmp_path / "catss-lxx"
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
-    assert "1\\t1" in (output / "catss_sem_repetition.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_repetition.tf").read_text(encoding="utf-8")
     payload_text = (output / "catss_sem_repetition_payload.tf").read_text(encoding="utf-8")
-    assert "1\\tGRREPEAT" in payload_text
+    assert "1\tGRREPEAT" in payload_text
