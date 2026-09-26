@@ -153,6 +153,7 @@ _RAW_SEMANTIC_KINDS = frozenset(
         "greek_edition_difference",
         "letter_interchange",
         "metathesis",
+        "possible_doublet",
         "preposition_added",
         "repetition",
         "sirach_lacuna_in_witness",
