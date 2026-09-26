@@ -475,3 +475,16 @@ def test_lxx_plus_materializer_emits_explicit_addition_vs_mt_feature(
     assert rows[0]["addition_vs_mt"] == "1"
     assert rows[0]["omission_vs_mt"] == "0"
     assert rows[0]["token_balance_mt_lxx"] == "not_applicable"
+
+
+def test_lxx_does_not_project_mt_scoped_annotation_onto_greek_word(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB {..dGRDIST}\tQEOS\n")
+    output = tmp_path / "catss-lxx"
+
+    materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
+
+    assert not (output / "catss_distributive.tf").exists()
+    assert not (output / "catss_distributive_payload.tf").exists()
