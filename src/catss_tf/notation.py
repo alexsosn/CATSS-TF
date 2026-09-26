@@ -141,3 +141,15 @@ def documented_notation() -> frozenset[str]:
     """Return exact documented catalogue keys, excluding patterned references."""
 
     return frozenset(_GENERAL) | frozenset(_SIRACH)
+
+
+def documented_specs() -> dict[str, NotationSpec]:
+    """Return the documented exact notation catalogue with stable semantics."""
+
+    return {**_GENERAL, **_SIRACH}
+
+
+def semantic_feature_name(spec: NotationSpec) -> str:
+    """Return the query-native scalar feature for one semantic notation kind."""
+
+    return f"catss_sem_{spec.kind}"
