@@ -489,6 +489,7 @@ def _extract_annotations(
         else:
             raw_kind = _brace_kind(raw)
             raw_semantics = {
+                "possible_doublet": ("possible_doublet", "translation_technique", True),
                 "distributive": ("distributive", "translation_technique", True),
                 "preposition_added": ("preposition_added", "preposition", True),
                 "transposition_remote": ("transposition_remote", "transposition", True),
