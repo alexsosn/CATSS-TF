@@ -116,9 +116,7 @@ def materialize_lxx(
     parent_validation = validate_lxx_parent(provider.parent_probe)
     if not parent_validation.ok:
         details = ", ".join(finding.code for finding in parent_validation.findings)
-        raise LxxMaterializationError(
-            f"CenterBLC parent does not satisfy v0.1 profile: {details}"
-        )
+        raise LxxMaterializationError(f"CenterBLC parent does not satisfy v0.1 profile: {details}")
 
     supported: list[tuple[ParallelDocument, LxxMappingReport]] = []
     unsupported_documents = 0
@@ -139,9 +137,7 @@ def materialize_lxx(
         )
         if report.findings:
             codes = ", ".join(finding.code for finding in report.findings)
-            raise LxxMaterializationError(
-                f"LXX mapping failed for {document.source_name}: {codes}"
-            )
+            raise LxxMaterializationError(f"LXX mapping failed for {document.source_name}: {codes}")
         supported.append((document, report))
 
     (
