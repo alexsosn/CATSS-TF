@@ -15,7 +15,9 @@ _SIRACH_DOUBLE_BRACE = re.compile(r"\{\{[^{}]*\}\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
 _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
-_CONTEXTUAL_REFERENCE_VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .,:?]*$")
+_CONTEXTUAL_REFERENCE_VALUE = re.compile(
+    r"^(?:[A-Za-z]{1,3}\s*)?\d+[A-Za-z]?(?:[.:\s,-]\s*\d+[A-Za-z]?)*\??$"
+)
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
 _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
