@@ -154,7 +154,7 @@ HB2\t--- ''
     )
     output = tmp_path / "catss-lxx"
     provider = FakeLxxProvider((_span("θεός"),))
-
+    result = materialize_lxx(source, output, provider=provider)
 
     assert result.output_path == output
     assert result.summary.source_files == 1
