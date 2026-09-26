@@ -334,7 +334,8 @@ def _projection_facts(
                 retro_kind=alignment.retroversion_kind,
                 flags=_alignment_flags(alignment, side="lxx"),
                 annotation_payloads=_annotation_payloads(alignment, side="lxx"),
-                semantic_kinds=_semantic_kinds(alignment, side="lxx"),\n                semantic_scopes=_semantic_scopes(alignment, side="lxx"),
+                semantic_kinds=_semantic_kinds(alignment, side="lxx"),
+                semantic_scopes=_semantic_scopes(alignment, side="lxx"),
                 semantic_payloads=_semantic_payloads(alignment, side="lxx"),
             )
             memberships.append(membership)
