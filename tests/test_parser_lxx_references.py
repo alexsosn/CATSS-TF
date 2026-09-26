@@ -100,4 +100,7 @@ HB\tLOGOS {zzUNKNOWN}
 
     row = doc.verses[0].alignments[0]
     assert row.lxx_tokens == ("LOGOS",)
-    assert any(a.side == "lxx" and a.kind == "unknown" and a.raw == "{zzUNKNOWN}" for a in row.annotations)
+    assert any(
+        a.side == "lxx" and a.kind == "unknown" and a.raw == "{zzUNKNOWN}"
+        for a in row.annotations
+    )
