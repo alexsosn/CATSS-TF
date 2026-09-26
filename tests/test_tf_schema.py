@@ -767,12 +767,15 @@ def test_annotation_sidecar_contract_exposes_typed_semantics_and_payload() -> No
     )
 
 
-def test_membership_semantics_compile_as_query_native_node_features() -> None:
+
+
+def test_typed_annotation_payloads_compile_as_distinct_query_native_features() -> None:
     membership = dataclasses.replace(
-        _membership(),
-        annotation_kind="distributive",
-        annotation_family="translation_technique",
-        annotation_payload="GRDIST",
+        _membership(flags=frozenset({"catss_distributive", "catss_repetition"})),
+        annotation_payloads=(
+            ("catss_distributive_payload", "GRDIST"),
+            ("catss_repetition_payload", "GRREPEAT"),
+        ),
     )
 
     compiled = compile_tf_features(
@@ -782,6 +785,7 @@ def test_membership_semantics_compile_as_query_native_node_features() -> None:
         anchors=(),
     )
 
-    assert compiled["catss_annotation_kind"] == {1: "distributive"}
-    assert compiled["catss_annotation_family"] == {1: "translation_technique"}
-    assert compiled["catss_annotation_payload"] == {1: "GRDIST"}
+    assert compiled["catss_distributive"] == {1: 1}
+    assert compiled["catss_repetition"] == {1: 1}
+    assert compiled["catss_distributive_payload"] == {1: "GRDIST"}
+    assert compiled["catss_repetition_payload"] == {1: "GRREPEAT"}
