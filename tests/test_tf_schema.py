@@ -846,4 +846,5 @@ def test_researcher_can_load_and_query_semantic_features_with_text_fabric(
         "catss_sem_distributive_rendering catss_sem_distributive_rendering_payload"
     )
     assert api.F.catss_sem_distributive_rendering.v(1) == 1
-    assert api.F.catss_sem_distributive_rendering_payload.v(1) == "Gen 1:2"
+    payload = api.F.catss_sem_distributive_rendering_payload.v(1)
+    assert payload == "Gen 1:2"
