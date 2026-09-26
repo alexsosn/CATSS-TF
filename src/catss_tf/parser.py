@@ -613,9 +613,8 @@ def _extract_annotations(
                             payload=inner,
                         )
                     )
-                elif (
-                    _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None
-                    or (raw.startswith("[[") and raw.endswith("]]"))
+                elif _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None or (
+                    raw.startswith("[[") and raw.endswith("]]")
                 ):
                     annotations.append(
                         Annotation(
@@ -795,6 +794,7 @@ def _brace_kind(raw: str) -> str:
     if raw.startswith("{g"):
         return "greek_edition_difference"
     return "unknown"
+
 
 def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
     text = _prepare_lexical_text(cell)
