@@ -244,3 +244,20 @@ HB2\tGR2
     assert finding.source_name == "99.Test.par"
     assert finding.line_no == 3
     assert finding.severity == "error"
+
+
+def test_unrecognized_markup_cannot_pass_zero_unknown_audit() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB\tGR [mystery]
+""",
+        source_name="99.Test.par",
+    )
+
+    report = validate_document(doc)
+
+    assert report.ok is False
+    assert report.summary.unknown_annotations == 1
+    finding = next(f for f in report.findings if f.code == "unknown_annotation")
+    assert finding.side == "lxx"
+    assert finding.raw == "[mystery]"
