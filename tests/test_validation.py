@@ -55,7 +55,7 @@ UNSPLIT
 def test_unknown_annotations_are_preserved_and_unresolved() -> None:
     doc = parse_parallel_text(
         """Test 1:1
-HB .xx {zzUNKNOWN}\tGR
+HB .toolong {zzUNKNOWN}\tGR
 """,
         source_name="99.Test.par",
     )
