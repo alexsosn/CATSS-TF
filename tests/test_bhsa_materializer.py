@@ -6,6 +6,7 @@ import pathlib
 import pytest
 from tf.fabric import Fabric  # type: ignore[import-untyped]
 
+import catss_tf.bhsa_materializer as bhsa_materializer
 from catss_tf.bhsa_materializer import (
     BhsaMaterializationError,
     materialize_bhsa,
@@ -363,3 +364,34 @@ def test_allowed_validation_finding_is_retained_in_diagnostics_sidecar(
     assert diagnostics[0]["severity"] == "ignored"
     assert diagnostics[0]["code"] == "unknown_annotation"
     assert diagnostics[0]["side"] == "mt_a"
+
+
+
+def test_mid_write_failure_removes_temporary_bundle(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+
+    def fail_tsv(
+        path: pathlib.Path,
+        columns: tuple[str, ...],
+        rows: list[tuple[object, ...]],
+    ) -> None:
+        del path, columns, rows
+        raise OSError("synthetic sidecar write failure")
+
+    monkeypatch.setattr(bhsa_materializer, "_write_tsv", fail_tsv)
+
+    with pytest.raises(OSError, match="synthetic sidecar write failure"):
+        materialize_bhsa(
+            source,
+            output,
+            provider=FakeBhsaProvider((_verse(),)),
+            parent_probe=_probe(),
+        )
+
+    assert not output.exists()
+    assert list(tmp_path.glob(".catss-bhsa.tmp-*")) == []
