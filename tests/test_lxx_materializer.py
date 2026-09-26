@@ -499,3 +499,5 @@ def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
     assert "1\t1" in (output / "catss_sem_repetition.tf").read_text(encoding="utf-8")
     payload_text = (output / "catss_sem_repetition_payload.tf").read_text(encoding="utf-8")
     assert "1\tQEOS" in payload_text
+    assert not (output / "catss_distributive.tf").exists()
+    assert not (output / "catss_distributive_payload.tf").exists()
