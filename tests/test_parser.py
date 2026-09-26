@@ -463,3 +463,20 @@ def test_raw_mt_strategy_codes_keep_specific_semantics() -> None:
     inf_abs = next(a for a in alignments[4].annotations if a.raw == "{!}")
     assert inf_abs.kind == "inf_abs_rendered_finite_verb"
     assert inf_abs.family == "infinitive_absolute"
+
+
+def test_contextual_reference_markup_is_typed_without_false_invalid_reference() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB <sp26.35ap>\tGR [e6.16] [2.46k,10.26a] [[30:11]]\n",
+        source_name="99.Test.par",
+    )
+
+    alignment = document.verses[0].alignments[0]
+    by_raw = {a.raw: a for a in alignment.annotations}
+    assert by_raw["<sp26.35ap>"].kind == "samaritan_apparatus_reference"
+    assert by_raw["<sp26.35ap>"].family == "reference"
+    assert by_raw["[e6.16]"].kind == "contextual_reference"
+    assert by_raw["[e6.16]"].payload == "e6.16"
+    assert by_raw["[2.46k,10.26a]"].kind == "contextual_reference"
+    assert by_raw["[[30:11]]"].kind == "verse_reference"
+    assert document.diagnostics == ()
