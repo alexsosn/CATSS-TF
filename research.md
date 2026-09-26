@@ -1685,7 +1685,7 @@ CATSS explicitly marks LXX plus/minus and canonical cardinalities independently 
 - `catss_tt_addition_vs_mt=1` only when `mt_n=0`, `lxx_n>0`, and CATSS marks LXX plus;
 - `catss_tt_omission_vs_mt=1` only when `mt_n>0`, `lxx_n=0`, and CATSS marks LXX minus.
 
-A zero-side alignment lacking the corresponding CATSS source flag is not silently reclassified as addition/omission; technique derivation fails closed. This keeps the derived terminology tied to explicit CATSS evidence.
+CATSS also contains zero-side transposition carrier/placeholder rows. Those are valid only when transposition evidence is present and are **not** classified as addition/omission. A zero-side alignment with neither the relevant plus/minus flag nor transposition evidence fails closed.
 
 ## R-117 — Word-order evidence is annotation evidence, not reconstructed order
 
