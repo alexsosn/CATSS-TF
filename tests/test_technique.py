@@ -240,3 +240,37 @@ HB\tLOGOS
 
     with pytest.raises(TechniqueError, match="source mismatch"):
         derive_alignment_technique("02.Exodus.par", doc.verses[0].alignments[0])
+
+
+def test_zero_side_transposition_carrier_is_not_misclassified_as_addition() -> None:
+    state = derive_technique_state(
+        mt_n=0,
+        lxx_n=1,
+        is_lxx_plus=False,
+        is_lxx_minus=False,
+        trans_local=False,
+        trans_remote=True,
+        trans_style=False,
+    )
+
+    assert state.cardinality_mt_lxx == "zero_many"
+    assert state.addition_vs_mt is False
+    assert state.omission_vs_mt is False
+    assert state.token_balance_mt_lxx == "not_applicable"
+    assert state.transposition_mt_lxx == "not_applicable"
+
+
+def test_zero_side_transposition_placeholder_is_not_misclassified_as_omission() -> None:
+    state = derive_technique_state(
+        mt_n=1,
+        lxx_n=0,
+        is_lxx_plus=False,
+        is_lxx_minus=False,
+        trans_local=False,
+        trans_remote=True,
+        trans_style=False,
+    )
+
+    assert state.cardinality_mt_lxx == "many_zero"
+    assert state.addition_vs_mt is False
+    assert state.omission_vs_mt is False
