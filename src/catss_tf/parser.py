@@ -18,7 +18,7 @@ _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
 _CONTEXTUAL_REFERENCE_VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .,:?]*$")
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
-_MT_DOT_SIGLUM = re.compile(r"(?<!\\S)(\\.[^\\s<>{}\\[\\]]+)")
+_MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
 _DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
@@ -707,7 +707,7 @@ def _mt_dot_kind(raw: str) -> str:
     }
     if raw in exact:
         return exact[raw]
-    if re.fullmatch(r"\\.[A-Za-z$&()+\\-]{1,4}", raw):
+    if re.fullmatch(r"\.[A-Za-z$&()+\-]{1,4}", raw):
         return "letter_interchange"
     return "mt_strategy_siglum"
 
