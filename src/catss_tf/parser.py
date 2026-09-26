@@ -31,6 +31,7 @@ class Annotation:
     raw: str
     family: str | None = None
     contextual: bool = False
+    payload: str | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -457,6 +458,7 @@ def _extract_annotations(
                 annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
             else:
                 kind, family, contextual = raw_semantics
+                payload = _brace_payload(raw, raw_kind)
                 annotations.append(
                     Annotation(
                         side=side,
@@ -464,6 +466,7 @@ def _extract_annotations(
                         raw=raw,
                         family=family,
                         contextual=contextual,
+                        payload=payload,
                     )
                 )
     for match in _ANGLE_NOTE.finditer(cell):
@@ -554,6 +557,23 @@ def _mt_dot_kind(raw: str) -> str:
         ".w": "word_division",
         ".z": "abbreviation",
     }.get(raw, "mt_strategy_siglum")
+
+
+def _brace_payload(raw: str, kind: str) -> str | None:
+    """Extract contextual payload from encoded CATSS brace families."""
+
+    prefixes = {
+        "distributive": "{..d",
+        "preposition_added": "{..p",
+        "transposition_remote": "{...",
+        "transposition_stylistic": "{..^",
+        "repetition": "{..r",
+    }
+    prefix = prefixes.get(kind)
+    if prefix is None or not raw.startswith(prefix) or not raw.endswith("}"):
+        return None
+    payload = raw[len(prefix) : -1]
+    return payload or None
 
 
 def _brace_kind(raw: str) -> str:
