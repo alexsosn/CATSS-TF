@@ -408,3 +408,16 @@ def test_parser_maps_raw_catss_brace_syntax_to_documented_semantics() -> None:
         ("transposition_remote", "transposition", True),
         ("repetition", "translation_technique", True),
     ]
+
+
+def test_contextual_raw_annotation_preserves_payload_text() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\t{..dGRDIST} {..rGRREPEAT}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.raw, a.contextual) for a in annotations] == [
+        ("distributive", "{..dGRDIST}", True),
+        ("repetition", "{..rGRREPEAT}", True),
+    ]
