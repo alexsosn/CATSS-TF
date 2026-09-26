@@ -613,7 +613,10 @@ def _extract_annotations(
                             payload=inner,
                         )
                     )
-                elif (\n                    _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None\n                    or (raw.startswith("[[") and raw.endswith("]]"))\n                ):
+                elif (
+                    _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None
+                    or (raw.startswith("[[") and raw.endswith("]]"))
+                ):
                     annotations.append(
                         Annotation(
                             side=side,
