@@ -38,6 +38,7 @@ _GENERAL: dict[str, NotationSpec] = {
     "C´": _spec("reconstruction_from_other_verse", "reconstruction", contextual=True),
     "Dn": _spec("number_difference", "translation_technique"),
     "{d}": _spec("doublet", "translation_technique", contextual=True),
+    "{t?}": _spec("uncertain_transliteration", "translation_technique"),
     "{d}tr": _spec("doublet_transposed", "transposition", contextual=True),
     "div": _spec("different_word_division", "segmentation"),
     "DR": _spec("distributive_rendering", "translation_technique", contextual=True),
