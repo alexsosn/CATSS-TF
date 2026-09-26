@@ -535,6 +535,6 @@ def test_stylistic_preposition_transposition_preserves_context_payload() -> None
         "Gen 1:1\nHB {..p^TARGET}\tQEOS\n",
         source_name="01.Genesis.par",
     )
-    annotations = document.alignments[0].annotations
+    annotations = document.verses[0].alignments[0].annotations
     match = next(item for item in annotations if item.kind == "transposition_stylistic")
     assert match.payload == "TARGET"
