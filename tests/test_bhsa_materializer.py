@@ -522,3 +522,21 @@ def test_bhsa_preserves_mt_a_vs_mt_b_semantic_scope(tmp_path: pathlib.Path) -> N
     assert "1\t1" in (output / "catss_sem_repetition_mt_b.tf").read_text(encoding="utf-8")
     assert not (output / "catss_sem_distributive_mt_b.tf").exists()
     assert not (output / "catss_sem_repetition_mt_a.tf").exists()
+
+
+def test_bhsa_preserves_distinct_mt_a_mt_b_payloads_for_same_kind(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..dA} = )B {..dB}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+    mt_a = (output / "catss_sem_distributive_mt_a_payload.tf").read_text(encoding="utf-8")
+    mt_b = (output / "catss_sem_distributive_mt_b_payload.tf").read_text(encoding="utf-8")
+    assert "1\tA" in mt_a
+    assert "1\tB" in mt_b
