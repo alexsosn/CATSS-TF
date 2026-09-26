@@ -519,7 +519,7 @@ def test_sirach_mt_manuscript_markup_is_not_silently_dropped() -> None:
 
 def test_sirach_brace_manuscript_markup_keeps_raw_and_witness_payload() -> None:
     document = parse_parallel_text(
-        "Sir 3:1\nHB {7} {{}}\tGR\n",
+        "Sir 3:1\nHB {7} {72} {?1} {{}}\tGR\n",
         source_name="27.Sirach.par",
     )
 
