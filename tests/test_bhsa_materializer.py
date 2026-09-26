@@ -195,9 +195,7 @@ def test_generated_bhsa_module_loads_over_parent_warp_and_is_searchable(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B\tQEOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
     provider = FakeBhsaProvider((_verse(),))
 
@@ -221,12 +219,8 @@ def test_two_bhsa_sources_on_same_parent_word_use_deterministic_lanes(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "45.DanielOG.par", "Dan 1:1
-)B\tLOGOS
-")
-    _write_source(source, "46.DanielTh.par", "Dan 1:1
-)B\tQEOS
-")
+    _write_source(source, "45.DanielOG.par", "Dan 1:1\n)B\tLOGOS\n")
+    _write_source(source, "46.DanielTh.par", "Dan 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
     provider = FakeBhsaProvider((_verse(book="Daniel", node=20, word_node=10),))
 
@@ -245,9 +239,7 @@ def test_declared_unsupported_source_is_fingerprinted_but_not_projected(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "22.Ps151.par", "Ps151 1
---+\tLOGOS
-")
+    _write_source(source, "22.Ps151.par", "Ps151 1\n--+\tLOGOS\n")
     output = tmp_path / "catss-bhsa"
 
     result = materialize_bhsa(
@@ -266,9 +258,7 @@ def test_declared_unsupported_source_is_fingerprinted_but_not_projected(
 
 def test_parent_mismatch_fails_before_output_publication(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B\tQEOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
     bad_probe = dataclasses.replace(_probe(), version="future")
 
@@ -285,9 +275,7 @@ def test_parent_mismatch_fails_before_output_publication(tmp_path: pathlib.Path)
 
 def test_mapping_failure_is_fail_closed_and_leaves_no_output(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B\tQEOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
     provider = FakeBhsaProvider((_verse(g_cons="גד"),))
 
@@ -299,9 +287,7 @@ def test_mapping_failure_is_fail_closed_and_leaves_no_output(tmp_path: pathlib.P
 
 def test_unknown_catss_source_is_fail_closed(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
-    _write_source(source, "99.Unknown.par", "Test 1:1
-)B\tQEOS
-")
+    _write_source(source, "99.Unknown.par", "Test 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
 
     with pytest.raises(BhsaMaterializationError, match="unknown CATSS source"):
@@ -317,9 +303,7 @@ def test_unknown_catss_source_is_fail_closed(tmp_path: pathlib.Path) -> None:
 
 def test_existing_destination_is_not_overwritten(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B\tQEOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
     output.mkdir()
     marker = output / "keep.txt"
@@ -340,9 +324,7 @@ def test_sidecar_writer_quotes_raw_tab_provenance_without_packed_blob(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B\tQEOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
 
     materialize_bhsa(
@@ -364,9 +346,7 @@ def test_allowed_validation_finding_is_retained_in_diagnostics_sidecar(
     _write_source(
         source,
         "01.Genesis.par",
-        "Gen 1:1
-)B {zzUNKNOWN}\tQEOS
-",
+        "Gen 1:1\n)B {zzUNKNOWN}\tQEOS\n",
     )
     output = tmp_path / "catss-bhsa"
 
@@ -391,9 +371,7 @@ def test_mid_write_failure_removes_temporary_bundle(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B\tQEOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS\n")
     output = tmp_path / "catss-bhsa"
 
     def fail_tsv(
@@ -422,9 +400,7 @@ def test_maqaf_expansion_emits_segment_only_when_explicit(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B-GD\tQEOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B-GD\tQEOS\n")
     output = tmp_path / "catss-bhsa"
     provider = FakeBhsaProvider(
         (
@@ -454,9 +430,7 @@ def test_bhsa_materializer_emits_queryable_technique_features_and_sidecar(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B\tQEOS LOGOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B\tQEOS LOGOS\n")
     output = tmp_path / "catss-bhsa"
 
     materialize_bhsa(
@@ -493,9 +467,7 @@ def test_bhsa_materializes_mt_scoped_annotation_semantics_as_node_features(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1
-)B {..dGRDIST}\tQEOS
-")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..dGRDIST}\tQEOS\n")
     output = tmp_path / "catss-bhsa"
 
     materialize_bhsa(
