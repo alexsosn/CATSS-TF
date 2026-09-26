@@ -643,3 +643,16 @@ def test_double_bracket_contextual_reference_with_prefix_is_valid() -> None:
     )
     assert annotation.kind == "contextual_reference"
     assert annotation.payload == "20.8 c6.63"
+
+
+def test_contextual_reference_allows_source_spacing_after_period() -> None:
+    document = parse_parallel_text(
+        "Ps 119:7\nHB\tGR [119. 7]\n",
+        source_name="20.Psalms.par",
+    )
+    annotation = next(
+        item for item in document.verses[0].alignments[0].annotations
+        if item.raw == "[119. 7]"
+    )
+    assert annotation.kind == "contextual_reference"
+    assert annotation.payload == "119. 7"
