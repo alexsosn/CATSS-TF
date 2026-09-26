@@ -357,7 +357,7 @@ def test_existing_destination_is_not_overwritten(tmp_path: pathlib.Path) -> None
     marker.write_text("keep", encoding="utf-8")
 
     with pytest.raises(LxxMaterializationError, match="destination already exists"):
-        materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
+        materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός", "θεός"),)))
 
     assert marker.read_text(encoding="utf-8") == "keep"
 
@@ -495,9 +495,9 @@ def test_lxx_exposes_lxx_scoped_canonical_semantic_feature(
     tmp_path: pathlib.Path,
 ) -> None:
     source = tmp_path / "source"
-    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS {..rGRREPEAT}\n")
+    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB\tQEOS {..rQEOS}\n")
     output = tmp_path / "catss-lxx"
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
     assert "1\t1" in (output / "catss_sem_repetition.tf").read_text(encoding="utf-8")
     payload_text = (output / "catss_sem_repetition_payload.tf").read_text(encoding="utf-8")
-    assert "1\tGRREPEAT" in payload_text
+    assert "1\tQEOS" in payload_text
