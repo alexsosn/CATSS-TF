@@ -271,9 +271,7 @@ def compare_projection_bundles(
                     findings,
                 )
                 anchor_mismatches += _check_no_anchor(identity, banchors, "bhsa", findings)
-                unexpected_projection_gaps += _check_no_mapping(
-                    identity, lmaps, "lxx", findings
-                )
+                unexpected_projection_gaps += _check_no_mapping(identity, lmaps, "lxx", findings)
                 continue
 
             if mt_n == 0 and lxx_n > 0:
