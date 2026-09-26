@@ -1424,3 +1424,18 @@ Schema-v1 already proves generic module loadability. #11 additionally needs to p
 - a generated module can be loaded alongside a synthetic parent Text-Fabric warp and queried.
 
 No CATSS or BHSA corpus bytes are committed to the repository.
+
+
+## R-094 — Source fingerprints must describe the exact bytes parsed
+
+A materializer that fingerprints a file and later reopens it for parsing has a provenance race: the file can change between those two reads, leaving a valid-looking SHA-256 sidecar that does not identify the parsed input.
+
+**Decision:** #11 turns the discovered source set into an immutable in-memory snapshot per file:
+
+1. discover the selected direct-child filenames through the existing source contract;
+2. read each file once as bytes;
+3. compute size and SHA-256 from those bytes;
+4. decode those same bytes as strict UTF-8;
+5. pass that decoded text to the parser.
+
+The materialization manifest is rebuilt from these exact byte snapshots. Later changes to the filesystem cannot alter what was parsed or what fingerprint is recorded for that run.
