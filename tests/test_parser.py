@@ -626,4 +626,5 @@ def test_snapshot_special_notation_variants_are_typed_not_unknown() -> None:
 )
 def test_empirical_special_notation_is_never_unknown(source_name: str, raw: str) -> None:
     doc = parse_parallel_text(f"Test 1:1\\nHB\\tGR {raw}\\n", source_name=source_name)
-    assert all(annotation.kind != "unknown" for annotation in doc.verses[0].alignments[0].annotations)
+    annotations = doc.verses[0].alignments[0].annotations
+    assert all(annotation.kind != "unknown" for annotation in annotations)
