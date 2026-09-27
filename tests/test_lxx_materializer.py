@@ -262,6 +262,37 @@ def test_source_repair_is_query_native_on_available_lxx_words(
         assert f"{node}\t--+ '' =H/BHMH" in scoped_payload
 
 
+def test_sirach_witness_lacuna_is_query_native_on_lxx_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "27.Sirach.par",
+        "Sir 1:1\n[..]\tPA=SA\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider((_span("πᾶσα", book="Sir"),))
+
+    materialize_lxx(source, output, provider=provider)
+
+    semantic = (output / "catss_sem_sirach_lacuna_or_illegible.tf").read_text(
+        encoding="utf-8"
+    )
+    scoped = (output / "catss_sem_sirach_lacuna_or_illegible_mt_a.tf").read_text(
+        encoding="utf-8"
+    )
+    plus_path = output / "catss_lxx_plus.tf"
+    technique_rows = _read_tsv(output / "catss-technique.tsv")
+
+    assert "1\t1" in semantic
+    assert "1\t1" in scoped
+    assert not plus_path.exists() or "1\t1" not in plus_path.read_text(encoding="utf-8")
+    assert len(technique_rows) == 1
+    assert technique_rows[0]["addition_vs_mt"] == "0"
+    assert technique_rows[0]["omission_vs_mt"] == "0"
+
+
 def test_transposition_alignment_and_carrier_use_two_scalar_lanes(
     tmp_path: pathlib.Path,
 ) -> None:

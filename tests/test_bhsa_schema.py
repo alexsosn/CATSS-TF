@@ -73,9 +73,10 @@ def test_bhsa_unsupported_sources_are_declared_not_guessed() -> None:
         }
     )
 
-    unsupported = classify_catss_source("17.1Esdras.par")
-    assert unsupported.status is BhsaSourceStatus.UNSUPPORTED
-    assert unsupported.bhsa_book is None
+    for source in ("17.1Esdras.par", "27.Sirach.par"):
+        unsupported = classify_catss_source(source)
+        assert unsupported.status is BhsaSourceStatus.UNSUPPORTED
+        assert unsupported.bhsa_book is None
 
 
 def test_unknown_catss_source_is_distinct_from_declared_unsupported() -> None:

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from catss_tf.parser import parse_parallel_text
+from catss_tf.parser import alignment_id_for, parse_parallel_text
 
 
 def test_parse_basic_alignment_ratios() -> None:
@@ -54,6 +54,36 @@ HBA =:ALT .dr\tGRA
     assert retro.mt_col_b == ":ALT .dr"
     assert retro.mt_tokens == ("HBA",)
     assert retro.lxx_tokens == ("GRA",)
+
+
+def test_sirach_witness_lacuna_is_typed_nonlexical_source_evidence() -> None:
+    raw = "[..]\tPA=SA"
+    doc = parse_parallel_text(
+        f"Sir 1:1\n{raw}\n",
+        source_name="27.Sirach.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.alignment_id == alignment_id_for(
+        source_name="27.Sirach.par",
+        header_raw="Sir 1:1",
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+    assert alignment.mt_raw == "[..]"
+    assert alignment.mt_count == 0
+    assert alignment.lxx_count == 1
+    assert alignment.is_lxx_plus is False
+    lacunae = tuple(
+        annotation
+        for annotation in alignment.annotations
+        if annotation.kind == "sirach_lacuna_or_illegible"
+    )
+    assert len(lacunae) == 1
+    assert lacunae[0].side == "mt_a"
+    assert lacunae[0].family == "sirach_manuscript"
+    assert lacunae[0].raw == "[..]"
 
 
 def test_parse_ketiv_and_qere_independently() -> None:

@@ -133,6 +133,62 @@ def test_addition_and_omission_require_explicit_catss_source_evidence() -> None:
         )
 
 
+def test_mt_witness_lacuna_admits_zero_mt_without_translation_addition() -> None:
+    state = derive_technique_state(
+        mt_n=0,
+        lxx_n=1,
+        is_lxx_plus=False,
+        is_lxx_minus=False,
+        mt_witness_lacuna=True,
+        trans_local=False,
+        trans_remote=False,
+        trans_style=False,
+    )
+
+    assert state.cardinality_mt_lxx == "zero_one"
+    assert state.token_balance_mt_lxx == "not_applicable"
+    assert state.addition_vs_mt is False
+    assert state.omission_vs_mt is False
+
+
+@pytest.mark.parametrize(
+    ("mt_n", "lxx_n"),
+    (
+        (1, 1),
+        (0, 0),
+    ),
+)
+def test_mt_witness_lacuna_rejects_contradictory_cardinality(
+    mt_n: int,
+    lxx_n: int,
+) -> None:
+    with pytest.raises(TechniqueError, match="witness lacuna"):
+        derive_technique_state(
+            mt_n=mt_n,
+            lxx_n=lxx_n,
+            is_lxx_plus=False,
+            is_lxx_minus=False,
+            mt_witness_lacuna=True,
+            trans_local=False,
+            trans_remote=False,
+            trans_style=False,
+        )
+
+
+def test_alignment_sirach_lacuna_uses_typed_annotation_as_technique_evidence() -> None:
+    doc = parse_parallel_text(
+        "Sir 1:1\n[..]\tPA=SA\n",
+        source_name="27.Sirach.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    technique = derive_alignment_technique("27.Sirach.par", alignment)
+
+    assert technique.cardinality_mt_lxx == "zero_one"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+
 def test_source_flags_cannot_contradict_nonempty_sides() -> None:
     with pytest.raises(TechniqueError, match="non-empty MT"):
         derive_technique_state(
