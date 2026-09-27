@@ -518,6 +518,8 @@ def _semantic_kinds(alignment: AlignmentRecord, *, side: str) -> tuple[str, ...]
             or (side == "lxx" and annotation.side == "lxx")
         )
     }
+    if side == "mt" and alignment.retroversion_kind not in {None, "plain"}:
+        kinds.add(alignment.retroversion_kind)
     return tuple(sorted(kinds))
 
 
@@ -531,6 +533,8 @@ def _semantic_scopes(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[st
             or (side == "lxx" and annotation.side == "lxx")
         )
     }
+    if side == "mt" and alignment.retroversion_kind not in {None, "plain"}:
+        scopes.add((alignment.retroversion_kind, "mt_b"))
     return tuple(sorted(scopes))
 
 
