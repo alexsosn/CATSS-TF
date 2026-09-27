@@ -56,15 +56,11 @@ DBR	--
 
     parsed = parse_parallel_file(source_path)
     expected_ids = tuple(
-        alignment.alignment_id
-        for verse in parsed.verses
-        for alignment in verse.alignments
+        alignment.alignment_id for verse in parsed.verses for alignment in verse.alignments
     )
     assert tuple(api.F.catss_alignment_id.v(node) for node in range(1, 6)) == expected_ids
 
-    plus_slots = tuple(
-        row[0] for row in api.S.search("alignment catss_lxx_plus=1", silent="deep")
-    )
+    plus_slots = tuple(row[0] for row in api.S.search("alignment catss_lxx_plus=1", silent="deep"))
     minus_slots = tuple(
         row[0] for row in api.S.search("alignment catss_lxx_minus=1", silent="deep")
     )
