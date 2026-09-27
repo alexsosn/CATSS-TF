@@ -74,9 +74,7 @@ def test_mt_side_apparent_minus_is_typed_without_becoming_lxx_plus() -> None:
     assert alignment.is_lxx_minus is False
 
     apparent = tuple(
-        annotation
-        for annotation in alignment.annotations
-        if annotation.kind == "apparent_minus"
+        annotation for annotation in alignment.annotations if annotation.kind == "apparent_minus"
     )
     assert len(apparent) == 1
     assert apparent[0].side == "mt_a"
@@ -92,10 +90,7 @@ def test_greek_side_minus_does_not_emit_mt_apparent_minus() -> None:
     alignment = doc.verses[0].alignments[0]
 
     assert alignment.is_lxx_minus is True
-    assert not any(
-        annotation.kind == "apparent_minus"
-        for annotation in alignment.annotations
-    )
+    assert not any(annotation.kind == "apparent_minus" for annotation in alignment.annotations)
 
 
 def test_parse_ketiv_and_qere_independently() -> None:
