@@ -1,9 +1,10 @@
 # CATSS-TF
 
-CATSS-TF is a materializer-only project for projecting the CATSS Hebrew–Greek parallel alignment onto existing Text-Fabric corpora.
+CATSS-TF materializes the CATSS Hebrew–Greek parallel alignment as Text-Fabric.
 
-The intended outputs are two locally generated TF modules:
+The intended outputs are three locally generated artifacts:
 
+- `catss` — a standalone canonical CATSS corpus with alignment groups as first-class nodes;
 - `catss-bhsa` — CATSS alignment annotations attached to nodes of ETCBC/BHSA;
 - `catss-lxx` — the same canonical CATSS alignments projected onto nodes of CenterBLC/LXX.
 
@@ -37,20 +38,27 @@ catss-tf --version
 
 Read:
 
-1. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
-2. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
-3. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
-4. [CHANGELOG.md](CHANGELOG.md)
-5. [research.md](research.md)
-6. [design.md](design.md)
-7. [plan.md](plan.md)
-8. [AGENTS.md](AGENTS.md)
+1. [docs/canonical-corpus.md](docs/canonical-corpus.md) — standalone CATSS corpus and node model
+2. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
+3. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
+4. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
+5. [CHANGELOG.md](CHANGELOG.md)
+6. [research.md](research.md)
+7. [design.md](design.md)
+8. [plan.md](plan.md)
+9. [AGENTS.md](AGENTS.md)
 
 ## Architectural boundary
 
 CATSS is the source of alignment semantics. BHSA and LXX remain the owners of their node identities and linguistic annotation.
 
-A Text-Fabric module is a collection of additional features built around an existing warp. CATSS-TF therefore does not create an `alignment` node type in a module. Instead, both projections attach a shared stable `catss_alignment_id` and related CATSS features to existing parent nodes.
+The standalone `catss` corpus owns a Text-Fabric warp whose slot type is
+`alignment`. Every CATSS alignment group is therefore independently queryable,
+including groups with an empty Hebrew or Greek side.
+
+The two projection modules remain weft-only collections of additional features built
+around an existing parent warp. They do not create nodes in BHSA or LXX. Both attach
+the same stable `catss_alignment_id` used by the canonical corpus.
 
 The materialization model is:
 
@@ -59,14 +67,14 @@ CATSS source acquired by user
           |
           v
 canonical CATSS alignment IR
-       /                  \
-      v                    v
-resolve Hebrew          resolve Greek
-to BHSA nodes           to LXX nodes
-      |                    |
-      v                    v
-catss-bhsa             catss-lxx
-TF module              TF module
+      /          |          \
+     v           v           v
+  catss       resolve      resolve
+ standalone    Hebrew       Greek
+ TF corpus       |           |
+                 v           v
+             catss-bhsa  catss-lxx
+             TF module   TF module
 ```
 
 ## License
@@ -116,6 +124,7 @@ from catss_tf import (
     TextFabricLxxProvider,
     compare_projection_bundles,
     materialize_bhsa,
+    materialize_corpus,
     materialize_lxx,
 )
 ```
