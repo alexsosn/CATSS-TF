@@ -16,7 +16,7 @@ Examples:
 - `catss_sem_lxx_conjectural_emendation=1` — LXX conjectural emendation.
 - `catss_sem_sirach_uncertain_fragmentary_letter=1` — Sirach-specific meaning of `*`.
 
-Existing convenience features such as `catss_doublet`, `catss_distributive`, and `catss_repetition` remain available where already defined. The `catss_sem_*` namespace is the complete semantic interface.
+Existing convenience features such as `catss_doublet`, `catss_distributive`, and `catss_repetition` remain available where already defined. Column-B reconstruction strategy also remains available categorically as `catss_retro_kind`; non-plain raw strategies are additionally projected into the complete `catss_sem_*` interface, scoped to `_mt_b` (for example `%vap` → `catss_sem_active_to_passive_mt_b=1`). The `catss_sem_*` namespace is therefore the complete boolean semantic interface.
 
 ## Scope
 
