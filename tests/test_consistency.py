@@ -15,7 +15,11 @@ from catss_tf.bhsa_schema import (
     BHSA_VERSION,
     BhsaParentProbe,
 )
-from catss_tf.consistency import compare_projection_bundles
+from catss_tf.canonical_materializer import materialize_corpus
+from catss_tf.consistency import (
+    compare_canonical_projection_bundle,
+    compare_projection_bundles,
+)
 from catss_tf.lxx_materializer import materialize_lxx
 from catss_tf.lxx_resolver import LxxSpan, LxxWord
 from catss_tf.lxx_schema import (
@@ -200,6 +204,54 @@ def _rewrite_tsv(
         writer = csv.DictWriter(handle, fieldnames=fieldnames, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def test_canonical_projection_consistency_matches_both_projection_bundles(
+    tmp_path: pathlib.Path,
+) -> None:
+    bhsa, lxx = _materialize_common_bundle_pair(tmp_path)
+    canonical = tmp_path / "catss"
+    materialize_corpus(tmp_path / "source", canonical)
+
+    bhsa_report = compare_canonical_projection_bundle(canonical, bhsa, projection="bhsa")
+    lxx_report = compare_canonical_projection_bundle(canonical, lxx, projection="lxx")
+
+    for report in (bhsa_report, lxx_report):
+        assert report.ok is True
+        assert report.findings == ()
+        assert report.summary.source_files == 1
+        assert report.summary.comparable_sources == 1
+        assert report.summary.canonical_alignments == 8
+        assert report.summary.fingerprint_mismatches == 0
+        assert report.summary.canonical_mismatches == 0
+        assert report.summary.orphan_projection_rows == 0
+
+
+def test_canonical_projection_consistency_detects_drift_and_orphans(
+    tmp_path: pathlib.Path,
+) -> None:
+    _bhsa, lxx = _materialize_common_bundle_pair(tmp_path)
+    canonical = tmp_path / "catss"
+    materialize_corpus(tmp_path / "source", canonical)
+
+    def corrupt_alignment(rows: list[dict[str, str]]) -> None:
+        rows[0]["mt_raw"] = "TAMPERED"
+
+    def orphan_mapping(rows: list[dict[str, str]]) -> None:
+        rows[0]["alignment_id"] = "catss-deadbeef"
+
+    _rewrite_tsv(lxx / "catss-alignments.tsv", corrupt_alignment)
+    _rewrite_tsv(lxx / "catss-mappings.tsv", orphan_mapping)
+
+    report = compare_canonical_projection_bundle(canonical, lxx, projection="lxx")
+
+    assert report.ok is False
+    assert report.summary.canonical_mismatches == 1
+    assert report.summary.orphan_projection_rows == 1
+    assert {finding.code for finding in report.findings} >= {
+        "canonical_alignment_mismatch",
+        "orphan_projection_row",
+    }
 
 
 def test_consistency_accepts_expected_projection_asymmetries(tmp_path: pathlib.Path) -> None:
