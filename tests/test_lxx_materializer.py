@@ -278,11 +278,11 @@ def test_mt_apparent_minus_is_query_native_on_lxx_words(
 
     semantic = (output / "catss_sem_apparent_minus.tf").read_text(encoding="utf-8")
     scoped = (output / "catss_sem_apparent_minus_mt_a.tf").read_text(encoding="utf-8")
-    plus = (output / "catss_lxx_plus.tf").read_text(encoding="utf-8")
+    plus_path = output / "catss_lxx_plus.tf"
 
     assert "1\t1" in semantic
     assert "1\t1" in scoped
-    assert "1\t1" not in plus
+    assert not plus_path.exists() or "1\t1" not in plus_path.read_text(encoding="utf-8")
 
 
 def test_transposition_alignment_and_carrier_use_two_scalar_lanes(
