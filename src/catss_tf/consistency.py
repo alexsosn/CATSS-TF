@@ -12,6 +12,10 @@ from catss_tf.lxx_schema import classify_catss_source as classify_lxx_source
 from catss_tf.tf_schema import SIDECAR_COLUMNS
 
 _REQUIRED_SIDECARS = tuple(SIDECAR_COLUMNS)
+_CANONICAL_ROW_MISMATCH_MESSAGE = (
+    "canonical CATSS rows differ between standalone and projection bundle"
+)
+
 _CANONICAL_TABLES = {
     "catss-alignments.tsv": "canonical_alignment_mismatch",
     "catss-technique.tsv": "technique_mismatch",
@@ -162,7 +166,7 @@ def compare_canonical_projection_bundle(
                         source=source,
                         alignment_id=None,
                         table=table,
-                        message="canonical CATSS rows differ between standalone and projection bundle",
+                        message=_CANONICAL_ROW_MISMATCH_MESSAGE,
                     )
                 )
 
