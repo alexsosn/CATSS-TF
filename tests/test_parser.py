@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from catss_tf.parser import parse_parallel_text
+from catss_tf.parser import alignment_id_for, parse_parallel_text
 
 
 def test_parse_basic_alignment_ratios() -> None:
@@ -65,6 +65,12 @@ def test_mt_side_apparent_minus_is_typed_without_becoming_lxx_plus() -> None:
     alignment = doc.verses[0].alignments[0]
 
     assert alignment.raw_lines == (raw,)
+    assert alignment.alignment_id == alignment_id_for(
+        source_name="01.Genesis.par",
+        header_raw="Gen 8:7",
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
     assert alignment.mt_raw == "--- =;L/R)T <8.8>"
     assert alignment.mt_col_a == "---"
     assert alignment.mt_col_b == ";L/R)T <8.8>"
