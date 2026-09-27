@@ -75,6 +75,49 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Research Hebrew-empty Greek-nonempty marker population
+        run: |
+          python - <<'PY'
+          import collections
+          import pathlib
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          counts = collections.Counter()
+          examples = collections.defaultdict(list)
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      if alignment.mt_count != 0 or alignment.lxx_count == 0:
+                          continue
+                      marker = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else '<empty>'
+                      counts[marker] += 1
+                      if len(examples[marker]) < 8:
+                          examples[marker].append(
+                              (
+                                  name,
+                                  verse.chapter,
+                                  verse.verse,
+                                  min(alignment.source_lines),
+                                  alignment.mt_raw,
+                                  alignment.lxx_raw,
+                                  alignment.mt_col_b,
+                                  tuple(annotation.kind for annotation in alignment.annotations),
+                                  (
+                                      alignment.is_transposition_local,
+                                      alignment.is_transposition_remote,
+                                      alignment.is_transposition_stylistic,
+                                  ),
+                              )
+                          )
+          print('HEBREW_EMPTY_GREEK_NONEMPTY_COUNTS')
+          for key, count in counts.most_common():
+              print(repr(key), count)
+              for example in examples[key]:
+                  print('  ', repr(example))
+          PY
       - name: Assert complete notation coverage
         run: |
           set +e
