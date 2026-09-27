@@ -262,6 +262,29 @@ def test_source_repair_is_query_native_on_available_lxx_words(
         assert f"{node}\t--+ '' =H/BHMH" in scoped_payload
 
 
+def test_mt_apparent_minus_is_query_native_on_lxx_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        "Gen 1:1\n--- =;DBR\tLOGOS\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider((_span("λόγος"),))
+
+    materialize_lxx(source, output, provider=provider)
+
+    semantic = (output / "catss_sem_apparent_minus.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_apparent_minus_mt_a.tf").read_text(encoding="utf-8")
+    plus = (output / "catss_lxx_plus.tf").read_text(encoding="utf-8")
+
+    assert "1\t1" in semantic
+    assert "1\t1" in scoped
+    assert "1\t1" not in plus
+
+
 def test_transposition_alignment_and_carrier_use_two_scalar_lanes(
     tmp_path: pathlib.Path,
 ) -> None:
