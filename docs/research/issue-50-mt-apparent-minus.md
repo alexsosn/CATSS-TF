@@ -3,90 +3,148 @@
 ## Scope
 
 Issue #50 was discovered by the complete-CATSS gate for the standalone canonical corpus.
-The first blocking row after the known Genesis 6:19 source typo is:
+The first blocking row is under the current CATSS source header **Genesis 8:7**:
 
 ```
-Gen 8:8
---- =;L/R)T <8.8>    TOU= I)DEI=N
+--- =;L/R)T <8.8>	TOU= I)DEI=N
 ```
 
-The current parser correctly produces zero MT lexical elements and two Greek lexical
-elements, but it has no typed semantic for the MT-column-A `---` marker. Technique-v1
-therefore rejects the alignment as an unexplained Hebrew-empty / Greek-nonempty group.
+The `<8.8>` text belongs to source-note/retroversion markup; it is not the CATSS
+header reference.
 
-This research determines whether `---` is another spelling of LXX-plus or a different
-CATSS judgment, and what representation preserves that distinction.
+The current parser already derives zero MT lexical elements, two Greek lexical
+elements, and a column-B contextual retroversion. It lacks a typed semantic for the
+MT-column-A `---` marker, so technique-v1 rejects the otherwise explicit CATSS event.
 
-## Documentary and parser evidence
+## Documentary/prior-parser evidence
 
-### CATSS column model
-
-The CATSS parallel format treats Hebrew column A as the formal MT side of the
-alignment. Optional Hebrew column B contains selected reconstructed/retroverted Hebrew
-readings presumed behind the Greek. The current CATSS-TF parser already preserves this
-split and classifies column-B prefixes independently.
-
-Cody Kingham's reconstruction of the CATSS 1986/1991 documentation records two
-different Hebrew-side alignment sigla in `regex_patterns.py`:
+Cody Kingham's open CATSS parser reconstruction explicitly separates two Hebrew-side
+alignment markers in `regex_patterns.py`:
 
 - `--+`: “In column A of the Hebrew: element added in the Greek”;
 - `---`: “apparent minus in the MT over against the Greek”.
 
-The distinction matters: the first is explicit evidence for an LXX addition versus MT;
-the second says that the MT appears to lack material represented in Greek, often with a
-column-B retroversion describing a presumed Hebrew counterpart.
+His accompanying research notes, based on the CATSS 1986/1991 documentation, describe
+Hebrew column A as the formal MT-equivalent column and column B as selected
+retroverted/reconstructed Hebrew readings presumed behind the Greek.
 
-The same source separately treats Greek-column `---` as a missing Greek counterpart,
-i.e. the ordinary LXX-minus case. Position therefore changes the semantic direction.
+The categories therefore must not be collapsed. `--+` is explicit source evidence for
+an addition in Greek relative to MT. Hebrew-side `---` is evidence that MT apparently
+lacks an element represented by Greek, potentially accompanied by a reconstructed
+Hebrew Vorlage in column B.
 
-### Independent current parser behavior
+A separate current parser, `curran-gehring/catss`, likewise treats `--+` in Hebrew as
+LXX-plus and Greek-side `---` as LXX-minus. It does not model Hebrew-side `---`
+separately, so it supplies no basis for treating the two Hebrew markers as synonyms.
 
-`curran-gehring/catss` recognizes `--+` in the Hebrew column as LXX-plus and
-Greek-column `---` as LXX-minus. It does not currently model Hebrew-column `---` as
-a separate typed fact. That omission cannot justify treating the marker as `--+`.
+## Existing CATSS-TF vocabulary
 
-### Existing CATSS-TF vocabulary
+`notation.py` already declares the semantic identity:
 
-CATSS-TF already has the documented semantic identity
-`Ap- -> apparent_minus` in `notation.py`. The projection schema therefore already
-knows how to create `catss_sem_apparent_minus*` features when an annotation of that
-kind exists. Reusing this identity avoids introducing a second name for the same CATSS
-concept.
+```
+Ap- -> apparent_minus (family: alignment)
+```
 
-CATSS-TF also already distinguishes:
-- explicit LXX-plus (`is_lxx_plus`, `catss_lxx_plus`, technique
-  `addition_vs_mt`);
-- explicit LXX-minus (`is_lxx_minus`, `catss_lxx_minus`, technique
-  `omission_vs_mt`);
-- empty-side transposition carriers, which are admissible without being relabeled as
-  additions/omissions.
+The generic TF schema therefore already defines
+`catss_sem_apparent_minus*` features. The parser should emit that existing semantic
+identity rather than creating a synonym.
 
-The apparent-MT-minus case should follow the same conservative rule: make the explicit
-source evidence admissible while keeping `addition_vs_mt=False`.
+CATSS-TF already admits zero-side transposition carriers without classifying them as
+translation additions/omissions. Apparent MT minus should use the same conservative
+principle: it is explicit evidence that makes the zero-MT shape valid, while
+`addition_vs_mt` remains false.
 
-## Projection consequences
+## Complete 46-file snapshot audit
 
-For LXX projection, the Greek words exist and can carry
-`catss_sem_apparent_minus` with source scope `mt_a`.
+A research-only CI scan loaded all 46 current CATSS parallel files:
 
-For BHSA projection, there is no MT word corresponding to the apparent-minus group.
-The existing precedent for explicit LXX-plus is a verse-level anchor on the BHSA parent
-warp. A distinct apparent-MT-minus anchor is therefore the faithful query-native
-representation on the MT projection; it must not reuse the LXX-plus anchor kind.
+- 26,183 verse records;
+- 349,908 alignment records;
+- 350,426 accounted source data lines;
+- zero unaccounted lines;
+- zero unknown semantic annotations.
 
-The standalone canonical corpus can preserve the alignment slot plus its typed
-annotation directly.
+For every Hebrew-empty / Greek-nonempty alignment, the audit grouped the first
+MT-column-A marker:
 
-## Questions for complete-snapshot audit
+| marker class | count | interpretation/status |
+| --- | ---: | --- |
+| `--+` | 19,943 | explicit LXX-plus, already modeled |
+| `-+` | 4 | explicit plus variant, already modeled |
+| `---+` | 12 | explicit plus variant, already modeled |
+| `{...}` | 6,220 | remote transposition, already modeled |
+| `^` | 468 | transposition evidence, already modeled |
+| `^^^` | 397 | transposition evidence, already modeled |
+| `---` | **61** | distinct apparent-MT-minus class; scope of #50 |
+| Sirach `[..]` | 4,278 | manuscript/witness lacuna; split to #52 |
+| raw-empty / column-B-only | 13 | heterogeneous residual set; split to #53 |
+| MT-side `--` | 4 | unresolved residual set; split to #53 |
+| other stylistic-transposition brace forms | 8 | already typed transposition evidence |
 
-Before freezing behavior, scan all 46 current CATSS parallel files and report:
+Representative `---` rows occur across multiple books and include forms with ditto
+marks, column-B retroversions, contextual references, and occasional independent
+transposition annotations. The common invariant is the MT-column-A first token
+`---`, not a Genesis-specific spelling.
 
-1. every Hebrew-empty / Greek-nonempty alignment grouped by first MT-column-A marker;
-2. count and representative references for MT-column-A `---`;
-3. whether all such rows are lexically empty on MT after parsing;
-4. whether variants such as ditto markers, `{x}`, column-B retroversions or
-   transposition markers materially alter the category;
-5. any other zero-MT/nonempty-Greek marker class not already explained by `--+`,
-   transposition, known source repair, or apparent minus.
+The population audit therefore supports a general documented marker rule, unlike the
+single-row source repair in #48.
 
-Do not broaden the parser until this audit is complete.
+## Representation decisions
+
+### R50-1 — parser semantic
+
+When the **first token of MT column A is exactly `---`**, emit one
+`Annotation(side="mt_a", kind="apparent_minus", family="alignment", raw="---")`.
+
+Do not set `is_lxx_plus`. Do not infer this semantic from lexical emptiness alone.
+Greek-side `---` continues to mean `is_lxx_minus` and must not emit the MT
+`apparent_minus` semantic.
+
+### R50-2 — technique admissibility
+
+Technique-v1 accepts a Hebrew-empty / Greek-nonempty alignment when explicit
+MT-apparent-minus evidence is present, in addition to the already accepted LXX-plus and
+transposition cases.
+
+For this class:
+
+- cardinality remains `zero_one` / `zero_many`;
+- token balance remains `not_applicable`;
+- `addition_vs_mt=False`;
+- `omission_vs_mt=False`;
+- transposition remains independently derived.
+
+Technique validation rejects contradictory `apparent_minus` evidence if MT lexical
+material is present or Greek lexical material is absent.
+
+### R50-3 — projection representation
+
+On `catss-lxx`, the existing Greek word memberships carry
+`catss_sem_apparent_minus=1` and
+`catss_sem_apparent_minus_mt_a=1`. This requires the semantic to cross the projection
+boundary while retaining its source scope, analogous to the existing explicit
+`source_repair` provenance rule.
+
+On `catss-bhsa`, no MT word exists for the event. The resolver emits a distinct
+verse-level anchor kind `apparent_mt_minus`. TF exposes both an aggregate
+`catss_apparent_mt_minus_n` and `catss_sem_apparent_minus=1` on the BHSA verse node.
+The anchor sidecar preserves each individual alignment identity and Greek token count.
+
+The existing `lxx_plus` anchor remains separate.
+
+### R50-4 — canonical representation
+
+The standalone canonical corpus needs no special node type: its alignment slot already
+survives zero lexical elements, and its first-class annotation node preserves
+`apparent_minus` with `mt_a` scope. Once #50 lands on main, #40's complete-corpus
+gate exercises this path.
+
+### R50-5 — residual classes stay separate
+
+The audit discovered materially different zero-MT classes. They are not part of #50:
+
+- #52: Sirach `[..]` witness lacuna/illegibility;
+- #53: 13 raw-empty/column-B-only rows plus four MT-side `--` rows requiring
+  source-by-source forensic classification.
+
+No generic “empty MT is acceptable” fallback is permitted.
