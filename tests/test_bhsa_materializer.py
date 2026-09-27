@@ -522,5 +522,3 @@ def test_bhsa_preserves_mt_a_vs_mt_b_semantic_scope(tmp_path: pathlib.Path) -> N
     assert "1\t1" in (output / "catss_sem_repetition_mt_b.tf").read_text(encoding="utf-8")
     assert not (output / "catss_sem_distributive_mt_b.tf").exists()
     assert not (output / "catss_sem_repetition_mt_a.tf").exists()
-
-
