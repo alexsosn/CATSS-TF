@@ -1,13 +1,14 @@
 import pathlib
+from typing import Any
 
 import pytest
+from tf.fabric import Fabric  # type: ignore[import-untyped]
+
+import catss_tf
 from catss_tf.canonical_materializer import (
     CanonicalMaterializationError,
     materialize_corpus,
 )
-from tf.fabric import Fabric  # type: ignore[import-untyped]
-
-import catss_tf
 from catss_tf.parser import parse_parallel_file
 
 
@@ -18,7 +19,7 @@ def _write_source(root: pathlib.Path, name: str, text: str) -> pathlib.Path:
     return path
 
 
-def _load_corpus(root: pathlib.Path, module: str = "catss"):
+def _load_corpus(root: pathlib.Path, module: str = "catss") -> Any:
     fabric = Fabric(locations=str(root), modules=(module,), silent="deep")
     return fabric.loadAll(silent="deep")
 
