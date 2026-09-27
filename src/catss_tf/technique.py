@@ -67,6 +67,7 @@ def derive_technique_state(
     trans_local: bool,
     trans_remote: bool,
     trans_style: bool,
+    apparent_mt_minus: bool = False,
 ) -> TechniqueState:
     """Derive conservative MT↔LXX technique facts from canonical scalar state."""
 
@@ -81,10 +82,23 @@ def derive_technique_state(
         raise TechniqueError("CATSS LXX-minus contradicts a non-empty Greek side")
     if is_lxx_minus and mt_n == 0:
         raise TechniqueError("CATSS LXX-minus requires MT lexical material")
+    if apparent_mt_minus and mt_n != 0:
+        raise TechniqueError("CATSS apparent MT minus contradicts a non-empty MT side")
+    if apparent_mt_minus and lxx_n == 0:
+        raise TechniqueError("CATSS apparent MT minus requires Greek lexical material")
+    if apparent_mt_minus and is_lxx_plus:
+        raise TechniqueError("CATSS alignment cannot be both LXX-plus and apparent MT minus")
     transposition_marked = trans_local or trans_remote or trans_style
-    if mt_n == 0 and lxx_n > 0 and not is_lxx_plus and not transposition_marked:
+    if (
+        mt_n == 0
+        and lxx_n > 0
+        and not is_lxx_plus
+        and not apparent_mt_minus
+        and not transposition_marked
+    ):
         raise TechniqueError(
-            "Hebrew-empty Greek alignment requires CATSS LXX-plus or transposition evidence"
+            "Hebrew-empty Greek alignment requires CATSS LXX-plus, apparent MT minus, "
+            "or transposition evidence"
         )
     if mt_n > 0 and lxx_n == 0 and not is_lxx_minus and not transposition_marked:
         raise TechniqueError(
@@ -148,6 +162,10 @@ def derive_alignment_technique(source: str, alignment: AlignmentRecord) -> Techn
         trans_local=alignment.is_transposition_local,
         trans_remote=alignment.is_transposition_remote,
         trans_style=alignment.is_transposition_stylistic,
+        apparent_mt_minus=any(
+            annotation.side == "mt_a" and annotation.kind == "apparent_minus"
+            for annotation in alignment.annotations
+        ),
     )
     return TechniqueRecord(
         source=source,
