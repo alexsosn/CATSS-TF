@@ -23,7 +23,10 @@ Commit failing behavior tests before production changes:
 7. LXX materializer: mapped Greek words expose
    `catss_sem_apparent_minus` and `catss_sem_apparent_minus_mt_a`;
 8. existing explicit `--+` behavior remains addition-vs-MT and existing Greek
-   `---` remains omission-vs-MT.
+   `---` remains omission-vs-MT;
+9. cross-projection consistency accepts exactly the expected apparent-minus asymmetry:
+   BHSA verse anchor + LXX word mappings, with no neighboring BHSA word mapping or
+   LXX structural anchor.
 
 The RED commit(s) contain no production fix.
 
@@ -40,7 +43,8 @@ Implement the smallest shared semantic change:
 - standard semantic feature on that verse node;
 - cross-projection semantic applicability for `apparent_minus` so Greek memberships
   expose the MT-scoped source judgment;
-- materializer sidecar/anchor propagation.
+- materializer sidecar/anchor propagation;
+- consistency classification for the typed apparent-minus asymmetry.
 
 Do not:
 - change `is_lxx_plus`;
