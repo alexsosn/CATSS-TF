@@ -46,6 +46,20 @@ def test_known_genesis_6_19_source_repair_is_explicit_and_semantic_only() -> Non
     assert "catss_sem_source_repair" in FEATURE_SPECS
 
 
+def test_known_source_repair_is_pinned_to_genesis_6_19() -> None:
+    mt_cell = "--= '' =H/BHMH"
+    document = parse_parallel_text(
+        f"Gen 7:1\n{mt_cell}\tTW=N KTHNW=N\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.mt_raw == mt_cell
+    assert alignment.is_lxx_plus is False
+    assert alignment.mt_col_a == "--"
+    assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
+
+
 @pytest.mark.parametrize(
     ("source_name", "mt_cell"),
     (
