@@ -8,6 +8,7 @@ from catss_tf import __version__
 from catss_tf.browser import BrowserLaunchError, launch_browser
 from catss_tf.parser import parse_parallel_file
 from catss_tf.source import (
+    CATSS_PARALLEL_FILENAMES,
     CCAT_USER_DECLARATION_URL,
     download_parallel_source,
     inspect_parallel_source,
@@ -35,6 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="validate local CATSS parallel files before parent-corpus mapping",
     )
     validate.add_argument("source", help="local directory containing CATSS parallel .par files")
+    validate.add_argument(
+        "--complete",
+        action="store_true",
+        help="require the complete configured CATSS parallel snapshot before validating",
+    )
     validate.add_argument(
         "--allow",
         action="append",
@@ -70,6 +76,17 @@ def main(argv: collections.abc.Sequence[str] | None = None) -> int:
     if args.command == "validate":
         source_root = pathlib.Path(args.source)
         manifest = inspect_parallel_source(source_root)
+        if args.complete:
+            present = {item.relative_path for item in manifest.files}
+            expected = set(CATSS_PARALLEL_FILENAMES)
+            missing = sorted(expected - present)
+            unexpected = sorted(present - expected)
+            if missing or unexpected:
+                print("complete_snapshot=false")
+                print(f"missing_source_files={len(missing)}")
+                print(f"unexpected_source_files={len(unexpected)}")
+                return 2
+            print("complete_snapshot=true")
         documents = tuple(
             parse_parallel_file(source_root / item.relative_path) for item in manifest.files
         )
@@ -81,7 +98,8 @@ def main(argv: collections.abc.Sequence[str] | None = None) -> int:
                 if finding.line_no is not None
                 else finding.source_name
             )
-            print(f"{finding.severity} {finding.code} {location}")
+            raw = f" raw={finding.raw!r}" if finding.raw is not None else ""
+            print(f"{finding.severity} {finding.code} {location}{raw}")
         return 0 if report.ok else 1
 
     if args.command == "browse":

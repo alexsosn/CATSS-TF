@@ -93,11 +93,13 @@ HB\t?LOGOS?? QEOS?
 def test_genuinely_unknown_greek_sigla_remain_unknown() -> None:
     doc = parse_parallel_text(
         """Test 1:1
-HB\tLOGOS {pm}
+HB\tLOGOS {zzUNKNOWN}
 """,
         source_name="99.Test.par",
     )
 
     row = doc.verses[0].alignments[0]
     assert row.lxx_tokens == ("LOGOS",)
-    assert any(a.side == "lxx" and a.kind == "unknown" and a.raw == "{pm}" for a in row.annotations)
+    assert any(
+        a.side == "lxx" and a.kind == "unknown" and a.raw == "{zzUNKNOWN}" for a in row.annotations
+    )

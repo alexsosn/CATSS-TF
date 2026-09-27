@@ -123,3 +123,8 @@ from catss_tf import (
 Materialization is deliberately library-first. The mapping/resolver behavior stays in
 CATSS-TF; downstream integrations such as Agora should call the released API rather than
 reimplement CATSS semantics.
+
+
+## Special notation semantics
+
+CATSS special notation is decoded into query-native `catss_sem_*` Text-Fabric features rather than requiring researchers to parse raw sigla or provenance sidecars. Context-bearing notation has corresponding `*_payload` features, and unknown notation fails validation instead of falling into a generic bucket. See [docs/special-notation.md](docs/special-notation.md) for semantic families, Sirach-specific scope, and query examples.

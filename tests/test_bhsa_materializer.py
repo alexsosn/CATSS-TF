@@ -461,3 +461,82 @@ def test_bhsa_materializer_emits_queryable_technique_features_and_sidecar(
             "transposition_mt_lxx": "none_marked",
         }
     ]
+
+
+def test_bhsa_materializes_mt_scoped_annotation_semantics_as_node_features(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..d}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+
+    assert "1\t1" in (output / "catss_distributive.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
+
+
+def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..d)B}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider(
+            (
+                dataclasses.replace(
+                    _verse(),
+                    words=(
+                        _verse().words[0],
+                        dataclasses.replace(_verse().words[0], node=3),
+                    ),
+                ),
+            )
+        ),
+        parent_probe=_probe(),
+    )
+    assert "1\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
+    payload_text = (output / "catss_sem_distributive_payload.tf").read_text(encoding="utf-8")
+    assert "1\t)B" in payload_text
+
+
+def test_bhsa_preserves_mt_a_vs_mt_b_semantic_scope(tmp_path: pathlib.Path) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..d} = )B {..r}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+    assert "1\t1" in (output / "catss_sem_distributive_mt_a.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_repetition_mt_b.tf").read_text(encoding="utf-8")
+    assert not (output / "catss_sem_distributive_mt_b.tf").exists()
+    assert not (output / "catss_sem_repetition_mt_a.tf").exists()
+
+
+def test_bhsa_projects_column_b_retroversion_kind_into_complete_semantic_api(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B = %vap )B\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+
+    assert "1\tactive_to_passive" in (output / "catss_retro_kind.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_active_to_passive.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_active_to_passive_mt_b.tf").read_text(encoding="utf-8")

@@ -55,7 +55,7 @@ UNSPLIT
 def test_unknown_annotations_are_preserved_and_unresolved() -> None:
     doc = parse_parallel_text(
         """Test 1:1
-HB .xx {zzUNKNOWN}\tGR
+HB .toolong {zzUNKNOWN}\tGR
 """,
         source_name="99.Test.par",
     )
@@ -65,7 +65,7 @@ HB .xx {zzUNKNOWN}\tGR
     assert report.summary.unknown_annotations == 2
     assert [(finding.code, finding.side, finding.raw) for finding in report.findings] == [
         ("unknown_annotation", "mt_a", "{zzUNKNOWN}"),
-        ("unknown_mt_strategy_siglum", "mt_a", ".xx"),
+        ("unknown_mt_strategy_siglum", "mt_a", ".toolong"),
     ]
     assert report.summary.unresolved_count == 2
 
@@ -244,3 +244,20 @@ HB2\tGR2
     assert finding.source_name == "99.Test.par"
     assert finding.line_no == 3
     assert finding.severity == "error"
+
+
+def test_unrecognized_markup_cannot_pass_zero_unknown_audit() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB\tGR [mystery]
+""",
+        source_name="99.Test.par",
+    )
+
+    report = validate_document(doc)
+
+    assert report.ok is False
+    assert report.summary.unknown_annotations == 1
+    finding = next(f for f in report.findings if f.code == "unknown_annotation")
+    assert finding.side == "lxx"
+    assert finding.raw == "[mystery]"
