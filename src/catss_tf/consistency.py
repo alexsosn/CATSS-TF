@@ -162,7 +162,10 @@ def compare_canonical_projection_bundle(
                         source=source,
                         alignment_id=None,
                         table=table,
-                        message="canonical CATSS rows differ between standalone and projection bundle",
+                        message=(
+                            "canonical CATSS rows differ between standalone and "
+                            "projection bundle"
+                        ),
                     )
                 )
 
