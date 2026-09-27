@@ -491,8 +491,10 @@ def _semantic_annotation_applies(
     kind: str,
     projection_side: str,
 ) -> bool:
-    if kind in {"source_repair", "apparent_minus"}:
+    if kind == "source_repair":
         return True
+    if kind == "apparent_minus":
+        return annotation_side == "mt_a"
     if projection_side == "mt":
         return annotation_side != "lxx"
     if projection_side == "lxx":
