@@ -232,6 +232,36 @@ def test_generated_lxx_module_loads_over_parent_warp_and_is_searchable(
     assert (1,) in api.S.search("word catss_lxx_n=1", silent="deep")
 
 
+def test_source_repair_is_query_native_on_available_lxx_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        "Gen 6:19\n--= '' =H/BHMH\tTW=N KTHNW=N\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        (_span("τῶν", "κτηνῶν", chapter=6, verse=19, node=20, start_node=10),)
+    )
+
+    materialize_lxx(source, output, provider=provider)
+
+    repair = (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_source_repair_mt_a.tf").read_text(encoding="utf-8")
+    payload = (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
+    scoped_payload = (output / "catss_sem_source_repair_mt_a_payload.tf").read_text(
+        encoding="utf-8"
+    )
+
+    for node in (10, 11):
+        assert f"{node}\t1" in repair
+        assert f"{node}\t1" in scoped
+        assert f"{node}\t--+ '' =H/BHMH" in payload
+        assert f"{node}\t--+ '' =H/BHMH" in scoped_payload
+
+
 def test_transposition_alignment_and_carrier_use_two_scalar_lanes(
     tmp_path: pathlib.Path,
 ) -> None:
