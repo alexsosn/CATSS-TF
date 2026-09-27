@@ -537,10 +537,4 @@ def test_bhsa_projects_column_b_retroversion_kind_into_complete_semantic_api(
         parent_probe=_probe(),
     )
 
-    assert "1\tactive_to_passive" in (output / "catss_retro_kind.tf").read_text(
-        encoding="utf-8"
-    )
-    assert "1\t1" in (output / "catss_sem_active_to_passive.tf").read_text(encoding="utf-8")
-    assert "1\t1" in (output / "catss_sem_active_to_passive_mt_b.tf").read_text(
-        encoding="utf-8"
-    )
+    assert "1\tactive_to_passive" in (output / "catss_retro_kind.tf").read_text(encoding="utf-8")\n    assert "1\t1" in (output / "catss_sem_active_to_passive.tf").read_text(encoding="utf-8")\n    assert "1\t1" in (output / "catss_sem_active_to_passive_mt_b.tf").read_text(encoding="utf-8")\n
