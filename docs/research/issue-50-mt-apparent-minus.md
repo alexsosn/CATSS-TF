@@ -75,7 +75,7 @@ MT-column-A marker:
 | `{...}` | 6,220 | remote transposition, already modeled |
 | `^` | 468 | transposition evidence, already modeled |
 | `^^^` | 397 | transposition evidence, already modeled |
-| `---` | **61** | distinct apparent-MT-minus class; scope of #50 |
+| `---` | **61** | zero-MT/nonempty-Greek apparent-minus technique class; scope of #50 |
 | Sirach `[..]` | 4,278 | manuscript/witness lacuna; split to #52 |
 | raw-empty / column-B-only | 13 | heterogeneous residual set; split to #53 |
 | MT-side `--` | 4 | unresolved residual set; split to #53 |
@@ -83,11 +83,20 @@ MT-column-A marker:
 
 Representative `---` rows occur across multiple books and include forms with ditto
 marks, column-B retroversions, contextual references, and occasional independent
-transposition annotations. The common invariant is the MT-column-A first token
-`---`, not a Genesis-specific spelling.
+transposition annotations. A second marker-wide audit found **63** alignments whose
+MT-column-A first token is exactly `---`. Their cardinalities are:
 
-The population audit therefore supports a general documented marker rule, unlike the
-single-row source repair in #48.
+- `(0, 1)`: 40;
+- `(0, 2)`: 17;
+- `(0, 3)`: 4;
+- `(0, 0)`: 1;
+- `(1, 2)`: 1.
+
+Thus the homogeneous technique class in #50 is the 61 zero-MT/nonempty-Greek rows.
+The marker itself is still typed as `apparent_minus` on all 63 rows, but the two
+contradictory-cardinality outliers remain fail-closed and are tracked separately in
+#54. The population supports a documented marker rule without implying that every
+surface occurrence has a valid technique-v1 cardinality.
 
 ## Representation decisions
 
@@ -158,6 +167,9 @@ The audit discovered materially different zero-MT classes. They are not part of 
 
 - #52: Sirach `[..]` witness lacuna/illegibility;
 - #53: 13 raw-empty/column-B-only rows plus four MT-side `--` rows requiring
-  source-by-source forensic classification.
+  source-by-source forensic classification;
+- #54: the two MT-side `---` outliers with cardinalities `(0, 0)` and `(1, 2)`.
 
-No generic “empty MT is acceptable” fallback is permitted.
+No generic “empty MT is acceptable” fallback is permitted. #50 deliberately keeps
+those two anomalous `---` rows contradictory in technique-v1 until their source
+contexts are researched.

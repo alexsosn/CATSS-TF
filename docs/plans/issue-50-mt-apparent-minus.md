@@ -50,16 +50,18 @@ Do not:
 - change `is_lxx_plus`;
 - infer apparent minus from `mt_n == 0`;
 - reinterpret Greek-side `---`;
-- absorb #52 or #53.
+- absorb #52, #53 or the two #54 cardinality outliers.
 
 ## Gate 3 — complete-snapshot guard
 
 Replace the verbose research audit with a concise invariant that checks the current
-complete snapshot has the researched 61 MT-side `---` alignments and that every one:
+complete snapshot has **63** exact first-token MT-side `---` markers:
 
-- parses with zero MT and nonzero Greek lexical count;
-- has exactly one typed `apparent_minus` annotation;
-- derives technique successfully with `addition_vs_mt=False`.
+- all 63 have exactly one typed `apparent_minus` annotation;
+- exactly 61 have zero MT and nonzero Greek lexical count and derive technique
+  successfully with `addition_vs_mt=False`;
+- the remaining shapes are exactly one `(0, 0)` and one `(1, 2)` alignment;
+- both outliers remain fail-closed in technique-v1 and are tracked by #54.
 
 The existing complete notation gate remains.
 
@@ -91,5 +93,6 @@ exact final head has no blocking findings.
 ## Downstream acceptance
 
 After merge, merge main into PR #47 and rerun its canonical complete-corpus materializer.
-The 61-row apparent-minus class must no longer stop technique derivation. Any next
-distinct zero-side class is handled through #52/#53 rather than by weakening #50.
+The 61-row admissible apparent-minus class must no longer stop technique derivation.
+The two contradictory `---` outliers remain expected downstream blockers for #54;
+Sirach and other residual zero-side classes remain owned by #52/#53.
