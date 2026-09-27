@@ -25,8 +25,8 @@ _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
 _DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
-_KNOWN_SOURCE_ROW_REPAIRS: dict[tuple[str, str, str], str] = {
-    ("01.Genesis.par", "--= '' =H/BHMH", "TW=N KTHNW=N"): "--+ '' =H/BHMH",
+_KNOWN_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
+    ("01.Genesis.par", 6, 19, "--= '' =H/BHMH", "TW=N KTHNW=N"): "--+ '' =H/BHMH",
 }
 
 
@@ -254,7 +254,13 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             )
             continue
 
-        physical = _parse_physical_row(raw, line_no, canonical_source)
+        physical = _parse_physical_row(
+            raw,
+            line_no,
+            canonical_source,
+            current.chapter,
+            current.verse,
+        )
         if pending:
             if pending[-1].continues:
                 pending.append(physical)
@@ -286,7 +292,13 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
     )
 
 
-def _parse_physical_row(raw: str, line_no: int, source_name: str) -> _PhysicalRow:
+def _parse_physical_row(
+    raw: str,
+    line_no: int,
+    source_name: str,
+    chapter: int,
+    verse: int,
+) -> _PhysicalRow:
     if "\t" in raw:
         mt, lxx = raw.split("\t", 1)
         column_split = True
@@ -301,7 +313,13 @@ def _parse_physical_row(raw: str, line_no: int, source_name: str) -> _PhysicalRo
 
     source_mt = mt.strip()
     source_lxx = lxx.strip()
-    semantic_mt, repair = _repair_source_row(source_name, source_mt, source_lxx)
+    semantic_mt, repair = _repair_source_row(
+        source_name,
+        chapter,
+        verse,
+        source_mt,
+        source_lxx,
+    )
     return _PhysicalRow(
         line_no=line_no,
         raw=raw,
@@ -316,10 +334,14 @@ def _parse_physical_row(raw: str, line_no: int, source_name: str) -> _PhysicalRo
 
 def _repair_source_row(
     source_name: str,
+    chapter: int,
+    verse: int,
     mt: str,
     lxx: str,
 ) -> tuple[str, _SourceRepair | None]:
-    semantic_mt = _KNOWN_SOURCE_ROW_REPAIRS.get((source_name, mt, lxx))
+    semantic_mt = _KNOWN_SOURCE_ROW_REPAIRS.get(
+        (source_name, chapter, verse, mt, lxx)
+    )
     if semantic_mt is None:
         return mt, None
     return semantic_mt, _SourceRepair(original_mt=mt, semantic_mt=semantic_mt)
