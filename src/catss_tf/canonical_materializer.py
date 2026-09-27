@@ -536,7 +536,7 @@ def _canonical_sidecars(
         )
     )
 
-    source_rows = [
+    source_rows: list[tuple[object, ...]] = [
         (source.relative_path, source.size_bytes, source.sha256) for source in manifest.files
     ]
     diagnostic_rows = [
