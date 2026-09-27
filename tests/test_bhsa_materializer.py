@@ -226,7 +226,7 @@ def test_apparent_mt_minus_is_query_native_on_bhsa_verse_anchor(
     assert len(apparent) == 1
     assert apparent[0]["parent_node"] == "2"
     assert apparent[0]["token_n"] == "1"
-    assert not any(row["anchor_kind"] == "lxx_plus" for row in apparent)
+    assert [row["anchor_kind"] for row in anchors] == ["apparent_mt_minus"]
 
 
 def test_generated_bhsa_module_loads_over_parent_warp_and_is_searchable(
