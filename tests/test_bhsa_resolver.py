@@ -202,6 +202,28 @@ BR)\tEPOI
     assert all(mapping.alignment_id != plus_id for mapping in report.word_mappings)
 
 
+def test_mt_apparent_minus_gets_distinct_verse_anchor() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+B/R)$YT\tEN
+--- =;DBR\tLOGOS
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(
+        BhsaWord(101, "בראשׁית", None, None),
+        verse_node=9001,
+    )
+
+    report = resolve_bhsa_document(doc, provider)
+
+    apparent_id = doc.verses[0].alignments[1].alignment_id
+    assert [(a.alignment_id, a.bhsa_verse_node, a.kind) for a in report.verse_anchors] == [
+        (apparent_id, 9001, "apparent_mt_minus")
+    ]
+    assert all(mapping.alignment_id != apparent_id for mapping in report.word_mappings)
+
+
 def test_column_b_retroversion_never_becomes_bhsa_word() -> None:
     doc = parse_parallel_text(
         """Gen 1:1
