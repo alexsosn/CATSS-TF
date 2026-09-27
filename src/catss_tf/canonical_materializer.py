@@ -112,8 +112,7 @@ class _GraphBuilder:
         existing = data.get(node)
         if existing is not None and existing != value:
             raise CanonicalMaterializationError(
-                f"conflicting canonical feature {name} on node {node}: "
-                f"{existing!r} != {value!r}"
+                f"conflicting canonical feature {name} on node {node}: {existing!r} != {value!r}"
             )
         data[node] = value
 
@@ -220,9 +219,7 @@ def _snapshot_parallel_source(
 
 def _validate_source_contract(manifest: ParallelSourceManifest) -> None:
     unknown = [
-        item.relative_path
-        for item in manifest.files
-        if item.relative_path not in _SOURCE_RANK
+        item.relative_path for item in manifest.files if item.relative_path not in _SOURCE_RANK
     ]
     if unknown:
         raise CanonicalMaterializationError(
@@ -452,9 +449,7 @@ def _add_detail_nodes(
             builder.feature("catss_raw", node, reference.raw)
 
             target_chapter = (
-                reference.chapter
-                if reference.chapter is not None
-                else context.verse.chapter
+                reference.chapter if reference.chapter is not None else context.verse.chapter
             )
             targets = verse_nodes.get(
                 (context.source, target_chapter, reference.verse),
@@ -487,9 +482,7 @@ def _canonical_sidecars(
         alignment = context.alignment
         alignment_rows.append(_alignment_sidecar_row(context))
         technique_rows.append(
-            technique_sidecar_row(
-                derive_alignment_technique(context.source, alignment)
-            )
+            technique_sidecar_row(derive_alignment_technique(context.source, alignment))
         )
         annotation_rows.extend(
             (
@@ -525,9 +518,7 @@ def _canonical_sidecars(
             str(row[1]),
         )
     )
-    technique_rows.sort(
-        key=lambda row: (_SOURCE_RANK[str(row[0])], str(row[1]))
-    )
+    technique_rows.sort(key=lambda row: (_SOURCE_RANK[str(row[0])], str(row[1])))
     annotation_rows.sort(
         key=lambda row: (
             _SOURCE_RANK[str(row[0])],
@@ -546,8 +537,7 @@ def _canonical_sidecars(
     )
 
     source_rows = [
-        (source.relative_path, source.size_bytes, source.sha256)
-        for source in manifest.files
+        (source.relative_path, source.size_bytes, source.sha256) for source in manifest.files
     ]
     diagnostic_rows = [
         _validation_diagnostic_row(finding)
@@ -651,24 +641,19 @@ def _audit_graph(
 
     expected_by_type = {
         "mt_element": sum(
-            len(alignment.mt_readings)
-            for _source, _verse, alignment in expected_contexts
+            len(alignment.mt_readings) for _source, _verse, alignment in expected_contexts
         ),
         "lxx_element": sum(
-            len(alignment.lxx_tokens)
-            for _source, _verse, alignment in expected_contexts
+            len(alignment.lxx_tokens) for _source, _verse, alignment in expected_contexts
         ),
         "annotation": sum(
-            len(alignment.annotations)
-            for _source, _verse, alignment in expected_contexts
+            len(alignment.annotations) for _source, _verse, alignment in expected_contexts
         ),
         "reference": sum(
-            len(alignment.lxx_references)
-            for _source, _verse, alignment in expected_contexts
+            len(alignment.lxx_references) for _source, _verse, alignment in expected_contexts
         ),
         "source_line": sum(
-            len(alignment.source_lines)
-            for _source, _verse, alignment in expected_contexts
+            len(alignment.source_lines) for _source, _verse, alignment in expected_contexts
         ),
     }
     actual_by_type = _node_type_counts(graph.node_types)
@@ -705,8 +690,7 @@ def _audit_graph(
         "source_line",
     }
     children_by_slot: dict[int, dict[str, int]] = {
-        slot: {node_type: 0 for node_type in child_types}
-        for slot in range(1, graph.max_slot + 1)
+        slot: {node_type: 0 for node_type in child_types} for slot in range(1, graph.max_slot + 1)
     }
     for node, node_type in graph.node_types.items():
         if node_type not in child_types:
