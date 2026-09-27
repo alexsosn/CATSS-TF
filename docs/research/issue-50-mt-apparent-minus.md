@@ -139,7 +139,20 @@ survives zero lexical elements, and its first-class annotation node preserves
 `apparent_minus` with `mt_a` scope. Once #50 lands on main, #40's complete-corpus
 gate exercises this path.
 
-### R50-5 — residual classes stay separate
+### R50-5 — cross-projection consistency
+
+For sources supported by both projections, apparent MT minus is an expected asymmetric
+shape:
+
+- canonical alignment/annotation/technique rows remain identical in both bundles;
+- BHSA has no word mapping for the alignment and carries one
+  `apparent_mt_minus` verse anchor;
+- LXX carries complete `lxx_i` word mappings and no structural anchor.
+
+The consistency checker must classify this shape from the typed
+`Annotation(side="mt_a", kind="apparent_minus")`, not from zero-MT counts alone.
+
+### R50-6 — residual classes stay separate
 
 The audit discovered materially different zero-MT classes. They are not part of #50:
 
