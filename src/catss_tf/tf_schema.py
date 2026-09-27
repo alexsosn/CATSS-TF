@@ -178,6 +178,7 @@ _RAW_SEMANTIC_KINDS = frozenset(
         "source_corruption_note",
         "source_format_note",
         "source_note",
+        "source_repair",
         "transposition_remote",
         "transposition_stylistic",
         "verse_reference",
