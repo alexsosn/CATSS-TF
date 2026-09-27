@@ -25,6 +25,9 @@ _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
 _DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
+_KNOWN_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
+    ("01.Genesis.par", 6, 19, "--= '' =H/BHMH", "TW=N KTHNW=N"): "--+ '' =H/BHMH",
+}
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -125,11 +128,20 @@ class ParallelDocument:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class _SourceRepair:
+    original_mt: str
+    semantic_mt: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class _PhysicalRow:
     line_no: int
     raw: str
+    source_mt: str
+    source_lxx: str
     mt: str
     lxx: str
+    repair: _SourceRepair | None
     column_split: bool
 
     @property
@@ -242,7 +254,13 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             )
             continue
 
-        physical = _parse_physical_row(raw, line_no)
+        physical = _parse_physical_row(
+            raw,
+            line_no,
+            canonical_source,
+            current.chapter,
+            current.verse,
+        )
         if pending:
             if pending[-1].continues:
                 pending.append(physical)
@@ -274,34 +292,57 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
     )
 
 
-def _parse_physical_row(raw: str, line_no: int) -> _PhysicalRow:
+def _parse_physical_row(
+    raw: str,
+    line_no: int,
+    source_name: str,
+    chapter: int,
+    verse: int,
+) -> _PhysicalRow:
     if "\t" in raw:
         mt, lxx = raw.split("\t", 1)
-        return _PhysicalRow(
-            line_no=line_no,
-            raw=raw,
-            mt=mt.strip(),
-            lxx=lxx.strip(),
-            column_split=True,
-        )
+        column_split = True
+    else:
+        parts = _COLUMN_SPACES.split(raw, maxsplit=1)
+        if len(parts) == 2:
+            mt, lxx = parts
+            column_split = True
+        else:
+            mt, lxx = raw, ""
+            column_split = False
 
-    parts = _COLUMN_SPACES.split(raw, maxsplit=1)
-    if len(parts) == 2:
-        return _PhysicalRow(
-            line_no=line_no,
-            raw=raw,
-            mt=parts[0].strip(),
-            lxx=parts[1].strip(),
-            column_split=True,
-        )
-
+    source_mt = mt.strip()
+    source_lxx = lxx.strip()
+    semantic_mt, repair = _repair_source_row(
+        source_name,
+        chapter,
+        verse,
+        source_mt,
+        source_lxx,
+    )
     return _PhysicalRow(
         line_no=line_no,
         raw=raw,
-        mt=raw.strip(),
-        lxx="",
-        column_split=False,
+        source_mt=source_mt,
+        source_lxx=source_lxx,
+        mt=semantic_mt,
+        lxx=source_lxx,
+        repair=repair,
+        column_split=column_split,
     )
+
+
+def _repair_source_row(
+    source_name: str,
+    chapter: int,
+    verse: int,
+    mt: str,
+    lxx: str,
+) -> tuple[str, _SourceRepair | None]:
+    semantic_mt = _KNOWN_SOURCE_ROW_REPAIRS.get((source_name, chapter, verse, mt, lxx))
+    if semantic_mt is None:
+        return mt, None
+    return semantic_mt, _SourceRepair(original_mt=mt, semantic_mt=semantic_mt)
 
 
 def _build_alignment(
@@ -311,8 +352,10 @@ def _build_alignment(
     physical_rows: tuple[_PhysicalRow, ...],
 ) -> tuple[AlignmentRecord, tuple[ParseDiagnostic, ...]]:
     row_diagnostics: list[ParseDiagnostic] = []
-    mt_raw = _join_continued_cells(row.mt for row in physical_rows)
-    lxx_raw = _join_continued_cells(row.lxx for row in physical_rows)
+    mt_raw = _join_continued_cells(row.source_mt for row in physical_rows)
+    lxx_raw = _join_continued_cells(row.source_lxx for row in physical_rows)
+    semantic_mt = _join_continued_cells(row.mt for row in physical_rows)
+    semantic_lxx = _join_continued_cells(row.lxx for row in physical_rows)
     column_split = all(row.column_split for row in physical_rows)
 
     if not column_split:
@@ -326,12 +369,12 @@ def _build_alignment(
             )
         )
 
-    mt_col_a, mt_col_b = _split_mt_columns(mt_raw)
+    mt_col_a, mt_col_b = _split_mt_columns(semantic_mt)
     is_lxx_plus = _first_token(mt_col_a) in _LXX_PLUS_MARKERS
-    is_lxx_minus = _first_token(lxx_raw) in _LXX_MINUS_MARKERS
+    is_lxx_minus = _first_token(semantic_lxx) in _LXX_MINUS_MARKERS
 
     lxx_references, reference_diagnostics = _extract_greek_references(
-        lxx_raw,
+        semantic_lxx,
         line_no=physical_rows[0].line_no,
         raw_line=physical_rows[0].raw,
     )
@@ -345,7 +388,19 @@ def _build_alignment(
                 if mt_col_b is not None
                 else []
             ),
-            *_extract_annotations("lxx", lxx_raw, book=verse.book),
+            *_extract_annotations("lxx", semantic_lxx, book=verse.book),
+            *(
+                Annotation(
+                    side="mt_a",
+                    kind="source_repair",
+                    raw=row.repair.original_mt,
+                    family="provenance",
+                    contextual=True,
+                    payload=row.repair.semantic_mt,
+                )
+                for row in physical_rows
+                if row.repair is not None
+            ),
         ]
     )
 
@@ -356,12 +411,12 @@ def _build_alignment(
     is_ketiv = bool(mt_ketiv_tokens)
     is_qere = bool(mt_qere_tokens)
 
-    joined_raw = f"{mt_raw}\t{lxx_raw}"
-    no_braces = _BRACE_BLOCK.sub(" ", joined_raw)
+    joined_semantic = f"{semantic_mt}\t{semantic_lxx}"
+    no_braces = _BRACE_BLOCK.sub(" ", joined_semantic)
     is_transposition_stylistic = any(
         annotation.kind == "transposition_stylistic" for annotation in annotations
     )
-    is_transposition_remote = "^^^" in joined_raw or any(
+    is_transposition_remote = "^^^" in joined_semantic or any(
         annotation.kind == "transposition_remote" for annotation in annotations
     )
     is_transposition_local = "~" in no_braces or _SINGLE_CARET.search(no_braces) is not None
@@ -372,7 +427,7 @@ def _build_alignment(
         mt_tokens = ()
         mt_ketiv_tokens = ()
         mt_qere_tokens = ()
-    lxx_tokens = () if is_lxx_minus else _lxx_lexical_candidates(lxx_raw)
+    lxx_tokens = () if is_lxx_minus else _lxx_lexical_candidates(semantic_lxx)
 
     source_lines = tuple(row.line_no for row in physical_rows)
     raw_lines = tuple(row.raw for row in physical_rows)

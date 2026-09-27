@@ -485,14 +485,30 @@ def _annotation_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tupl
     return tuple(result)
 
 
+def _semantic_annotation_applies(
+    *,
+    annotation_side: str,
+    kind: str,
+    projection_side: str,
+) -> bool:
+    if kind == "source_repair":
+        return True
+    if projection_side == "mt":
+        return annotation_side != "lxx"
+    if projection_side == "lxx":
+        return annotation_side == "lxx"
+    raise ValueError(f"unknown projection side {projection_side!r}")
+
+
 def _semantic_kinds(alignment: AlignmentRecord, *, side: str) -> tuple[str, ...]:
     kinds = {
         annotation.kind
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
-        and (
-            (side == "mt" and annotation.side != "lxx")
-            or (side == "lxx" and annotation.side == "lxx")
+        and _semantic_annotation_applies(
+            annotation_side=annotation.side,
+            kind=annotation.kind,
+            projection_side=side,
         )
     }
     return tuple(sorted(kinds))
@@ -503,9 +519,10 @@ def _semantic_scopes(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[st
         (annotation.kind, annotation.side)
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
-        and (
-            (side == "mt" and annotation.side != "lxx")
-            or (side == "lxx" and annotation.side == "lxx")
+        and _semantic_annotation_applies(
+            annotation_side=annotation.side,
+            kind=annotation.kind,
+            projection_side=side,
         )
     }
     return tuple(sorted(scopes))
@@ -519,9 +536,10 @@ def _semantic_scoped_payloads(
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
         and annotation.payload is not None
-        and (
-            (side == "mt" and annotation.side != "lxx")
-            or (side == "lxx" and annotation.side == "lxx")
+        and _semantic_annotation_applies(
+            annotation_side=annotation.side,
+            kind=annotation.kind,
+            projection_side=side,
         )
     }
     return tuple(sorted(payloads))
@@ -533,8 +551,11 @@ def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[
         if (
             annotation.kind == "unknown"
             or annotation.payload is None
-            or (side == "mt" and annotation.side == "lxx")
-            or (side == "lxx" and annotation.side != "lxx")
+            or not _semantic_annotation_applies(
+                annotation_side=annotation.side,
+                kind=annotation.kind,
+                projection_side=side,
+            )
         ):
             continue
         by_kind.setdefault(annotation.kind, set()).add(annotation.payload)
