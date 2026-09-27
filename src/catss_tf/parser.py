@@ -339,9 +339,7 @@ def _repair_source_row(
     mt: str,
     lxx: str,
 ) -> tuple[str, _SourceRepair | None]:
-    semantic_mt = _KNOWN_SOURCE_ROW_REPAIRS.get(
-        (source_name, chapter, verse, mt, lxx)
-    )
+    semantic_mt = _KNOWN_SOURCE_ROW_REPAIRS.get((source_name, chapter, verse, mt, lxx))
     if semantic_mt is None:
         return mt, None
     return semantic_mt, _SourceRepair(original_mt=mt, semantic_mt=semantic_mt)
