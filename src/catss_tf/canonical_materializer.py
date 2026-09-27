@@ -288,7 +288,15 @@ def _compile_graph(
 def _alignment_features(builder: _GraphBuilder, context: _AlignmentContext) -> None:
     alignment = context.alignment
     node = context.slot
-    technique = derive_alignment_technique(context.source, alignment)
+    try:
+        technique = derive_alignment_technique(context.source, alignment)
+    except TechniqueError as exc:
+        raise CanonicalMaterializationError(
+            "technique derivation failed for "
+            f"{context.source}:{min(alignment.source_lines)} "
+            f"{alignment.alignment_id} "
+            f"mt={alignment.mt_raw!r} lxx={alignment.lxx_raw!r}: {exc}"
+        ) from exc
 
     values: dict[str, CanonicalValue | None] = {
         "catss_alignment_id": alignment.alignment_id,
