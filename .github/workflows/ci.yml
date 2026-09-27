@@ -78,7 +78,7 @@ jobs:
       - name: Assert complete notation coverage
         run: |
           set +e
-          catss-tf validate --complete /tmp/catss-parallel | tee /tmp/catss-audit.txt
+          catss-tf validate --complete /tmp/catss-parallel 2>&1 | tee /tmp/catss-audit.txt
           set -e
           grep -qx 'complete_snapshot=true' /tmp/catss-audit.txt
           grep -qx 'source_files=46' /tmp/catss-audit.txt
