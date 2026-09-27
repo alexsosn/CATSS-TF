@@ -1,13 +1,13 @@
 import pathlib
 
 import pytest
-from tf.fabric import Fabric  # type: ignore[import-untyped]
-
-import catss_tf
 from catss_tf.canonical_materializer import (
     CanonicalMaterializationError,
     materialize_corpus,
 )
+from tf.fabric import Fabric  # type: ignore[import-untyped]
+
+import catss_tf
 from catss_tf.parser import parse_parallel_file
 
 
@@ -62,8 +62,12 @@ DBR	--
     )
     assert tuple(api.F.catss_alignment_id.v(node) for node in range(1, 6)) == expected_ids
 
-    plus_slots = tuple(row[0] for row in api.S.search("alignment catss_lxx_plus=1", silent="deep"))
-    minus_slots = tuple(row[0] for row in api.S.search("alignment catss_lxx_minus=1", silent="deep"))
+    plus_slots = tuple(
+        row[0] for row in api.S.search("alignment catss_lxx_plus=1", silent="deep")
+    )
+    minus_slots = tuple(
+        row[0] for row in api.S.search("alignment catss_lxx_minus=1", silent="deep")
+    )
     assert plus_slots == (2, 3)
     assert minus_slots == (4, 5)
 
