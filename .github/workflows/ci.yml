@@ -75,52 +75,38 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
-      - name: Research Hebrew-empty Greek-nonempty marker population
+      - name: Assert MT apparent-minus semantics
         run: |
           python - <<'PY'
-          import collections
           import pathlib
           from catss_tf.parser import parse_parallel_file
           from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
 
           root = pathlib.Path('/tmp/catss-parallel')
-          counts = collections.Counter()
-          apparent_minus_shapes = collections.Counter()
-          examples = collections.defaultdict(list)
+          observed = 0
           for name in CATSS_PARALLEL_FILENAMES:
               document = parse_parallel_file(root / name)
               for verse in document.verses:
                   for alignment in verse.alignments:
-                      marker = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else '<empty>'
-                      if marker == '---':
-                          apparent_minus_shapes[(alignment.mt_count, alignment.lxx_count)] += 1
-                      if alignment.mt_count != 0 or alignment.lxx_count == 0:
+                      marker = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else ''
+                      if marker != '---':
                           continue
-                      counts[marker] += 1
-                      if len(examples[marker]) < 8:
-                          examples[marker].append(
-                              (
-                                  name,
-                                  verse.chapter,
-                                  verse.verse,
-                                  min(alignment.source_lines),
-                                  alignment.mt_raw,
-                                  alignment.lxx_raw,
-                                  alignment.mt_col_b,
-                                  tuple(annotation.kind for annotation in alignment.annotations),
-                                  (
-                                      alignment.is_transposition_local,
-                                      alignment.is_transposition_remote,
-                                      alignment.is_transposition_stylistic,
-                                  ),
-                              )
-                          )
-          print('HEBREW_EMPTY_GREEK_NONEMPTY_COUNTS')
-          for key, count in counts.most_common():
-              print(repr(key), count)
-              for example in examples[key]:
-                  print('  ', repr(example))
-          print('MT_APPARENT_MINUS_SHAPES', sorted(apparent_minus_shapes.items()))
+                      observed += 1
+                      assert alignment.mt_count == 0
+                      assert alignment.lxx_count > 0
+                      apparent = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'mt_a'
+                          and annotation.kind == 'apparent_minus'
+                      ]
+                      assert len(apparent) == 1
+                      technique = derive_alignment_technique(name, alignment)
+                      assert technique.addition_vs_mt is False
+                      assert technique.omission_vs_mt is False
+          assert observed == 61, observed
+          print(f'mt_apparent_minus_alignments={observed}')
           PY
       - name: Assert complete notation coverage
         run: |
