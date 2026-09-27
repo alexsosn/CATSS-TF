@@ -57,6 +57,7 @@ hide genuinely malformed input.
 The parser may repair this anomaly only when all of the following match:
 
 - source basename: `01.Genesis.par`;
+- CATSS reference: Genesis 6:19;
 - original MT cell: `--= '' =H/BHMH`;
 - original LXX cell: `TW=N KTHNW=N`.
 
