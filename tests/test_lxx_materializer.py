@@ -251,9 +251,9 @@ def test_source_repair_is_query_native_on_available_lxx_words(
     repair = (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
     scoped = (output / "catss_sem_source_repair_mt_a.tf").read_text(encoding="utf-8")
     payload = (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
-    scoped_payload = (
-        output / "catss_sem_source_repair_mt_a_payload.tf"
-    ).read_text(encoding="utf-8")
+    scoped_payload = (output / "catss_sem_source_repair_mt_a_payload.tf").read_text(
+        encoding="utf-8"
+    )
 
     for node in (10, 11):
         assert f"{node}\t1" in repair
