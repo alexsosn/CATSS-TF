@@ -46,9 +46,9 @@ jobs:
       - run: /tmp/catss-tf-release-smoke/bin/catss-tf --version
       - run: >-
           /tmp/catss-tf-release-smoke/bin/python -c
-          "import catss_tf; from catss_tf import materialize_bhsa, materialize_lxx,
-          compare_projection_bundles, TextFabricBhsaProvider, TextFabricLxxProvider;
-          assert catss_tf.__version__ == '0.1.0'"
+          "import catss_tf; from catss_tf import materialize_bhsa, materialize_corpus,
+          materialize_lxx, compare_projection_bundles, TextFabricBhsaProvider,
+          TextFabricLxxProvider; assert catss_tf.__version__ == '0.1.0'"
 
 
   complete-catss-audit:
@@ -86,3 +86,34 @@ jobs:
           grep -qx 'unknown_annotations=0' /tmp/catss-audit.txt
           # Parser diagnostics are reported above but are a separate quality layer;
           # this gate proves complete special-notation coverage without hiding them.
+
+      - name: Materialize complete canonical corpus
+        run: |
+          python - <<'PY'
+          import csv
+          import pathlib
+          from catss_tf import materialize_corpus
+
+          output = pathlib.Path('/tmp/catss-canonical')
+          result = materialize_corpus(
+              '/tmp/catss-parallel',
+              output,
+              allowed_validation_codes={
+                  'invalid_lxx_reference',
+                  'malformed_continuation',
+                  'unsplit_row',
+              },
+          )
+          assert result.summary.source_files == 46
+          assert result.summary.alignments > 300_000
+          assert result.summary.alignment_slots == result.summary.alignments
+          assert result.summary.audit_ok
+          assert (output / 'otype.tf').is_file()
+          assert (output / 'oslots.tf').is_file()
+          with (output / 'catss-diagnostics.tsv').open(
+              encoding='utf-8', newline=''
+          ) as handle:
+              diagnostic_rows = tuple(csv.DictReader(handle, delimiter='\t'))
+          assert len(diagnostic_rows) == result.summary.ignored_validation_findings
+          print(result.summary)
+          PY
