@@ -49,9 +49,9 @@ These meanings must not be assigned globally. In particular general `*` = asteri
 7. Sirach symbol decoding is selected by book/profile.
 8. Corpus-wide zero-unknown is an opt-in audit against user-acquired CATSS, not an offline CI fixture claim.
 
-## Open empirical gate
+## Empirical gate
 
-The glossary describes the Libronix representation, while CATSS-TF parses raw CATSS `.par` files. A bounded inventory of a user-acquired raw CATSS snapshot is still required to map every Libronix label to its exact raw `.par` spelling and to prove zero unknowns. Offline tests may use only synthetic fragments.
+The glossary describes the Libronix representation, while CATSS-TF parses raw CATSS `.par` files. This gap is now covered by the complete-snapshot CI audit described below: all 46 configured upstream files are inventoried without committing the source data, while offline unit tests continue to use only synthetic fragments.
 
 
 ## Raw `.par` empirical encoding layer
@@ -77,10 +77,7 @@ Those are evidence for fail-closed validation, not permission to silently normal
 
 ## Audit status
 
-Offline CI proves the decoder contracts on synthetic fixtures. The public upstream host is
-intermittently timing out from automation, so a final corpus-wide zero-unknown claim is made only
-after all 46 configured files are acquired and validated as one snapshot. A partial/cache-backed
-inspection is useful for discovering RED cases but is not sufficient evidence for completion.
+Offline tests prove decoder contracts on synthetic fixtures. The complete-snapshot CI job additionally acquires and validates all 46 configured upstream files as one ephemeral snapshot. Partial or cache-backed inspection remains useful for discovering RED cases but is not accepted as completion evidence.
 
 
 ## Empirical complete-snapshot audit
