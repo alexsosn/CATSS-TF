@@ -382,6 +382,7 @@ def _build_alignment(
 
     annotations = tuple(
         [
+            *_mt_alignment_marker_annotations(mt_col_a, book=verse.book),
             *_extract_annotations("mt_a", mt_col_a, book=verse.book),
             *(
                 _extract_annotations("mt_b", mt_col_b, book=verse.book)
@@ -486,6 +487,23 @@ def _join_continued_cells(cells: typing.Iterable[str]) -> str:
         if cleaned:
             parts.append(cleaned)
     return " ".join(parts)
+
+
+def _mt_alignment_marker_annotations(cell: str, *, book: str) -> list[Annotation]:
+    if _first_token(cell) != "---":
+        return []
+    spec = notation_spec("Ap-", book=book)
+    if spec is None:
+        raise ValueError("documented apparent-minus notation is unavailable")
+    return [
+        Annotation(
+            side="mt_a",
+            kind=spec.kind,
+            raw="---",
+            family=spec.family,
+            contextual=spec.contextual,
+        )
+    ]
 
 
 def _extract_annotations(
