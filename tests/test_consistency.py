@@ -224,6 +224,40 @@ def test_consistency_accepts_expected_projection_asymmetries(tmp_path: pathlib.P
     assert report.summary.unexpected_projection_gaps == 0
 
 
+def test_consistency_accepts_apparent_mt_minus_projection_asymmetry(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        """Gen 1:1
+)B\tQEOS
+--- =;DBR\tLOGOS
+""",
+    )
+    bhsa = tmp_path / "catss-bhsa"
+    lxx = tmp_path / "catss-lxx"
+
+    materialize_bhsa(
+        source,
+        bhsa,
+        provider=FakeBhsaProvider((_bhsa_verse("Genesis", 1, 1, 100, ("אב",), 1),)),
+        parent_probe=_bhsa_probe(),
+    )
+    materialize_lxx(
+        source,
+        lxx,
+        provider=FakeLxxProvider((_lxx_span("Gen", 1, 1, 200, ("θεός", "λόγος"), 1000),)),
+    )
+
+    report = compare_projection_bundles(bhsa, lxx)
+
+    assert report.ok is True
+    assert report.findings == ()
+    assert report.summary.unexpected_projection_gaps == 0
+
+
 def test_consistency_classifies_projection_exclusive_sources(tmp_path: pathlib.Path) -> None:
     source = tmp_path / "source"
     _write_source(source, "07.JoshA.par", "Josh 1:1\n)B\tLOGOS\n")

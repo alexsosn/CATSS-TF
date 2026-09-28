@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from catss_tf.parser import parse_parallel_text
+from catss_tf.parser import alignment_id_for, parse_parallel_text
 
 
 def test_parse_basic_alignment_ratios() -> None:
@@ -54,6 +54,49 @@ HBA =:ALT .dr\tGRA
     assert retro.mt_col_b == ":ALT .dr"
     assert retro.mt_tokens == ("HBA",)
     assert retro.lxx_tokens == ("GRA",)
+
+
+def test_mt_side_apparent_minus_is_typed_without_becoming_lxx_plus() -> None:
+    raw = "--- =;L/R)T <8.8>\tTOU= I)DEI=N"
+    doc = parse_parallel_text(
+        f"Gen 8:7\n{raw}\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.alignment_id == alignment_id_for(
+        source_name="01.Genesis.par",
+        header_raw="Gen 8:7",
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+    assert alignment.mt_raw == "--- =;L/R)T <8.8>"
+    assert alignment.mt_col_a == "---"
+    assert alignment.mt_col_b == ";L/R)T <8.8>"
+    assert alignment.mt_count == 0
+    assert alignment.lxx_count == 2
+    assert alignment.is_lxx_plus is False
+    assert alignment.is_lxx_minus is False
+
+    apparent = tuple(
+        annotation for annotation in alignment.annotations if annotation.kind == "apparent_minus"
+    )
+    assert len(apparent) == 1
+    assert apparent[0].side == "mt_a"
+    assert apparent[0].family == "alignment"
+    assert apparent[0].raw == "---"
+
+
+def test_greek_side_minus_does_not_emit_mt_apparent_minus() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\nHB\t--- ''\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.is_lxx_minus is True
+    assert not any(annotation.kind == "apparent_minus" for annotation in alignment.annotations)
 
 
 def test_parse_ketiv_and_qere_independently() -> None:
