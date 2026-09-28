@@ -237,6 +237,7 @@ def test_double_dash_apparent_minus_reuses_bhsa_verse_anchor(
         source,
         "01.Genesis.par",
         """Gen 1:1
+)B\tQEOS
 -- =;DBR\tLOGOS
 """,
     )
@@ -254,7 +255,9 @@ def test_double_dash_apparent_minus_reuses_bhsa_verse_anchor(
     assert [(row["anchor_kind"], row["parent_node"], row["token_n"]) for row in anchors] == [
         ("apparent_mt_minus", "2", "1")
     ]
-    assert not _read_tsv(output / "catss-mappings.tsv")
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert len(mappings) == 1
+    assert mappings[0]["parent_node"] == "1"
     assert "2\t1" in (output / "catss_sem_apparent_minus.tf").read_text(encoding="utf-8")
 
 
