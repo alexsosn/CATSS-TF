@@ -5,6 +5,7 @@ import pytest
 from tf.fabric import Fabric  # type: ignore[import-untyped]
 
 import catss_tf
+import catss_tf.canonical_materializer as canonical_materializer
 from catss_tf.canonical_materializer import (
     CanonicalMaterializationError,
     materialize_corpus,
@@ -143,6 +144,19 @@ HB3	QEOS [99]
 
     unresolved_ref = api.L.u(3, otype="reference")[0]
     assert tuple(api.E.catss_reference_target.f(unresolved_ref)) == ()
+
+
+def test_node_type_interval_audit_rejects_interleaving() -> None:
+    with pytest.raises(CanonicalMaterializationError, match="contiguous node interval"):
+        canonical_materializer._audit_node_type_intervals(
+            {
+                1: "alignment",
+                2: "alignment",
+                3: "mt_element",
+                4: "lxx_element",
+                5: "mt_element",
+            }
+        )
 
 
 def test_canonical_materialization_is_byte_deterministic(tmp_path: pathlib.Path) -> None:
