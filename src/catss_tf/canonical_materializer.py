@@ -422,10 +422,11 @@ def _add_detail_nodes(
     contexts: list[_AlignmentContext],
     verse_nodes: dict[tuple[str, int, int], tuple[int, ...]],
 ) -> None:
+    """Allocate each Text-Fabric node type in one contiguous node-id block."""
+
     for context in contexts:
         alignment = context.alignment
         slot = context.slot
-
         for index, reading in enumerate(alignment.mt_readings, start=1):
             node = builder.add_node("mt_element", (slot,))
             builder.feature("catss_index", node, index)
@@ -435,11 +436,17 @@ def _add_detail_nodes(
             builder.feature("catss_doubt", node, int(reading.doubtful))
             builder.feature("catss_aramaic_section", node, int(reading.aramaic_section))
 
+    for context in contexts:
+        alignment = context.alignment
+        slot = context.slot
         for index, text in enumerate(alignment.lxx_tokens, start=1):
             node = builder.add_node("lxx_element", (slot,))
             builder.feature("catss_index", node, index)
             builder.feature("catss_text", node, text)
 
+    for context in contexts:
+        alignment = context.alignment
+        slot = context.slot
         for annotation in alignment.annotations:
             node = builder.add_node("annotation", (slot,))
             builder.feature("catss_side", node, annotation.side)
@@ -449,6 +456,9 @@ def _add_detail_nodes(
             builder.feature("catss_payload", node, annotation.payload)
             builder.feature("catss_raw", node, annotation.raw)
 
+    for context in contexts:
+        alignment = context.alignment
+        slot = context.slot
         for reference in alignment.lxx_references:
             node = builder.add_node("reference", (slot,))
             builder.feature("catss_ref_chapter", node, reference.chapter)
@@ -466,6 +476,9 @@ def _add_detail_nodes(
             if len(targets) == 1:
                 builder.edge("catss_reference_target", node, targets[0])
 
+    for context in contexts:
+        alignment = context.alignment
+        slot = context.slot
         for line_no, raw in zip(
             alignment.source_lines,
             alignment.raw_lines,
@@ -617,11 +630,30 @@ def _validation_diagnostic_row(finding: ValidationFinding) -> tuple[object, ...]
     )
 
 
+def _audit_node_type_intervals(node_types: dict[int, str]) -> None:
+    """Reject node types split across multiple Text-Fabric node-id intervals."""
+
+    nodes_by_type: dict[str, list[int]] = {}
+    for node in sorted(node_types):
+        nodes_by_type.setdefault(node_types[node], []).append(node)
+
+    for node_type, nodes in nodes_by_type.items():
+        first = nodes[0]
+        last = nodes[-1]
+        if nodes != list(range(first, last + 1)):
+            raise CanonicalMaterializationError(
+                "canonical preservation audit failed: "
+                f"node type {node_type!r} does not occupy one contiguous node interval"
+            )
+
+
 def _audit_graph(
     manifest: ParallelSourceManifest,
     documents: tuple[ParallelDocument, ...],
     graph: _CanonicalGraph,
 ) -> None:
+    _audit_node_type_intervals(graph.node_types)
+
     expected_contexts = [
         (document.source_name, verse, alignment)
         for document in documents
