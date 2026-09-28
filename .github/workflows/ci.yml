@@ -75,6 +75,65 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Research residual Hebrew-empty alignments
+        run: |
+          python - <<'PY'
+          import pathlib
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          total = 0
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              physical = (root / name).read_text(encoding='utf-8').splitlines()
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      if alignment.mt_count != 0 or alignment.lxx_count == 0:
+                          continue
+                      first = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else ''
+                      known = (
+                          alignment.is_lxx_plus
+                          or any(a.side == 'mt_a' and a.kind == 'apparent_minus' for a in alignment.annotations)
+                          or alignment.is_transposition_local
+                          or alignment.is_transposition_remote
+                          or alignment.is_transposition_stylistic
+                          or (verse.book == 'Sir' and first.startswith('[..]'))
+                      )
+                      if known:
+                          continue
+                      total += 1
+                      lo = max(1, min(alignment.source_lines) - 3)
+                      hi = min(len(physical), max(alignment.source_lines) + 3)
+                      print('RESIDUAL')
+                      print('source=', name)
+                      print('header=', verse.header_raw)
+                      print('alignment_id=', alignment.alignment_id)
+                      print('source_lines=', alignment.source_lines)
+                      print('raw_lines=', alignment.raw_lines)
+                      print('mt_raw=', repr(alignment.mt_raw))
+                      print('mt_col_a=', repr(alignment.mt_col_a))
+                      print('mt_col_b=', repr(alignment.mt_col_b))
+                      print('mt_tokens=', alignment.mt_tokens)
+                      print('lxx_raw=', repr(alignment.lxx_raw))
+                      print('lxx_tokens=', alignment.lxx_tokens)
+                      print('retroversion_kind=', repr(alignment.retroversion_kind))
+                      print('annotations=', [
+                          (a.side, a.kind, a.raw, a.payload)
+                          for a in alignment.annotations
+                      ])
+                      print('diagnostics=', [
+                          (d.code, d.line_no, d.raw_line)
+                          for d in document.diagnostics
+                          if d.line_no in alignment.source_lines
+                      ])
+                      print('CONTEXT')
+                      for n in range(lo, hi + 1):
+                          print(f'{n}: {physical[n - 1]}')
+                      print('END_RESIDUAL')
+          print('residual_total=', total)
+          assert total == 17, total
+          PY
       - name: Assert MT apparent-minus semantics
         run: |
           python - <<'PY'
