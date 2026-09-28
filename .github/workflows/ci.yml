@@ -75,6 +75,50 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Assert chained continuation grouping
+        run: |
+          python - <<'PY'
+          import pathlib
+          from catss_tf.parser import parse_parallel_file
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          expected = {
+              '06.JoshB.par': {3752: (3750, 3751, 3752)},
+              '13.1Kings.par': {14622: (14621, 14622)},
+              '27.Sirach.par': {
+                  3694: (3693, 3694),
+                  3696: (3695, 3696),
+              },
+              '45.DanielOG.par': {85: (84, 85)},
+          }
+
+          checked = 0
+          for name, line_expectations in expected.items():
+              document = parse_parallel_file(root / name)
+              malformed = {
+                  diagnostic.line_no
+                  for diagnostic in document.diagnostics
+                  if diagnostic.code == 'malformed_continuation'
+              }
+              for line_no, expected_group in line_expectations.items():
+                  owners = [
+                      alignment
+                      for verse in document.verses
+                      for alignment in verse.alignments
+                      if line_no in alignment.source_lines
+                  ]
+                  assert len(owners) == 1, (name, line_no, owners)
+                  assert owners[0].source_lines == expected_group, (
+                      name,
+                      line_no,
+                      owners[0].source_lines,
+                  )
+                  assert line_no not in malformed, (name, line_no)
+                  checked += 1
+
+          assert checked == 5, checked
+          print(f'chained_continuation_fragments={checked}')
+          PY
       - name: Assert MT apparent-minus semantics
         run: |
           python - <<'PY'
