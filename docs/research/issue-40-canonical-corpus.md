@@ -174,3 +174,25 @@ Agora should eventually expose three separate materializers:
 
 The standalone corpus requires no parent TF resource. Projection modules keep exact
 parent validation and join to the canonical corpus through `catss_alignment_id`.
+
+
+## R40-10 — Text-Fabric node types are contiguous intervals
+
+A real Text-Fabric load exposed a warp-format invariant that the in-memory preservation
+audit did not previously encode. `otype` is stored by Text-Fabric in an optimized
+representation where each node type has one contiguous node-id interval; the API's
+`F.otype.s(type)` uses that interval. It is therefore insufficient for
+`node_types[node] == type` to be locally correct if nodes of the same type are
+interleaved with other types.
+
+The initial canonical compiler allocated detail nodes per alignment:
+
+`mt_element -> lxx_element -> annotation -> reference -> source_line`
+
+and repeated that sequence for every alignment. The resulting `otype.tf` loaded, but
+Text-Fabric treated the full min/max interval as belonging to a type, so
+`F.otype.s("mt_element")` returned nodes of intervening types as well.
+
+The canonical graph must allocate every non-slot type in one global block. The
+preservation audit must reject any graph where a node type occurs in more than one
+interval. The executable TF-load regression remains the user-visible acceptance test.
