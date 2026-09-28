@@ -127,11 +127,39 @@ jobs:
               for row in double_dash
               if row[4] is not None and row[6] == 0 and row[7] > 0
           ]
+          typed_targets = 0
+          untyped_exceptions = 0
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      first = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else ''
+                      if first != '--':
+                          continue
+                      typed = [
+                          a
+                          for a in alignment.annotations
+                          if a.side == 'mt_a' and a.kind == 'apparent_minus'
+                      ]
+                      target = (
+                          alignment.mt_col_b is not None
+                          and alignment.mt_count == 0
+                          and alignment.lxx_count > 0
+                      )
+                      if target:
+                          assert len(typed) == 1
+                          assert typed[0].raw == '--'
+                          typed_targets += 1
+                      else:
+                          assert not typed
+                          untyped_exceptions += 1
           exceptions = [row for row in double_dash if row not in targets]
           print('DOUBLE_DASH_TARGETS', len(targets))
           print('DOUBLE_DASH_EXCEPTIONS', exceptions)
           assert len(double_dash) == 5, len(double_dash)
           assert len(targets) == 4, len(targets)
+          assert typed_targets == 4, typed_targets
+          assert untyped_exceptions == 1, untyped_exceptions
           assert len(exceptions) == 1, exceptions
           assert exceptions[0][0:2] == ('27.Sirach.par', 'Sir 1:19')
           assert exceptions[0][4] is None
