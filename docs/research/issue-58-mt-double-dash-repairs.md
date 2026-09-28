@@ -88,3 +88,24 @@ For each repair:
 Any different source, reference, MT cell or Greek cell remains unmodified. If a future
 snapshot introduces additional Hebrew-side `--` rows, complete-snapshot tests must
 fail and require new research rather than silently generalizing this repair.
+
+
+## Decision R58-4 — do not reinterpret bare `--` as apparent-minus
+
+A competing implementation hypothesis treated `--` + column B + non-empty Greek as
+a structural spelling of MT apparent-minus. The primary/current corpus evidence does
+not justify that generalization.
+
+The upstream Genesis data contain documented LXX-plus rows with the same column-B
+structure, for example Gen 3:10 `--+ =;MTHLK <3.8>\tPERIPATOU=NTOS` and Gen 22:13
+`--+ =:YCXQ\tISAAK`. Thus the presence of a reconstructed column B is compatible
+with an ordinary LXX-plus event and is not evidence for apparent-minus by itself.
+
+The four anomalous rows are each exactly one missing `+` away from that documented
+surface grammar. Gen 22:16 is especially diagnostic: its column-B form
+`;M/MN/Y <22.12>` points back to the explicit MT phrase `M/MN/Y` aligned with
+`DI' E)ME/` in Gen 22:12. Treating the row as an exact lost-`+` source anomaly is
+therefore narrower than assigning a new generic meaning to undocumented bare `--`.
+
+The exact-repair table remains deliberately closed. A future bare-`--` row does not
+inherit LXX-plus semantics without separate evidence.
