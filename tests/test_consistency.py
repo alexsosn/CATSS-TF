@@ -242,17 +242,13 @@ def test_consistency_accepts_apparent_mt_minus_projection_asymmetry(
     materialize_bhsa(
         source,
         bhsa,
-        provider=FakeBhsaProvider(
-            (_bhsa_verse("Genesis", 1, 1, 100, ("אב",), 1),)
-        ),
+        provider=FakeBhsaProvider((_bhsa_verse("Genesis", 1, 1, 100, ("אב",), 1),)),
         parent_probe=_bhsa_probe(),
     )
     materialize_lxx(
         source,
         lxx,
-        provider=FakeLxxProvider(
-            (_lxx_span("Gen", 1, 1, 200, ("θεός", "λόγος"), 1000),)
-        ),
+        provider=FakeLxxProvider((_lxx_span("Gen", 1, 1, 200, ("θεός", "λόγος"), 1000),)),
     )
 
     report = compare_projection_bundles(bhsa, lxx)
