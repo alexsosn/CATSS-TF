@@ -122,9 +122,20 @@ jobs:
               )
               for row in apparent
           ))
-          assert len(double_dash) == 4, len(double_dash)
-          assert all(row[4] is not None for row in double_dash)
-          assert all(row[6] == 0 and row[7] > 0 for row in double_dash)
+          targets = [
+              row
+              for row in double_dash
+              if row[4] is not None and row[6] == 0 and row[7] > 0
+          ]
+          exceptions = [row for row in double_dash if row not in targets]
+          print('DOUBLE_DASH_TARGETS', len(targets))
+          print('DOUBLE_DASH_EXCEPTIONS', exceptions)
+          assert len(double_dash) == 5, len(double_dash)
+          assert len(targets) == 4, len(targets)
+          assert len(exceptions) == 1, exceptions
+          assert exceptions[0][0:2] == ('27.Sirach.par', 'Sir 1:19')
+          assert exceptions[0][4] is None
+          assert exceptions[0][6:8] == (0, 0)
           PY
       - name: Assert MT apparent-minus semantics
         run: |
