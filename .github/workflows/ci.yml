@@ -156,6 +156,7 @@ jobs:
               ),
           }
           observed = set()
+          repair_occurrences = []
           unrepaired_bare = []
           root = pathlib.Path('/tmp/catss-parallel')
           for name in CATSS_PARALLEL_FILENAMES:
@@ -173,14 +174,17 @@ jobs:
                           )
                           if identity in expected:
                               observed.add(identity)
+                              repair_occurrences.append(identity)
                       if re.match(r'^--(?=[ =])', alignment.mt_raw):
                           if not repairs:
                               unrepaired_bare.append(
                                   (name, verse.chapter, verse.verse, alignment.mt_raw, alignment.lxx_raw)
                               )
           assert observed == expected, (expected - observed, observed - expected)
+          assert len(repair_occurrences) == 4, repair_occurrences
+          assert len(set(repair_occurrences)) == 4, repair_occurrences
           assert unrepaired_bare == [], unrepaired_bare
-          print(f'mt_double_dash_exact_repairs={len(observed)}')
+          print(f'mt_double_dash_exact_repairs={len(repair_occurrences)}')
           PY
       - name: Assert complete notation coverage
         run: |
