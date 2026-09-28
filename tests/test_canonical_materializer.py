@@ -100,10 +100,16 @@ DBR	---
     assert tuple(api.L.u(minus_slot, otype="mt_element"))
     assert tuple(api.L.u(minus_slot, otype="lxx_element")) == ()
 
-    first_mt = api.L.u(1, otype="mt_element")[0]
-    second_mt = api.L.u(1, otype="mt_element")[1]
-    assert (api.F.catss_index.v(first_mt), api.F.catss_text.v(first_mt)) == (1, ")B")
-    assert (api.F.catss_index.v(second_mt), api.F.catss_text.v(second_mt)) == (2, "MLK")
+    ordered_mt = tuple(
+        sorted(
+            api.L.u(1, otype="mt_element"),
+            key=api.F.catss_index.v,
+        )
+    )
+    assert tuple(
+        (api.F.catss_index.v(node), api.F.catss_text.v(node))
+        for node in ordered_mt
+    ) == ((1, ")B"), (2, "MLK"))
 
 
 def test_annotations_references_and_source_lines_are_independent_nodes(
