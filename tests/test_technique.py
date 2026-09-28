@@ -190,6 +190,20 @@ def test_alignment_apparent_minus_evidence_is_taken_from_typed_annotation() -> N
     assert technique.omission_vs_mt is False
 
 
+def test_mt_double_dash_retroversion_reuses_apparent_minus_technique() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\n-- =;ALT\tLOGOS LOGON\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    technique = derive_alignment_technique("01.Genesis.par", alignment)
+
+    assert technique.cardinality_mt_lxx == "zero_many"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+
 def test_source_flags_cannot_contradict_nonempty_sides() -> None:
     with pytest.raises(TechniqueError, match="non-empty MT"):
         derive_technique_state(
