@@ -18,7 +18,9 @@ Add focused tests before implementation for:
 6. validation failure and unknown source names leave no output directory;
 7. deterministic materialization produces byte-identical output for the same source;
 8. canonical alignment ids match the parser identities used by projection sidecars;
-9. public package API exports the canonical materializer.
+9. public package API exports the canonical materializer;
+10. every node type occupies exactly one contiguous node-id interval after TF load, so
+    `F.otype.s(type)` returns exactly the nodes assigned that type.
 
 The RED commit must contain no production implementation.
 
@@ -29,6 +31,8 @@ Introduce a small canonical-corpus module with:
 - `CANONICAL_SCHEMA_VERSION = "1"`;
 - graph dataclasses/compiler separated from filesystem publication;
 - explicit TF warp/node/edge writers;
+- type-block node allocation compatible with Text-Fabric's optimized `otype` interval model;
+- an in-memory audit that rejects split/interleaved node-type intervals;
 - atomic `materialize_corpus(...)`;
 - preservation audit executed before publication;
 - canonical sidecars for sources, alignments, technique, annotations, source lines and
