@@ -106,10 +106,10 @@ DBR	---
             key=api.F.catss_index.v,
         )
     )
-    assert tuple(
-        (api.F.catss_index.v(node), api.F.catss_text.v(node))
-        for node in ordered_mt
-    ) == ((1, ")B"), (2, "MLK"))
+    assert tuple((api.F.catss_index.v(node), api.F.catss_text.v(node)) for node in ordered_mt) == (
+        (1, ")B"),
+        (2, "MLK"),
+    )
 
 
 def test_annotations_references_and_source_lines_are_independent_nodes(
