@@ -229,6 +229,35 @@ def test_apparent_mt_minus_is_query_native_on_bhsa_verse_anchor(
     assert [row["anchor_kind"] for row in anchors] == ["apparent_mt_minus"]
 
 
+def test_double_dash_apparent_minus_reuses_bhsa_verse_anchor(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        """Gen 1:1
+-- =;DBR\tLOGOS
+""",
+    )
+    output = tmp_path / "catss-bhsa"
+    provider = FakeBhsaProvider((_verse(),))
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=provider,
+        parent_probe=_probe(),
+    )
+
+    anchors = _read_tsv(output / "catss-anchors.tsv")
+    assert [(row["anchor_kind"], row["parent_node"], row["token_n"]) for row in anchors] == [
+        ("apparent_mt_minus", "2", "1")
+    ]
+    assert not _read_tsv(output / "catss-mappings.tsv")
+    assert "2\t1" in (output / "catss_sem_apparent_minus.tf").read_text(encoding="utf-8")
+
+
 def test_generated_bhsa_module_loads_over_parent_warp_and_is_searchable(
     tmp_path: pathlib.Path,
 ) -> None:
