@@ -27,6 +27,34 @@ _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
 _KNOWN_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
     ("01.Genesis.par", 6, 19, "--= '' =H/BHMH", "TW=N KTHNW=N"): "--+ '' =H/BHMH",
+    (
+        "01.Genesis.par",
+        22,
+        16,
+        "--=;M/MN/Y <22.12> <sp>",
+        "DI' E)ME/",
+    ): "--+=;M/MN/Y <22.12> <sp>",
+    (
+        "01.Genesis.par",
+        48,
+        13,
+        "-- =;)T/M <48.10>",
+        "AU)TOU\\S",
+    ): "--+ =;)T/M <48.10>",
+    (
+        "02.Exodus.par",
+        10,
+        24,
+        "--=;)LH/YKM <10.8>",
+        "TW=| QEW=| U(MW=N",
+    ): "--+=;)LH/YKM <10.8>",
+    (
+        "15.1Chron.par",
+        11,
+        20,
+        "-- =B/P(M )XT",
+        "E)N KAIRW=| E(NI/",
+    ): "--+ =B/P(M )XT",
 }
 
 
