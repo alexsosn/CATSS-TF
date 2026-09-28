@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from catss_tf.parser import alignment_id_for, parse_parallel_text
+from catss_tf.technique import derive_alignment_technique
 from catss_tf.tf_schema import FEATURE_SPECS
 
 
@@ -137,7 +138,11 @@ def test_known_mt_double_dash_rows_are_exact_lxx_plus_source_repairs(
     assert alignment.mt_count == 0
     assert alignment.lxx_count > 0
     assert alignment.mt_col_a == "--+"
-    assert alignment.mt_col_b is not None
+    assert alignment.mt_col_b == semantic_mt.split("=", 1)[1]
+
+    technique = derive_alignment_technique(source_name, alignment)
+    assert technique.addition_vs_mt is True
+    assert technique.omission_vs_mt is False
 
     repairs = tuple(
         annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
@@ -147,14 +152,12 @@ def test_known_mt_double_dash_rows_are_exact_lxx_plus_source_repairs(
     assert repairs[0].payload == semantic_mt
     assert repairs[0].side == "mt_a"
 
-    verse = document.verses[0]
     assert alignment.alignment_id == alignment_id_for(
         source_name=source_name,
         header_raw=header,
         source_lines=(2,),
         raw_lines=(raw,),
     )
-    assert (verse.chapter, verse.verse) != (0, 0)
 
 
 def test_mt_double_dash_repair_does_not_generalize_to_same_cells_at_other_reference() -> None:
