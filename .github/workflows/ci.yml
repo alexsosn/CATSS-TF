@@ -75,6 +75,50 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Assert chained continuation grouping
+        run: |
+          python - <<'PY'
+          import pathlib
+          from catss_tf.parser import parse_parallel_file
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          expected = {
+              '06.JoshB.par': {3752: (3750, 3751, 3752)},
+              '13.1Kings.par': {14622: (14621, 14622)},
+              '27.Sirach.par': {
+                  3694: (3693, 3694),
+                  3696: (3695, 3696),
+              },
+              '45.DanielOG.par': {85: (84, 85)},
+          }
+
+          checked = 0
+          for name, line_expectations in expected.items():
+              document = parse_parallel_file(root / name)
+              malformed = {
+                  diagnostic.line_no
+                  for diagnostic in document.diagnostics
+                  if diagnostic.code == 'malformed_continuation'
+              }
+              for line_no, expected_group in line_expectations.items():
+                  owners = [
+                      alignment
+                      for verse in document.verses
+                      for alignment in verse.alignments
+                      if line_no in alignment.source_lines
+                  ]
+                  assert len(owners) == 1, (name, line_no, owners)
+                  assert owners[0].source_lines == expected_group, (
+                      name,
+                      line_no,
+                      owners[0].source_lines,
+                  )
+                  assert line_no not in malformed, (name, line_no)
+                  checked += 1
+
+          assert checked == 5, checked
+          print(f'chained_continuation_fragments={checked}')
+          PY
       - name: Assert MT apparent-minus semantics
         run: |
           python - <<'PY'
@@ -124,6 +168,67 @@ jobs:
           print(f'mt_apparent_minus_markers={marker_total}')
           print(f'mt_apparent_minus_admissible={admissible}')
           print(f'mt_apparent_minus_outliers={dict(outlier_shapes)}')
+          PY
+      - name: Assert exact MT double-dash source repairs
+        run: |
+          python - <<'PY'
+          import pathlib
+          import re
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          expected = {
+              (
+                  '01.Genesis.par', 22, 16,
+                  '--=;M/MN/Y <22.12> <sp>', "DI' E)ME/",
+                  '--+=;M/MN/Y <22.12> <sp>',
+              ),
+              (
+                  '01.Genesis.par', 48, 13,
+                  '-- =;)T/M <48.10>', 'AU)TOU\\S',
+                  '--+ =;)T/M <48.10>',
+              ),
+              (
+                  '02.Exodus.par', 10, 24,
+                  '--=;)LH/YKM <10.8>', 'TW=| QEW=| U(MW=N',
+                  '--+=;)LH/YKM <10.8>',
+              ),
+              (
+                  '15.1Chron.par', 11, 20,
+                  '-- =B/P(M )XT', 'E)N KAIRW=| E(NI/',
+                  '--+ =B/P(M )XT',
+              ),
+          }
+          observed = set()
+          repair_occurrences = []
+          unrepaired_bare = []
+          root = pathlib.Path('/tmp/catss-parallel')
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      repairs = [
+                          a for a in alignment.annotations
+                          if a.side == 'mt_a' and a.kind == 'source_repair'
+                      ]
+                      for repair in repairs:
+                          identity = (
+                              name, verse.chapter, verse.verse,
+                              alignment.mt_raw, alignment.lxx_raw, repair.payload,
+                          )
+                          if identity in expected:
+                              observed.add(identity)
+                              repair_occurrences.append(identity)
+                      if re.match(r'^--(?=[ =])', alignment.mt_raw):
+                          if not repairs:
+                              unrepaired_bare.append(
+                                  (name, verse.chapter, verse.verse, alignment.mt_raw, alignment.lxx_raw)
+                              )
+          assert observed == expected, (expected - observed, observed - expected)
+          assert len(repair_occurrences) == 4, repair_occurrences
+          assert len(set(repair_occurrences)) == 4, repair_occurrences
+          assert unrepaired_bare == [], unrepaired_bare
+          print(f'mt_double_dash_exact_repairs={len(repair_occurrences)}')
           PY
       - name: Assert complete notation coverage
         run: |

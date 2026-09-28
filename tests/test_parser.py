@@ -177,6 +177,51 @@ HBY\t
     assert second.lxx_tokens == ("GRZ",)
 
 
+def test_chained_leading_hash_fragments_remain_one_logical_alignment() -> None:
+    raw_lines = (
+        "HB\tGR1 #",
+        "#\tGR2",
+        "#\tGR3",
+    )
+    doc = parse_parallel_text(
+        "Test 1:1\n" + "\n".join(raw_lines) + "\nNEXT\tGR4\n",
+        source_name="99.Test.par",
+    )
+
+    assert len(doc.verses[0].alignments) == 2
+    chained, following = doc.verses[0].alignments
+    assert chained.source_lines == (2, 3, 4)
+    assert chained.raw_lines == raw_lines
+    assert chained.mt_tokens == ("HB",)
+    assert chained.lxx_tokens == ("GR1", "GR2", "GR3")
+    assert chained.alignment_id == alignment_id_for(
+        source_name="99.Test.par",
+        header_raw="Test 1:1",
+        source_lines=(2, 3, 4),
+        raw_lines=raw_lines,
+    )
+    assert following.mt_tokens == ("NEXT",)
+    assert not any(d.code == "malformed_continuation" for d in doc.diagnostics)
+
+
+def test_leading_hash_cannot_attach_across_verse_header() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB1\tGR1
+Test 1:2
+#\tGR2
+""",
+        source_name="99.Test.par",
+    )
+
+    assert len(doc.verses) == 2
+    assert doc.verses[0].alignments[0].raw_lines == ("HB1\tGR1",)
+    assert doc.verses[1].alignments[0].raw_lines == ("#\tGR2",)
+    malformed = tuple(d for d in doc.diagnostics if d.code == "malformed_continuation")
+    assert len(malformed) == 1
+    assert malformed[0].line_no == 4
+
+
 def test_unknown_brace_siglum_is_retained_as_annotation() -> None:
     doc = parse_parallel_text(
         """Test 1:1
