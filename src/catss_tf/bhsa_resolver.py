@@ -97,11 +97,11 @@ class _ExpandedPosition:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class BhsaVerseAnchor:
-    """A non-word anchor for a Hebrew-empty/LXX-plus CATSS alignment."""
+    """A non-word anchor for a Hebrew-empty CATSS alignment."""
 
     alignment_id: str
     bhsa_verse_node: int
-    kind: typing.Literal["lxx_plus"] = "lxx_plus"
+    kind: typing.Literal["lxx_plus", "apparent_mt_minus"] = "lxx_plus"
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -322,6 +322,14 @@ def resolve_bhsa_document(
         )
         plus_alignments = tuple(
             alignment for alignment in verse.alignments if alignment.is_lxx_plus
+        )
+        apparent_minus_alignments = tuple(
+            alignment
+            for alignment in verse.alignments
+            if any(
+                annotation.side == "mt_a" and annotation.kind == "apparent_minus"
+                for annotation in alignment.annotations
+            )
         )
 
         if expansion_finding is not None:
@@ -568,8 +576,17 @@ def resolve_bhsa_document(
             BhsaVerseAnchor(
                 alignment_id=alignment.alignment_id,
                 bhsa_verse_node=parent.node,
+                kind="lxx_plus",
             )
             for alignment in plus_alignments
+        )
+        verse_anchors.extend(
+            BhsaVerseAnchor(
+                alignment_id=alignment.alignment_id,
+                bhsa_verse_node=parent.node,
+                kind="apparent_mt_minus",
+            )
+            for alignment in apparent_minus_alignments
         )
 
     return _report(

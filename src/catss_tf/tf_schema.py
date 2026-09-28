@@ -61,7 +61,12 @@ class TfAnchorEvent:
     node: int
     source: str
     alignment_id: str
-    kind: typing.Literal["lxx_plus", "lxx_minus", "transposition_placeholder"]
+    kind: typing.Literal[
+        "lxx_plus",
+        "lxx_minus",
+        "transposition_placeholder",
+        "apparent_mt_minus",
+    ]
     token_n: int = 0
 
 
@@ -208,6 +213,10 @@ _ANCHOR_SPECS: dict[str, tuple[ValueType, str]] = {
         "total Greek lexical elements in CATSS LXX-plus groups on this verse",
     ),
     "catss_lxx_minus_n": ("int", "number of CATSS Greek-empty/LXX-minus groups"),
+    "catss_apparent_mt_minus_n": (
+        "int",
+        "number of CATSS Hebrew-empty apparent-MT-minus groups on this verse",
+    ),
     "catss_transposition_placeholder_n": (
         "int",
         "number of CATSS Greek-empty transposition placeholder groups",
@@ -421,7 +430,7 @@ _MAPPING_KINDS: dict[Projection, frozenset[str]] = {
     "lxx": frozenset({"exact", "transposition_alignment", "transposition_carrier"}),
 }
 _ANCHOR_KINDS: dict[Projection, frozenset[str]] = {
-    "bhsa": frozenset({"lxx_plus"}),
+    "bhsa": frozenset({"lxx_plus", "apparent_mt_minus"}),
     "lxx": frozenset({"lxx_minus", "transposition_placeholder"}),
 }
 
@@ -508,14 +517,18 @@ def compile_tf_features(
             )
         if anchor.token_n < 0:
             raise TfSchemaError(f"anchor token_n must be non-negative, got {anchor.token_n}")
-        if anchor.kind == "lxx_plus" and anchor.token_n < 1:
-            raise TfSchemaError("lxx_plus anchor requires token_n >= 1")
-        if anchor.kind != "lxx_plus" and anchor.token_n != 0:
+        if anchor.kind in {"lxx_plus", "apparent_mt_minus"} and anchor.token_n < 1:
+            raise TfSchemaError(f"{anchor.kind} anchor requires token_n >= 1")
+        if anchor.kind not in {"lxx_plus", "apparent_mt_minus"} and anchor.token_n != 0:
             raise TfSchemaError(f"{anchor.kind} anchor requires token_n=0")
 
         if anchor.kind == "lxx_plus":
             _increment(features, "catss_lxx_plus_n", anchor.node, 1)
             _increment(features, "catss_lxx_plus_token_n", anchor.node, anchor.token_n)
+        elif anchor.kind == "apparent_mt_minus":
+            _increment(features, "catss_apparent_mt_minus_n", anchor.node, 1)
+            _put(features, "catss_sem_apparent_minus", anchor.node, 1)
+            _put(features, "catss_sem_apparent_minus_mt_a", anchor.node, 1)
         elif anchor.kind == "lxx_minus":
             _increment(features, "catss_lxx_minus_n", anchor.node, 1)
         else:
@@ -582,6 +595,7 @@ def _compile_membership(
             trans_local="catss_trans_local" in membership.flags,
             trans_remote="catss_trans_remote" in membership.flags,
             trans_style="catss_trans_style" in membership.flags,
+            apparent_mt_minus="apparent_minus" in membership.semantic_kinds,
         )
     except TechniqueError as exc:
         raise TfSchemaError(f"technique derivation failed: {exc}") from exc

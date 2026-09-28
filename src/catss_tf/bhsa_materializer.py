@@ -355,7 +355,7 @@ def _projection_facts(
                 node=anchor.bhsa_verse_node,
                 source=document.source_name,
                 alignment_id=anchor.alignment_id,
-                kind="lxx_plus",
+                kind=anchor.kind,
                 token_n=alignment.lxx_count,
             )
             anchors.append(event)
@@ -365,7 +365,7 @@ def _projection_facts(
                     document.source_name,
                     anchor.alignment_id,
                     anchor.bhsa_verse_node,
-                    "lxx_plus",
+                    anchor.kind,
                     alignment.lxx_count,
                 )
             )

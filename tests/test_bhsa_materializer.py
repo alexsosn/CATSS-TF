@@ -191,6 +191,44 @@ def test_simple_bhsa_materialization_writes_query_native_module_and_sidecars(
     assert tuple(_read_tsv(output / "catss-diagnostics.tsv")) == ()
 
 
+def test_apparent_mt_minus_is_query_native_on_bhsa_verse_anchor(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        """Gen 1:1
+)B\tQEOS
+--- =;DBR\tLOGOS
+""",
+    )
+    output = tmp_path / "catss-bhsa"
+    provider = FakeBhsaProvider((_verse(),))
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=provider,
+        parent_probe=_probe(),
+    )
+
+    count = (output / "catss_apparent_mt_minus_n.tf").read_text(encoding="utf-8")
+    semantic = (output / "catss_sem_apparent_minus.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_apparent_minus_mt_a.tf").read_text(encoding="utf-8")
+
+    assert "2\t1" in count
+    assert "2\t1" in semantic
+    assert "2\t1" in scoped
+
+    anchors = _read_tsv(output / "catss-anchors.tsv")
+    apparent = [row for row in anchors if row["anchor_kind"] == "apparent_mt_minus"]
+    assert len(apparent) == 1
+    assert apparent[0]["parent_node"] == "2"
+    assert apparent[0]["token_n"] == "1"
+    assert [row["anchor_kind"] for row in anchors] == ["apparent_mt_minus"]
+
+
 def test_generated_bhsa_module_loads_over_parent_warp_and_is_searchable(
     tmp_path: pathlib.Path,
 ) -> None:
