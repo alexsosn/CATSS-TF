@@ -88,6 +88,42 @@ def test_mt_side_apparent_minus_is_typed_without_becoming_lxx_plus() -> None:
     assert apparent[0].raw == "---"
 
 
+def test_mt_double_dash_with_retroversion_is_typed_as_apparent_minus() -> None:
+    raw = "-- =;ALT <1.1>\tLOGOS"
+    doc = parse_parallel_text(
+        f"Gen 1:1\n{raw}\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.mt_col_a == "--"
+    assert alignment.mt_col_b == ";ALT <1.1>"
+    assert alignment.mt_count == 0
+    assert alignment.lxx_count == 1
+    assert alignment.is_lxx_plus is False
+
+    apparent = tuple(
+        annotation for annotation in alignment.annotations if annotation.kind == "apparent_minus"
+    )
+    assert len(apparent) == 1
+    assert apparent[0].side == "mt_a"
+    assert apparent[0].family == "alignment"
+    assert apparent[0].raw == "--"
+
+
+def test_mt_double_dash_without_retroversion_is_not_apparent_minus() -> None:
+    doc = parse_parallel_text(
+        "Sir 1:19\n--\t---\n",
+        source_name="27.Sirach.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.mt_col_a == "--"
+    assert alignment.mt_col_b is None
+    assert (alignment.mt_count, alignment.lxx_count) == (0, 0)
+    assert not any(annotation.kind == "apparent_minus" for annotation in alignment.annotations)
+
+
 def test_greek_side_minus_does_not_emit_mt_apparent_minus() -> None:
     doc = parse_parallel_text(
         "Gen 1:1\nHB\t--- ''\n",
