@@ -75,6 +75,56 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Assert MT apparent-minus semantics
+        run: |
+          python - <<'PY'
+          import collections
+          import pathlib
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import TechniqueError, derive_alignment_technique
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          marker_total = 0
+          admissible = 0
+          outlier_shapes = collections.Counter()
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      marker = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else ''
+                      if marker != '---':
+                          continue
+                      marker_total += 1
+                      apparent = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'mt_a'
+                          and annotation.kind == 'apparent_minus'
+                      ]
+                      assert len(apparent) == 1
+                      if alignment.mt_count == 0 and alignment.lxx_count > 0:
+                          admissible += 1
+                          technique = derive_alignment_technique(name, alignment)
+                          assert technique.addition_vs_mt is False
+                          assert technique.omission_vs_mt is False
+                      else:
+                          outlier_shapes[(alignment.mt_count, alignment.lxx_count)] += 1
+                          try:
+                              derive_alignment_technique(name, alignment)
+                          except TechniqueError:
+                              pass
+                          else:
+                              raise AssertionError(
+                                  'contradictory apparent-minus cardinality must fail closed'
+                              )
+          assert marker_total == 63, marker_total
+          assert admissible == 61, admissible
+          assert outlier_shapes == {(0, 0): 1, (1, 2): 1}, outlier_shapes
+          print(f'mt_apparent_minus_markers={marker_total}')
+          print(f'mt_apparent_minus_admissible={admissible}')
+          print(f'mt_apparent_minus_outliers={dict(outlier_shapes)}')
+          PY
       - name: Assert complete notation coverage
         run: |
           set +e
