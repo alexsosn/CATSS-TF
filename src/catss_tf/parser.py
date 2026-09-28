@@ -382,7 +382,12 @@ def _build_alignment(
 
     annotations = tuple(
         [
-            *_mt_alignment_marker_annotations(mt_col_a, book=verse.book),
+            *_mt_alignment_marker_annotations(
+                mt_col_a,
+                mt_col_b=mt_col_b,
+                lxx_cell=semantic_lxx,
+                book=verse.book,
+            ),
             *_extract_annotations("mt_a", mt_col_a, book=verse.book),
             *(
                 _extract_annotations("mt_b", mt_col_b, book=verse.book)
@@ -489,9 +494,26 @@ def _join_continued_cells(cells: typing.Iterable[str]) -> str:
     return " ".join(parts)
 
 
-def _mt_alignment_marker_annotations(cell: str, *, book: str) -> list[Annotation]:
-    if _first_token(cell) != "---":
+def _mt_alignment_marker_annotations(
+    cell: str,
+    *,
+    mt_col_b: str | None,
+    lxx_cell: str,
+    book: str,
+) -> list[Annotation]:
+    marker = _first_token(cell)
+    if marker == "---":
+        raw = marker
+    elif (
+        marker == "--"
+        and bool(mt_col_b)
+        and not _mt_lexical_readings(cell)
+        and bool(_lxx_lexical_candidates(lxx_cell))
+    ):
+        raw = marker
+    else:
         return []
+
     spec = notation_spec("Ap-", book=book)
     if spec is None:
         raise ValueError("documented apparent-minus notation is unavailable")
@@ -499,7 +521,7 @@ def _mt_alignment_marker_annotations(cell: str, *, book: str) -> list[Annotation
         Annotation(
             side="mt_a",
             kind=spec.kind,
-            raw="---",
+            raw=raw,
             family=spec.family,
             contextual=spec.contextual,
         )
