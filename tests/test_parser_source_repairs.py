@@ -81,3 +81,92 @@ def test_known_source_repair_does_not_generalize_to_lookalikes(
     assert alignment.is_lxx_plus is False
     assert alignment.mt_col_a == "--"
     assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
+
+
+@pytest.mark.parametrize(
+    ("source_name", "header", "mt_cell", "lxx_cell", "semantic_mt"),
+    (
+        (
+            "01.Genesis.par",
+            "Gen 22:16",
+            "--=;M/MN/Y <22.12> <sp>",
+            "DI' E)ME/",
+            "--+=;M/MN/Y <22.12> <sp>",
+        ),
+        (
+            "01.Genesis.par",
+            "Gen 48:13",
+            "-- =;)T/M <48.10>",
+            "AU)TOU\\S",
+            "--+ =;)T/M <48.10>",
+        ),
+        (
+            "02.Exodus.par",
+            "Exod 10:24",
+            "--=;)LH/YKM <10.8>",
+            "TW=| QEW=| U(MW=N",
+            "--+=;)LH/YKM <10.8>",
+        ),
+        (
+            "15.1Chron.par",
+            "1Chr 11:20",
+            "-- =B/P(M )XT",
+            "E)N KAIRW=| E(NI/",
+            "--+ =B/P(M )XT",
+        ),
+    ),
+)
+def test_known_mt_double_dash_rows_are_exact_lxx_plus_source_repairs(
+    source_name: str,
+    header: str,
+    mt_cell: str,
+    lxx_cell: str,
+    semantic_mt: str,
+) -> None:
+    raw = f"{mt_cell}\t{lxx_cell}"
+    document = parse_parallel_text(
+        f"{header}\n{raw}\n",
+        source_name=source_name,
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.mt_raw == mt_cell
+    assert alignment.lxx_raw == lxx_cell
+    assert alignment.is_lxx_plus is True
+    assert alignment.mt_count == 0
+    assert alignment.lxx_count > 0
+    assert alignment.mt_col_a == "--+"
+    assert alignment.mt_col_b is not None
+
+    repairs = tuple(
+        annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
+    )
+    assert len(repairs) == 1
+    assert repairs[0].raw == mt_cell
+    assert repairs[0].payload == semantic_mt
+    assert repairs[0].side == "mt_a"
+
+    verse = document.verses[0]
+    assert alignment.alignment_id == alignment_id_for(
+        source_name=source_name,
+        header_raw=header,
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+    assert (verse.chapter, verse.verse) != (0, 0)
+
+
+def test_mt_double_dash_repair_does_not_generalize_to_same_cells_at_other_reference() -> None:
+    mt_cell = "--=;M/MN/Y <22.12> <sp>"
+    lxx_cell = "DI' E)ME/"
+    document = parse_parallel_text(
+        f"Gen 22:17\n{mt_cell}\t{lxx_cell}\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.mt_raw == mt_cell
+    assert alignment.mt_col_a == "--"
+    assert alignment.is_lxx_plus is False
+    assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
