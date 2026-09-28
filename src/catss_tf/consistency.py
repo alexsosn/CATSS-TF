@@ -352,6 +352,7 @@ def compare_projection_bundles(
 
     bhsa_alignment_rows = _alignment_index(bhsa, findings)
     lxx_alignment_rows = _alignment_index(lxx, findings)
+    bhsa_annotations = _annotation_semantics(bhsa)
     bhsa_mappings = _rows_by_identity(bhsa, "catss-mappings.tsv", findings, "bhsa")
     lxx_mappings = _rows_by_identity(lxx, "catss-mappings.tsv", findings, "lxx")
     bhsa_anchors = _rows_by_identity(bhsa, "catss-anchors.tsv", findings, "bhsa")
@@ -377,6 +378,10 @@ def compare_projection_bundles(
             if parsed is None:
                 continue
             mt_n, lxx_n, lxx_plus, lxx_minus, trans_remote = parsed
+            apparent_mt_minus = (
+                "mt_a",
+                "apparent_minus",
+            ) in bhsa_annotations.get(identity, frozenset())
 
             bmaps = bhsa_mappings.get(identity, ())
             lmaps = lxx_mappings.get(identity, ())
@@ -401,6 +406,21 @@ def compare_projection_bundles(
                 anchor_mismatches += _check_anchor(identity, lanchors, "lxx_minus", "lxx", findings)
                 anchor_mismatches += _check_no_anchor(identity, banchors, "bhsa", findings)
                 unexpected_projection_gaps += _check_no_mapping(identity, lmaps, "lxx", findings)
+                continue
+
+            if apparent_mt_minus:
+                index_mismatches += _check_index_coverage(
+                    identity, lmaps, "lxx_i", lxx_n, "lxx", findings
+                )
+                anchor_mismatches += _check_anchor(
+                    identity,
+                    banchors,
+                    "apparent_mt_minus",
+                    "bhsa",
+                    findings,
+                )
+                anchor_mismatches += _check_no_anchor(identity, lanchors, "lxx", findings)
+                unexpected_projection_gaps += _check_no_mapping(identity, bmaps, "bhsa", findings)
                 continue
 
             if lxx_n == 0 and trans_remote:
@@ -677,6 +697,18 @@ def _alignment_index(
             continue
         result[identity] = row
     return result
+
+
+def _annotation_semantics(
+    bundle: _Bundle,
+) -> dict[tuple[str, str], frozenset[tuple[str, str]]]:
+    grouped: dict[tuple[str, str], set[tuple[str, str]]] = {}
+    for row in bundle.tables.get("catss-annotations.tsv", ()):
+        identity = (row.get("source", ""), row.get("alignment_id", ""))
+        if not all(identity):
+            continue
+        grouped.setdefault(identity, set()).add((row.get("side", ""), row.get("kind", "")))
+    return {identity: frozenset(values) for identity, values in grouped.items()}
 
 
 def _rows_by_identity(
