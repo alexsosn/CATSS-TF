@@ -75,60 +75,17 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
-      - name: Research MT double-dash against apparent-minus population
+      - name: Assert MT double-dash apparent-minus semantics
         run: |
           python - <<'PY'
-          import collections
           import pathlib
           from catss_tf.parser import parse_parallel_file
           from catss_tf.source import CATSS_PARALLEL_FILENAMES
 
           root = pathlib.Path('/tmp/catss-parallel')
-          double_dash = []
-          apparent = []
-          for name in CATSS_PARALLEL_FILENAMES:
-              document = parse_parallel_file(root / name)
-              for verse in document.verses:
-                  for alignment in verse.alignments:
-                      first = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else ''
-                      record = (
-                          name,
-                          verse.header_raw,
-                          alignment.source_lines,
-                          alignment.mt_raw,
-                          alignment.mt_col_b,
-                          alignment.retroversion_kind,
-                          alignment.mt_count,
-                          alignment.lxx_count,
-                          alignment.lxx_raw,
-                      )
-                      if first == '--':
-                          double_dash.append(record)
-                      elif first == '---' and alignment.mt_count == 0 and alignment.lxx_count > 0:
-                          apparent.append(record)
-
-          print('DOUBLE_DASH_COUNT', len(double_dash))
-          for row in double_dash:
-              print('DOUBLE_DASH', row)
-
-          print('APPARENT_VALID_COUNT', len(apparent))
-          print('APPARENT_WITH_COL_B', sum(row[4] is not None for row in apparent))
-          print('APPARENT_RETRO_KINDS', collections.Counter(row[5] for row in apparent))
-          print('APPARENT_SHAPES', collections.Counter((row[6], row[7]) for row in apparent))
-          print('APPARENT_COL_B_PREFIXES', collections.Counter(
-              (
-                  row[4].split(maxsplit=1)[0][0] if row[4] else None,
-                  row[5],
-              )
-              for row in apparent
-          ))
-          targets = [
-              row
-              for row in double_dash
-              if row[4] is not None and row[6] == 0 and row[7] > 0
-          ]
+          total = 0
           typed_targets = 0
-          untyped_exceptions = 0
+          untyped_exceptions = []
           for name in CATSS_PARALLEL_FILENAMES:
               document = parse_parallel_file(root / name)
               for verse in document.verses:
@@ -136,6 +93,7 @@ jobs:
                       first = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else ''
                       if first != '--':
                           continue
+                      total += 1
                       typed = [
                           a
                           for a in alignment.annotations
@@ -149,21 +107,28 @@ jobs:
                       if target:
                           assert len(typed) == 1
                           assert typed[0].raw == '--'
+                          assert alignment.is_lxx_plus is False
                           typed_targets += 1
                       else:
                           assert not typed
-                          untyped_exceptions += 1
-          exceptions = [row for row in double_dash if row not in targets]
-          print('DOUBLE_DASH_TARGETS', len(targets))
-          print('DOUBLE_DASH_EXCEPTIONS', exceptions)
-          assert len(double_dash) == 5, len(double_dash)
-          assert len(targets) == 4, len(targets)
+                          untyped_exceptions.append(
+                              (
+                                  name,
+                                  verse.header_raw,
+                                  alignment.mt_count,
+                                  alignment.lxx_count,
+                                  alignment.mt_col_b,
+                              )
+                          )
+
+          assert total == 5, total
           assert typed_targets == 4, typed_targets
-          assert untyped_exceptions == 1, untyped_exceptions
-          assert len(exceptions) == 1, exceptions
-          assert exceptions[0][0:2] == ('27.Sirach.par', 'Sir 1:19')
-          assert exceptions[0][4] is None
-          assert exceptions[0][6:8] == (0, 0)
+          assert untyped_exceptions == [
+              ('27.Sirach.par', 'Sir 1:19', 0, 0, None)
+          ], untyped_exceptions
+          print(f'mt_double_dash_total={total}')
+          print(f'mt_double_dash_apparent_minus={typed_targets}')
+          print(f'mt_double_dash_untyped={len(untyped_exceptions)}')
           PY
       - name: Assert MT apparent-minus semantics
         run: |
