@@ -271,9 +271,7 @@ def compare_projection_bundles(
                     findings,
                 )
                 anchor_mismatches += _check_no_anchor(identity, lanchors, "lxx", findings)
-                unexpected_projection_gaps += _check_no_mapping(
-                    identity, bmaps, "bhsa", findings
-                )
+                unexpected_projection_gaps += _check_no_mapping(identity, bmaps, "bhsa", findings)
                 continue
 
             if lxx_n == 0 and trans_remote:
@@ -510,9 +508,7 @@ def _annotation_semantics(
         identity = (row.get("source", ""), row.get("alignment_id", ""))
         if not all(identity):
             continue
-        grouped.setdefault(identity, set()).add(
-            (row.get("side", ""), row.get("kind", ""))
-        )
+        grouped.setdefault(identity, set()).add((row.get("side", ""), row.get("kind", "")))
     return {identity: frozenset(values) for identity, values in grouped.items()}
 
 
