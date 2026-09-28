@@ -75,6 +75,57 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Research MT double-dash against apparent-minus population
+        run: |
+          python - <<'PY'
+          import collections
+          import pathlib
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          double_dash = []
+          apparent = []
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      first = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else ''
+                      record = (
+                          name,
+                          verse.header_raw,
+                          alignment.source_lines,
+                          alignment.mt_raw,
+                          alignment.mt_col_b,
+                          alignment.retroversion_kind,
+                          alignment.mt_count,
+                          alignment.lxx_count,
+                          alignment.lxx_raw,
+                      )
+                      if first == '--':
+                          double_dash.append(record)
+                      elif first == '---' and alignment.mt_count == 0 and alignment.lxx_count > 0:
+                          apparent.append(record)
+
+          print('DOUBLE_DASH_COUNT', len(double_dash))
+          for row in double_dash:
+              print('DOUBLE_DASH', row)
+
+          print('APPARENT_VALID_COUNT', len(apparent))
+          print('APPARENT_WITH_COL_B', sum(row[4] is not None for row in apparent))
+          print('APPARENT_RETRO_KINDS', collections.Counter(row[5] for row in apparent))
+          print('APPARENT_SHAPES', collections.Counter((row[6], row[7]) for row in apparent))
+          print('APPARENT_COL_B_PREFIXES', collections.Counter(
+              (
+                  row[4].split(maxsplit=1)[0][0] if row[4] else None,
+                  row[5],
+              )
+              for row in apparent
+          ))
+          assert len(double_dash) == 4, len(double_dash)
+          assert all(row[4] is not None for row in double_dash)
+          assert all(row[6] == 0 and row[7] > 0 for row in double_dash)
+          PY
       - name: Assert MT apparent-minus semantics
         run: |
           python - <<'PY'
