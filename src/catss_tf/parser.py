@@ -262,10 +262,8 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             current.verse,
         )
         if pending:
-            if pending[-1].continues:
+            if pending[-1].continues or physical.starts_with_continuation:
                 pending.append(physical)
-                if not physical.continues:
-                    flush_pending()
                 continue
             flush_pending()
 
@@ -280,8 +278,6 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             )
 
         pending = [physical]
-        if not physical.continues:
-            flush_pending()
 
     flush_verse()
     return ParallelDocument(
