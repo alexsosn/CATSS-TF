@@ -266,6 +266,7 @@ def test_consistency_accepts_double_dash_apparent_minus_projection_asymmetry(
         source,
         "01.Genesis.par",
         """Gen 1:1
+)B\tQEOS
 -- =;DBR\tLOGOS
 """,
     )
@@ -281,7 +282,9 @@ def test_consistency_accepts_double_dash_apparent_minus_projection_asymmetry(
     materialize_lxx(
         source,
         lxx,
-        provider=FakeLxxProvider((_lxx_span("Gen", 1, 1, 200, ("λόγος",), 1000),)),
+        provider=FakeLxxProvider(
+            (_lxx_span("Gen", 1, 1, 200, ("θεός", "λόγος"), 1000),)
+        ),
     )
 
     report = compare_projection_bundles(bhsa, lxx)
