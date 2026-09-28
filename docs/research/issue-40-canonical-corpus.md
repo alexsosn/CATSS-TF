@@ -196,3 +196,17 @@ Text-Fabric treated the full min/max interval as belonging to a type, so
 The canonical graph must allocate every non-slot type in one global block. The
 preservation audit must reject any graph where a node type occurs in more than one
 interval. The executable TF-load regression remains the user-visible acceptance test.
+
+
+## R40-11 — sibling lexical order is explicit data, not locality order
+
+Text-Fabric's canonical ranking sorts equal-slot, equal-type nodes by node id, but
+`Locality.u()` returns embedders in reverse canonical rank. Therefore two
+`mt_element` nodes that both cover the same alignment slot are not guaranteed to be
+returned in lexical order by `L.u(slot, otype="mt_element")`.
+
+CATSS lexical order is represented explicitly by `catss_index`. Consumers that need
+ordered MT/LXX elements must sort same-alignment element nodes by that feature. The
+canonical corpus must preserve a complete 1..N index sequence for every alignment and
+the user-facing TF-load test must reconstruct the original token order from
+`catss_index`, rather than depending on undocumented locality sibling ordering.
