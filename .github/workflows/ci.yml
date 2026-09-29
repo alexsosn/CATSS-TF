@@ -114,6 +114,7 @@ jobs:
                               'first': first,
                               'mt_n': alignment.mt_count,
                               'lxx_n': alignment.lxx_count,
+                              'column_split': alignment.column_split,
                               'annotations': tuple(
                                   (a.side, a.kind, a.raw, a.payload)
                                   for a in alignment.annotations
@@ -133,6 +134,14 @@ jobs:
           print('FIRST_TOKEN_COUNTS', collections.Counter(row['first'] for row in rows))
           print('SOURCE_COUNTS', collections.Counter(row['source'] for row in rows))
           print('SHAPES', collections.Counter((row['mt_n'], row['lxx_n']) for row in rows))
+          print('COLUMN_SPLIT_COUNTS', collections.Counter(row['column_split'] for row in rows))
+          split_rows = [row for row in rows if row['column_split']]
+          unsplit_rows = [row for row in rows if not row['column_split']]
+          print('SPLIT_RESIDUAL_COUNT', len(split_rows))
+          print('UNSPLIT_RESIDUAL_COUNT', len(unsplit_rows))
+          print('SPLIT_FIRST_TOKEN_COUNTS', collections.Counter(row['first'] for row in split_rows))
+          for row in split_rows:
+              print('SPLIT_RESIDUAL', row)
           for row in rows:
               print('RESIDUAL', row)
           assert rows, 'expected at least the canonical blocker'
