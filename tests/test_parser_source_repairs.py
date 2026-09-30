@@ -250,7 +250,13 @@ def test_greek_side_plus_repair_preserves_independent_decorators() -> None:
         .verses[0]
         .alignments[0]
     )
-    assert tuple(reference.raw for reference in jer.lxx_references) == ("[28.57]",)
+    assert any(
+        annotation.side == "lxx"
+        and annotation.kind == "contextual_reference"
+        and annotation.raw == "[28.57]"
+        and annotation.payload == "28.57"
+        for annotation in jer.annotations
+    )
 
 
 def test_greek_side_plus_repair_does_not_generalize_to_same_cells_elsewhere() -> None:
