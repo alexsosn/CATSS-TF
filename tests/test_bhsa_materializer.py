@@ -239,9 +239,7 @@ def test_lxx_side_source_repair_is_query_native_on_bhsa_words(
         "Gen 34:29\nKL\t--+\n",
     )
     output = tmp_path / "catss-bhsa"
-    provider = FakeBhsaProvider(
-        (_verse(chapter=34, verse=29, g_cons="כל"),)
-    )
+    provider = FakeBhsaProvider((_verse(chapter=34, verse=29, g_cons="כל"),))
 
     materialize_bhsa(
         source,
@@ -253,9 +251,7 @@ def test_lxx_side_source_repair_is_query_native_on_bhsa_words(
     assert "1\t1" in (output / "catss_lxx_minus.tf").read_text(encoding="utf-8")
     assert "1\t1" in (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
     assert "1\t1" in (output / "catss_sem_source_repair_lxx.tf").read_text(encoding="utf-8")
-    assert "1\t---" in (output / "catss_sem_source_repair_payload.tf").read_text(
-        encoding="utf-8"
-    )
+    assert "1\t---" in (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
     assert "1\t---" in (output / "catss_sem_source_repair_lxx_payload.tf").read_text(
         encoding="utf-8"
     )
