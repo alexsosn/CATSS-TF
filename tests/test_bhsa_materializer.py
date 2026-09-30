@@ -229,6 +229,38 @@ def test_apparent_mt_minus_is_query_native_on_bhsa_verse_anchor(
     assert [row["anchor_kind"] for row in anchors] == ["apparent_mt_minus"]
 
 
+def test_lxx_side_source_repair_is_query_native_on_bhsa_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        "Gen 34:29\nKL\t--+\n",
+    )
+    output = tmp_path / "catss-bhsa"
+    provider = FakeBhsaProvider(
+        (_verse(chapter=34, verse=29, g_cons="כל"),)
+    )
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=provider,
+        parent_probe=_probe(),
+    )
+
+    assert "1\t1" in (output / "catss_lxx_minus.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_source_repair_lxx.tf").read_text(encoding="utf-8")
+    assert "1\t---" in (output / "catss_sem_source_repair_payload.tf").read_text(
+        encoding="utf-8"
+    )
+    assert "1\t---" in (output / "catss_sem_source_repair_lxx_payload.tf").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_generated_bhsa_module_loads_over_parent_warp_and_is_searchable(
     tmp_path: pathlib.Path,
 ) -> None:
