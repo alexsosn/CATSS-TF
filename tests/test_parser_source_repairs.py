@@ -213,9 +213,7 @@ def test_known_greek_side_plus_rows_are_exact_lxx_minus_source_repairs(
     assert technique.omission_vs_mt is True
 
     repairs = tuple(
-        annotation
-        for annotation in alignment.annotations
-        if annotation.kind == "source_repair"
+        annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
     )
     assert len(repairs) == 1
     assert repairs[0].side == "lxx"
