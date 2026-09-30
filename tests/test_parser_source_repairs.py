@@ -231,19 +231,27 @@ def test_known_greek_side_plus_rows_are_exact_lxx_minus_source_repairs(
 
 
 def test_greek_side_plus_repair_preserves_independent_decorators() -> None:
-    prov = parse_parallel_text(
-        "Prov 30:32\nL/PH\t--+ {x}\n",
-        source_name="23.Prov.par",
-    ).verses[0].alignments[0]
+    prov = (
+        parse_parallel_text(
+            "Prov 30:32\nL/PH\t--+ {x}\n",
+            source_name="23.Prov.par",
+        )
+        .verses[0]
+        .alignments[0]
+    )
     assert any(
         a.side == "lxx" and a.kind == "apparent_plus_minus" and a.raw == "{x}"
         for a in prov.annotations
     )
 
-    jer = parse_parallel_text(
-        "Jer 51:57\nPXWT/YH\t--+ [28.57]\n",
-        source_name="41.Jer.par",
-    ).verses[0].alignments[0]
+    jer = (
+        parse_parallel_text(
+            "Jer 51:57\nPXWT/YH\t--+ [28.57]\n",
+            source_name="41.Jer.par",
+        )
+        .verses[0]
+        .alignments[0]
+    )
     assert tuple(reference.raw for reference in jer.lxx_references) == ("[28.57]",)
 
 
