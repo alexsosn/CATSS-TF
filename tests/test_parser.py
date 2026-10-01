@@ -267,9 +267,7 @@ def test_layout_repair_precedes_semantic_source_repair(
     assert alignment.lxx_raw == "DANIHL"
     assert alignment.is_lxx_minus is True
     repairs = [
-        annotation
-        for annotation in alignment.annotations
-        if annotation.kind == "source_repair"
+        annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
     ]
     assert [(repair.side, repair.raw, repair.payload) for repair in repairs] == [
         ("lxx", "DANIHL", "---")
