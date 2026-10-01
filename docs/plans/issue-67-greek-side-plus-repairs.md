@@ -54,7 +54,9 @@ Require on the exact final SHA:
 - ruff check and format;
 - mypy;
 - release smoke;
-- complete CATSS audit.
+- complete CATSS audit;
+- BHSA projection regression proving the LXX-side repair is query-native as
+  `catss_sem_source_repair_lxx` with semantic payload on the mapped MT word.
 
 Then perform an independent adversarial review focused on:
 
