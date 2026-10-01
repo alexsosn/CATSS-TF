@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+import catss_tf.parser as parser_module
 from catss_tf.parser import alignment_id_for, parse_parallel_text
 
 
@@ -245,6 +246,34 @@ def test_non_ps_export_orphan_rejoins_preceding_greek_inside_token() -> None:
     )
     assert following.mt_tokens == ("NEXT",)
     assert not any(d.code == "unsplit_row" for d in doc.diagnostics)
+
+
+def test_layout_repair_precedes_semantic_source_repair(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(
+        parser_module._KNOWN_LXX_SOURCE_ROW_REPAIRS,
+        ("99.Test.par", 1, 1, "HB", "DANIHL"),
+        "---",
+    )
+    raw_lines = ("HB\tDANI", "HL")
+    doc = parse_parallel_text(
+        "Test 1:1\n" + "\n".join(raw_lines) + "\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == raw_lines
+    assert alignment.lxx_raw == "DANIHL"
+    assert alignment.is_lxx_minus is True
+    repairs = [
+        annotation
+        for annotation in alignment.annotations
+        if annotation.kind == "source_repair"
+    ]
+    assert [(repair.side, repair.raw, repair.payload) for repair in repairs] == [
+        ("lxx", "DANIHL", "---")
+    ]
 
 
 def test_non_ps_export_orphan_preserves_existing_word_boundary() -> None:
