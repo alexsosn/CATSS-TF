@@ -540,7 +540,7 @@ def _build_alignment(
 
     mt_col_a, mt_col_b = _split_mt_columns(semantic_mt)
     is_lxx_plus = _first_token(mt_col_a) in _LXX_PLUS_MARKERS
-    is_lxx_minus = _first_token(semantic_lxx) in _LXX_MINUS_MARKERS
+    is_lxx_minus = _is_lxx_minus_marker(_first_token(semantic_lxx))
 
     lxx_references, reference_diagnostics = _extract_greek_references(
         semantic_lxx,
@@ -1178,6 +1178,10 @@ def _square_payload(raw: str) -> str:
 def _first_token(cell: str) -> str:
     parts = cell.split(maxsplit=1)
     return parts[0] if parts else ""
+
+
+def _is_lxx_minus_marker(token: str) -> bool:
+    return token in _LXX_MINUS_MARKERS or token == "---?"
 
 
 def _is_alignment_marker(token: str) -> bool:
