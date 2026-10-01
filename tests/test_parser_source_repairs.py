@@ -173,3 +173,99 @@ def test_mt_double_dash_repair_does_not_generalize_to_same_cells_at_other_refere
     assert alignment.mt_col_a == "--"
     assert alignment.is_lxx_plus is False
     assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
+
+
+@pytest.mark.parametrize(
+    ("source_name", "header", "mt_cell", "lxx_cell", "semantic_lxx"),
+    (
+        ("01.Genesis.par", "Gen 34:29", "KL", "--+", "---"),
+        ("18.Esther.par", "Esth 7:4", "W/)LW", "--+", "---"),
+        ("23.Prov.par", "Prov 11:31", ")P KY", "--+", "---"),
+        ("23.Prov.par", "Prov 24:5", "GBR", "--+", "---"),
+        ("23.Prov.par", "Prov 30:32", "L/PH", "--+ {x}", "--- {x}"),
+        ("41.Jer.par", "Jer 51:57", "PXWT/YH", "--+ [28.57]", "--- [28.57]"),
+    ),
+)
+def test_known_greek_side_plus_rows_are_exact_lxx_minus_source_repairs(
+    source_name: str,
+    header: str,
+    mt_cell: str,
+    lxx_cell: str,
+    semantic_lxx: str,
+) -> None:
+    raw = f"{mt_cell}\t{lxx_cell}"
+    document = parse_parallel_text(
+        f"{header}\n{raw}\n",
+        source_name=source_name,
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.mt_raw == mt_cell
+    assert alignment.lxx_raw == lxx_cell
+    assert alignment.is_lxx_plus is False
+    assert alignment.is_lxx_minus is True
+    assert alignment.mt_count > 0
+    assert alignment.lxx_count == 0
+
+    technique = derive_alignment_technique(source_name, alignment)
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is True
+
+    repairs = tuple(
+        annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
+    )
+    assert len(repairs) == 1
+    assert repairs[0].side == "lxx"
+    assert repairs[0].raw == lxx_cell
+    assert repairs[0].payload == semantic_lxx
+
+    assert alignment.alignment_id == alignment_id_for(
+        source_name=source_name,
+        header_raw=header,
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+
+
+def test_greek_side_plus_repair_preserves_independent_decorators() -> None:
+    prov = (
+        parse_parallel_text(
+            "Prov 30:32\nL/PH\t--+ {x}\n",
+            source_name="23.Prov.par",
+        )
+        .verses[0]
+        .alignments[0]
+    )
+    assert any(
+        a.side == "lxx" and a.kind == "apparent_plus_minus" and a.raw == "{x}"
+        for a in prov.annotations
+    )
+
+    jer = (
+        parse_parallel_text(
+            "Jer 51:57\nPXWT/YH\t--+ [28.57]\n",
+            source_name="41.Jer.par",
+        )
+        .verses[0]
+        .alignments[0]
+    )
+    assert any(
+        annotation.side == "lxx"
+        and annotation.kind == "contextual_reference"
+        and annotation.raw == "[28.57]"
+        and annotation.payload == "28.57"
+        for annotation in jer.annotations
+    )
+
+
+def test_greek_side_plus_repair_does_not_generalize_to_same_cells_elsewhere() -> None:
+    document = parse_parallel_text(
+        "Gen 34:30\nKL\t--+\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.lxx_raw == "--+"
+    assert alignment.is_lxx_minus is False
+    assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)

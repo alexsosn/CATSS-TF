@@ -25,7 +25,7 @@ _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
 _DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
-_KNOWN_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
+_KNOWN_MT_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
     ("01.Genesis.par", 6, 19, "--= '' =H/BHMH", "TW=N KTHNW=N"): "--+ '' =H/BHMH",
     (
         "01.Genesis.par",
@@ -55,6 +55,15 @@ _KNOWN_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
         "-- =B/P(M )XT",
         "E)N KAIRW=| E(NI/",
     ): "--+ =B/P(M )XT",
+}
+
+_KNOWN_LXX_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
+    ("01.Genesis.par", 34, 29, "KL", "--+"): "---",
+    ("18.Esther.par", 7, 4, "W/)LW", "--+"): "---",
+    ("23.Prov.par", 11, 31, ")P KY", "--+"): "---",
+    ("23.Prov.par", 24, 5, "GBR", "--+"): "---",
+    ("23.Prov.par", 30, 32, "L/PH", "--+ {x}"): "--- {x}",
+    ("41.Jer.par", 51, 57, "PXWT/YH", "--+ [28.57]"): "--- [28.57]",
 }
 
 
@@ -157,8 +166,9 @@ class ParallelDocument:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class _SourceRepair:
-    original_mt: str
-    semantic_mt: str
+    side: typing.Literal["mt_a", "lxx"]
+    original: str
+    semantic: str
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -169,7 +179,7 @@ class _PhysicalRow:
     source_lxx: str
     mt: str
     lxx: str
-    repair: _SourceRepair | None
+    repairs: tuple[_SourceRepair, ...]
     column_split: bool
 
     @property
@@ -337,7 +347,7 @@ def _parse_physical_row(
 
     source_mt = mt.strip()
     source_lxx = lxx.strip()
-    semantic_mt, repair = _repair_source_row(
+    semantic_mt, semantic_lxx, repairs = _repair_source_row(
         source_name,
         chapter,
         verse,
@@ -350,8 +360,8 @@ def _parse_physical_row(
         source_mt=source_mt,
         source_lxx=source_lxx,
         mt=semantic_mt,
-        lxx=source_lxx,
-        repair=repair,
+        lxx=semantic_lxx,
+        repairs=repairs,
         column_split=column_split,
     )
 
@@ -362,11 +372,29 @@ def _repair_source_row(
     verse: int,
     mt: str,
     lxx: str,
-) -> tuple[str, _SourceRepair | None]:
-    semantic_mt = _KNOWN_SOURCE_ROW_REPAIRS.get((source_name, chapter, verse, mt, lxx))
-    if semantic_mt is None:
-        return mt, None
-    return semantic_mt, _SourceRepair(original_mt=mt, semantic_mt=semantic_mt)
+) -> tuple[str, str, tuple[_SourceRepair, ...]]:
+    identity = (source_name, chapter, verse, mt, lxx)
+    semantic_mt = _KNOWN_MT_SOURCE_ROW_REPAIRS.get(identity, mt)
+    semantic_lxx = _KNOWN_LXX_SOURCE_ROW_REPAIRS.get(identity, lxx)
+
+    repairs: list[_SourceRepair] = []
+    if semantic_mt != mt:
+        repairs.append(
+            _SourceRepair(
+                side="mt_a",
+                original=mt,
+                semantic=semantic_mt,
+            )
+        )
+    if semantic_lxx != lxx:
+        repairs.append(
+            _SourceRepair(
+                side="lxx",
+                original=lxx,
+                semantic=semantic_lxx,
+            )
+        )
+    return semantic_mt, semantic_lxx, tuple(repairs)
 
 
 def _build_alignment(
@@ -416,15 +444,15 @@ def _build_alignment(
             *_extract_annotations("lxx", semantic_lxx, book=verse.book),
             *(
                 Annotation(
-                    side="mt_a",
+                    side=repair.side,
                     kind="source_repair",
-                    raw=row.repair.original_mt,
+                    raw=repair.original,
                     family="provenance",
                     contextual=True,
-                    payload=row.repair.semantic_mt,
+                    payload=repair.semantic,
                 )
                 for row in physical_rows
-                if row.repair is not None
+                for repair in row.repairs
             ),
         ]
     )
