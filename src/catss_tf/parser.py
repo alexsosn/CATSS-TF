@@ -219,7 +219,6 @@ class _PhysicalRow:
     source_lxx: str
     mt: str
     lxx: str
-    repairs: tuple[_SourceRepair, ...]
     column_split: bool
     layout_dummy: bool = False
 
@@ -396,21 +395,13 @@ def _parse_physical_row(
 
     source_mt = mt.strip()
     source_lxx = lxx.strip()
-    semantic_mt, semantic_lxx, repairs = _repair_source_row(
-        source_name,
-        chapter,
-        verse,
-        source_mt,
-        source_lxx,
-    )
     return _PhysicalRow(
         line_no=line_no,
         raw=raw,
         source_mt=source_mt,
         source_lxx=source_lxx,
-        mt=semantic_mt,
-        lxx=semantic_lxx,
-        repairs=repairs,
+        mt=source_mt,
+        lxx=source_lxx,
         column_split=column_split,
     )
 
@@ -457,17 +448,15 @@ def _append_export_orphan_to_previous_lxx(
     has_prior_orphan = any(row.layout_dummy for row in pending[target_index + 1 :])
     if has_prior_orphan:
         source_lxx = target.source_lxx
-        semantic_lxx = target.lxx
     else:
         _raw_mt, raw_lxx, raw_split = _split_raw_columns(target.raw)
         source_lxx = raw_lxx if raw_split else target.source_lxx
-        trailing_boundary = source_lxx[len(source_lxx.rstrip()) :]
-        semantic_lxx = target.lxx + trailing_boundary
 
+    repaired_lxx = source_lxx + orphan.raw
     pending[target_index] = dataclasses.replace(
         target,
-        source_lxx=source_lxx + orphan.raw,
-        lxx=semantic_lxx + orphan.raw,
+        source_lxx=repaired_lxx,
+        lxx=repaired_lxx,
     )
     pending.append(_layout_dummy(orphan))
     return True
@@ -529,8 +518,13 @@ def _build_alignment(
     row_diagnostics: list[ParseDiagnostic] = []
     mt_raw = _join_continued_cells(row.source_mt for row in physical_rows)
     lxx_raw = _join_continued_cells(row.source_lxx for row in physical_rows)
-    semantic_mt = _join_continued_cells(row.mt for row in physical_rows)
-    semantic_lxx = _join_continued_cells(row.lxx for row in physical_rows)
+    semantic_mt, semantic_lxx, repairs = _repair_source_row(
+        source_name,
+        verse.chapter,
+        verse.verse,
+        mt_raw,
+        lxx_raw,
+    )
     column_split = all(row.column_split for row in physical_rows)
 
     if not column_split:
@@ -574,8 +568,7 @@ def _build_alignment(
                     contextual=True,
                     payload=repair.semantic,
                 )
-                for row in physical_rows
-                for repair in row.repairs
+                for repair in repairs
             ),
         ]
     )
