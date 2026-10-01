@@ -149,9 +149,7 @@ def test_doubt_decorated_minus_preserves_contextual_reference() -> None:
         for annotation in alignment.annotations
     )
     assert any(
-        annotation.side == "lxx"
-        and annotation.kind == "doubt"
-        and annotation.raw == "?"
+        annotation.side == "lxx" and annotation.kind == "doubt" and annotation.raw == "?"
         for annotation in alignment.annotations
     )
 
