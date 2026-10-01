@@ -4,6 +4,7 @@ import pytest
 
 import catss_tf.parser as parser_module
 from catss_tf.parser import alignment_id_for, parse_parallel_text
+from catss_tf.technique import derive_alignment_technique
 
 
 def test_parse_basic_alignment_ratios() -> None:
@@ -98,6 +99,76 @@ def test_greek_side_minus_does_not_emit_mt_apparent_minus() -> None:
 
     assert alignment.is_lxx_minus is True
     assert not any(annotation.kind == "apparent_minus" for annotation in alignment.annotations)
+
+
+def test_doubt_decorated_greek_minus_is_compositional() -> None:
+    raw = "HB\t---?"
+    doc = parse_parallel_text(
+        f"Test 1:1\n{raw}\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.lxx_raw == "---?"
+    assert alignment.is_lxx_minus is True
+    assert alignment.mt_count == 1
+    assert alignment.lxx_count == 0
+    assert alignment.alignment_id == alignment_id_for(
+        source_name="99.Test.par",
+        header_raw="Test 1:1",
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+
+    doubt = tuple(
+        annotation
+        for annotation in alignment.annotations
+        if annotation.side == "lxx" and annotation.kind == "doubt"
+    )
+    assert [(annotation.raw, annotation.payload) for annotation in doubt] == [("?", None)]
+
+    technique = derive_alignment_technique("99.Test.par", alignment)
+    assert technique.omission_vs_mt is True
+    assert technique.addition_vs_mt is False
+
+
+def test_doubt_decorated_minus_preserves_contextual_reference() -> None:
+    doc = parse_parallel_text(
+        "Ps 35:20\nDBRY\t---? [34.20]\n",
+        source_name="20.Psalms.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.is_lxx_minus is True
+    assert any(
+        annotation.side == "lxx"
+        and annotation.kind == "contextual_reference"
+        and annotation.raw == "[34.20]"
+        and annotation.payload == "34.20"
+        for annotation in alignment.annotations
+    )
+    assert any(
+        annotation.side == "lxx"
+        and annotation.kind == "doubt"
+        and annotation.raw == "?"
+        for annotation in alignment.annotations
+    )
+
+
+def test_question_mark_on_lexical_greek_does_not_become_minus() -> None:
+    doc = parse_parallel_text(
+        "Test 1:1\nHB\tLOGOS?\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.is_lxx_minus is False
+    assert alignment.lxx_tokens == ("LOGOS",)
+    assert any(
+        annotation.side == "lxx" and annotation.kind == "doubt"
+        for annotation in alignment.annotations
+    )
 
 
 def test_parse_ketiv_and_qere_independently() -> None:
