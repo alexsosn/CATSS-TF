@@ -387,9 +387,7 @@ def _parse_physical_row(
     chapter: int,
     verse: int,
 ) -> _PhysicalRow:
-    layout_repair = _KNOWN_SOURCE_LAYOUT_REPAIRS.get(
-        (source_name, chapter, verse, raw.strip())
-    )
+    layout_repair = _KNOWN_SOURCE_LAYOUT_REPAIRS.get((source_name, chapter, verse, raw.strip()))
     if layout_repair is not None:
         mt, lxx = layout_repair
         column_split = True
