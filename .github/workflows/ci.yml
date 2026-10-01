@@ -357,6 +357,70 @@ jobs:
           assert unresolved == [], unresolved
           print(f'greek_side_plus_exact_repairs={len(observed)}')
           PY
+      - name: Assert doubt-decorated Greek minus semantics
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
+
+          expected = {
+              ('09.JudgesA.par', 20, 6, 'ZMH', '---?'),
+              ('15.1Chron.par', 12, 38, 'CB)', '---?'),
+              ('15.1Chron.par', 29, 9, '&MXH', '---?'),
+              ('20.Psalms.par', 35, 20, 'DBRY', '---? [34.20]'),
+              ('40.Isaiah.par', 51, 3, 'W/(RBT/H', '---?'),
+              ('40.Isaiah.par', 51, 3, 'K/GN', '---?'),
+              ('41.Jer.par', 25, 4, 'L/$M(', '---?'),
+          }
+          observed = []
+          root = pathlib.Path('/tmp/catss-parallel')
+
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      first = alignment.lxx_raw.split(maxsplit=1)[0] if alignment.lxx_raw else ''
+                      if first != '---?':
+                          continue
+                      identity = (
+                          name,
+                          verse.chapter,
+                          verse.verse,
+                          alignment.mt_raw,
+                          alignment.lxx_raw,
+                      )
+                      observed.append(identity)
+                      assert alignment.mt_count > 0, identity
+                      assert alignment.lxx_count == 0, identity
+                      assert alignment.is_lxx_minus is True, identity
+                      doubt = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'lxx'
+                          and annotation.kind == 'doubt'
+                      ]
+                      assert [(a.raw, a.payload) for a in doubt] == [('?', None)], (
+                          identity,
+                          doubt,
+                      )
+                      assert not any(
+                          annotation.kind == 'source_repair'
+                          for annotation in alignment.annotations
+                      ), identity
+                      technique = derive_alignment_technique(name, alignment)
+                      assert technique.omission_vs_mt is True, identity
+                      assert technique.addition_vs_mt is False, identity
+
+          assert set(observed) == expected, (
+              expected - set(observed),
+              set(observed) - expected,
+          )
+          assert len(observed) == 7, observed
+          print(f'doubt_decorated_lxx_minus={len(observed)}')
+          PY
       - name: Assert complete notation coverage
         run: |
           set +e
