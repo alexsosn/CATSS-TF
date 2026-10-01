@@ -132,6 +132,72 @@ jobs:
           print('unsplit_alignments=0')
           print('unsplit_diagnostics=0')
           PY
+      - name: Research Greek-preverb population
+        run: |
+          python - <<'PY'
+          import collections
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          rows = []
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  alignments = verse.alignments
+                  for index, alignment in enumerate(alignments):
+                      preverbs = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'lxx'
+                          and annotation.kind == 'greek_preverb'
+                      ]
+                      if not preverbs:
+                          continue
+                      rows.append(
+                          {
+                              'source': name,
+                              'verse': verse.header_raw,
+                              'source_lines': alignment.source_lines,
+                              'mt': alignment.mt_raw,
+                              'lxx': alignment.lxx_raw,
+                              'first': alignment.lxx_raw.split(maxsplit=1)[0]
+                              if alignment.lxx_raw else '',
+                              'mt_n': alignment.mt_count,
+                              'lxx_n': alignment.lxx_count,
+                              'preverb_raw': tuple(a.raw for a in preverbs),
+                              'annotations': tuple(
+                                  (a.side, a.kind, a.raw, a.payload)
+                                  for a in alignment.annotations
+                              ),
+                              'previous': (
+                                  (alignments[index - 1].mt_raw, alignments[index - 1].lxx_raw)
+                                  if index > 0 else None
+                              ),
+                              'next': (
+                                  (alignments[index + 1].mt_raw, alignments[index + 1].lxx_raw)
+                                  if index + 1 < len(alignments) else None
+                              ),
+                          }
+                      )
+
+          print('GREEK_PREVERB_COUNT', len(rows))
+          print(
+              'GREEK_PREVERB_CARDINALITIES',
+              collections.Counter((row['mt_n'], row['lxx_n']) for row in rows),
+          )
+          print(
+              'GREEK_PREVERB_FIRST_TOKENS',
+              collections.Counter(row['first'] for row in rows),
+          )
+          zero = [row for row in rows if row['mt_n'] > 0 and row['lxx_n'] == 0]
+          print('GREEK_PREVERB_MT_NONEMPTY_LXX_EMPTY', len(zero))
+          for row in rows:
+              if row['mt_n'] > 0 and row['lxx_n'] == 0:
+                  print('GREEK_PREVERB_ZERO', row)
+          PY
       - name: Assert chained continuation grouping
         run: |
           python - <<'PY'
