@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+import catss_tf.parser as parser_module
 from catss_tf.parser import alignment_id_for, parse_parallel_text
 
 
@@ -220,6 +221,199 @@ Test 1:2
     malformed = tuple(d for d in doc.diagnostics if d.code == "malformed_continuation")
     assert len(malformed) == 1
     assert malformed[0].line_no == 4
+
+
+def test_non_ps_export_orphan_rejoins_preceding_greek_inside_token() -> None:
+    raw_lines = ("HB\tDANI", "HL")
+    doc = parse_parallel_text(
+        "Test 1:1\n" + "\n".join(raw_lines) + "\nNEXT\tGR\n",
+        source_name="99.Test.par",
+    )
+
+    assert len(doc.verses[0].alignments) == 2
+    repaired, following = doc.verses[0].alignments
+    assert repaired.source_lines == (2, 3)
+    assert repaired.raw_lines == raw_lines
+    assert repaired.mt_raw == "HB"
+    assert repaired.lxx_raw == "DANIHL"
+    assert repaired.lxx_tokens == ("DANIHL",)
+    assert repaired.column_split is True
+    assert repaired.alignment_id == alignment_id_for(
+        source_name="99.Test.par",
+        header_raw="Test 1:1",
+        source_lines=(2, 3),
+        raw_lines=raw_lines,
+    )
+    assert following.mt_tokens == ("NEXT",)
+    assert not any(d.code == "unsplit_row" for d in doc.diagnostics)
+
+
+def test_layout_repair_precedes_semantic_source_repair(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(
+        parser_module._KNOWN_LXX_SOURCE_ROW_REPAIRS,
+        ("99.Test.par", 1, 1, "HB", "DANIHL"),
+        "---",
+    )
+    raw_lines = ("HB\tDANI", "HL")
+    doc = parse_parallel_text(
+        "Test 1:1\n" + "\n".join(raw_lines) + "\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == raw_lines
+    assert alignment.lxx_raw == "DANIHL"
+    assert alignment.is_lxx_minus is True
+    repairs = [
+        annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
+    ]
+    assert [(repair.side, repair.raw, repair.payload) for repair in repairs] == [
+        ("lxx", "DANIHL", "---")
+    ]
+
+
+def test_non_ps_export_orphan_preserves_existing_word_boundary() -> None:
+    doc = parse_parallel_text(
+        "Test 1:1\nHB\tWORD \nNEXT\nFOLLOW\tGR\n",
+        source_name="99.Test.par",
+    )
+
+    repaired = doc.verses[0].alignments[0]
+    assert repaired.raw_lines == ("HB\tWORD ", "NEXT")
+    assert repaired.lxx_raw == "WORD NEXT"
+    assert repaired.lxx_tokens == ("WORD", "NEXT")
+
+
+def test_psalms_export_orphan_rejoins_following_hebrew_inside_token() -> None:
+    raw_lines = (")", "PSY\tGR2")
+    doc = parse_parallel_text(
+        "Ps 1:1\nPREV\tGR1\n" + "\n".join(raw_lines) + "\n",
+        source_name="20.Psalms.par",
+    )
+
+    assert len(doc.verses[0].alignments) == 2
+    repaired = doc.verses[0].alignments[1]
+    assert repaired.source_lines == (3, 4)
+    assert repaired.raw_lines == raw_lines
+    assert repaired.mt_raw == ")PSY"
+    assert repaired.mt_tokens == (")PSY",)
+    assert repaired.lxx_raw == "GR2"
+    assert repaired.column_split is True
+    assert not any(d.code == "unsplit_row" for d in doc.diagnostics)
+
+
+def test_consecutive_psalms_export_orphans_rejoin_in_source_order() -> None:
+    raw_lines = ("MTR", "PS =?M/TR", "PS\tGR")
+    doc = parse_parallel_text(
+        "Ps 68:31\nPREV\tG0\n" + "\n".join(raw_lines) + "\n",
+        source_name="20.Psalms.par",
+    )
+
+    assert len(doc.verses[0].alignments) == 2
+    repaired = doc.verses[0].alignments[1]
+    assert repaired.source_lines == (3, 4, 5)
+    assert repaired.raw_lines == raw_lines
+    assert repaired.mt_raw == "MTRPS =?M/TRPS"
+    assert repaired.lxx_raw == "GR"
+    assert repaired.column_split is True
+
+
+@pytest.mark.parametrize(
+    ("source_name", "text", "line_no"),
+    (
+        ("99.Test.par", "Test 1:1\nORPHAN\nTest 1:2\nHB\tGR\n", 2),
+        ("20.Psalms.par", "Ps 1:1\nHB\tGR\nORPHAN\n", 3),
+    ),
+)
+def test_export_orphan_cannot_cross_required_verse_boundary(
+    source_name: str,
+    text: str,
+    line_no: int,
+) -> None:
+    doc = parse_parallel_text(text, source_name=source_name)
+
+    unsplit = tuple(d for d in doc.diagnostics if d.code == "unsplit_row")
+    assert len(unsplit) == 1
+    assert unsplit[0].line_no == line_no
+    assert any(not row.column_split for verse in doc.verses for row in verse.alignments)
+
+
+@pytest.mark.parametrize(
+    ("header", "raw", "expected_mt", "expected_lxx"),
+    (
+        (
+            "JoshB 3:10",
+            "W/)T H/GRG$Y ^ =W/)T W/H/)MRY KAI\\ TO\\N AMORRAI=ON",
+            "W/)T H/GRG$Y ^ =W/)T W/H/)MRY",
+            "KAI\\ TO\\N AMORRAI=ON",
+        ),
+        (
+            "JoshB 9:4",
+            "W/YC+YRW =;W/YC+YDW .rd <9.12 E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+            "W/YC+YRW =;W/YC+YDW .rd <9.12>",
+            "E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+        ),
+        (
+            "JoshB 21:42",
+            "--+ '' =;L/GBWLWT/YHM <19.49> E)N TOI=S O(RI/OIS AU)TW=N",
+            "--+ '' =;L/GBWLWT/YHM <19.49>",
+            "E)N TOI=S O(RI/OIS AU)TW=N",
+        ),
+    ),
+)
+def test_exact_joshua_whole_row_layout_repairs(
+    header: str,
+    raw: str,
+    expected_mt: str,
+    expected_lxx: str,
+) -> None:
+    doc = parse_parallel_text(
+        f"{header}\n{raw}\n",
+        source_name="06.JoshB.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.source_lines == (2,)
+    assert alignment.mt_raw == expected_mt
+    assert alignment.lxx_raw == expected_lxx
+    assert alignment.column_split is True
+    assert not any(d.code == "unsplit_row" for d in doc.diagnostics)
+
+
+def test_exact_joshua_4_11_layout_repair_preserves_hash_continuation() -> None:
+    raw_lines = (
+        "W/H/KHNYM =W/H/)BNYM .m .kb # KAI\\ OI( LI/QOI",
+        ".h)\t#",
+    )
+    doc = parse_parallel_text(
+        "JoshB 4:11\n" + "\n".join(raw_lines) + "\nL/PNY H/(M\tE)/MPROSQEN AU)TW=N\n",
+        source_name="06.JoshB.par",
+    )
+
+    repaired, following = doc.verses[0].alignments
+    assert repaired.source_lines == (2, 3)
+    assert repaired.raw_lines == raw_lines
+    assert repaired.mt_raw == "W/H/KHNYM =W/H/)BNYM .m .kb .h)"
+    assert repaired.lxx_raw == "KAI\\ OI( LI/QOI"
+    assert repaired.column_split is True
+    assert following.mt_tokens == ("L/PNY", "H/(M")
+    assert not any(d.code in {"unsplit_row", "malformed_continuation"} for d in doc.diagnostics)
+
+
+def test_joshua_layout_repairs_do_not_generalize_to_lookalike() -> None:
+    raw = "W/)T H/GRG$Y ^ =W/)T W/H/)MRY KAI\\ TO\\N AMORRAI=ON"
+    doc = parse_parallel_text(
+        f"JoshB 3:11\n{raw}\n",
+        source_name="06.JoshB.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.column_split is False
+    assert any(d.code == "unsplit_row" for d in doc.diagnostics)
 
 
 def test_unknown_brace_siglum_is_retained_as_annotation() -> None:

@@ -67,6 +67,46 @@ _KNOWN_LXX_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
 }
 
 
+_KNOWN_SOURCE_LAYOUT_REPAIRS: dict[tuple[str, int, int, str], tuple[str, str]] = {
+    (
+        "06.JoshB.par",
+        3,
+        10,
+        "W/)T H/GRG$Y ^ =W/)T W/H/)MRY KAI\\ TO\\N AMORRAI=ON",
+    ): (
+        "W/)T H/GRG$Y ^ =W/)T W/H/)MRY",
+        "KAI\\ TO\\N AMORRAI=ON",
+    ),
+    (
+        "06.JoshB.par",
+        4,
+        11,
+        "W/H/KHNYM =W/H/)BNYM .m .kb # KAI\\ OI( LI/QOI",
+    ): (
+        "W/H/KHNYM =W/H/)BNYM .m .kb #",
+        "KAI\\ OI( LI/QOI",
+    ),
+    (
+        "06.JoshB.par",
+        9,
+        4,
+        "W/YC+YRW =;W/YC+YDW .rd <9.12 E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+    ): (
+        "W/YC+YRW =;W/YC+YDW .rd <9.12>",
+        "E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+    ),
+    (
+        "06.JoshB.par",
+        21,
+        42,
+        "--+ '' =;L/GBWLWT/YHM <19.49> E)N TOI=S O(RI/OIS AU)TW=N",
+    ): (
+        "--+ '' =;L/GBWLWT/YHM <19.49>",
+        "E)N TOI=S O(RI/OIS AU)TW=N",
+    ),
+}
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class Annotation:
     """One source annotation preserved from a CATSS alignment cell."""
@@ -179,8 +219,8 @@ class _PhysicalRow:
     source_lxx: str
     mt: str
     lxx: str
-    repairs: tuple[_SourceRepair, ...]
     column_split: bool
+    layout_dummy: bool = False
 
     @property
     def continues(self) -> bool:
@@ -299,6 +339,19 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             current.chapter,
             current.verse,
         )
+
+        if not physical.column_split:
+            if canonical_source == "20.Psalms.par":
+                if pending and not _pending_psalms_orphans(pending):
+                    flush_pending()
+                pending.append(physical)
+                continue
+            if pending and _append_export_orphan_to_previous_lxx(pending, physical):
+                continue
+        elif canonical_source == "20.Psalms.par" and _pending_psalms_orphans(pending):
+            pending = _attach_psalms_orphans_to_following_mt(pending, physical)
+            continue
+
         if pending:
             if pending[-1].continues or physical.starts_with_continuation:
                 pending.append(physical)
@@ -333,37 +386,96 @@ def _parse_physical_row(
     chapter: int,
     verse: int,
 ) -> _PhysicalRow:
-    if "\t" in raw:
-        mt, lxx = raw.split("\t", 1)
+    layout_repair = _KNOWN_SOURCE_LAYOUT_REPAIRS.get((source_name, chapter, verse, raw.strip()))
+    if layout_repair is not None:
+        mt, lxx = layout_repair
         column_split = True
     else:
-        parts = _COLUMN_SPACES.split(raw, maxsplit=1)
-        if len(parts) == 2:
-            mt, lxx = parts
-            column_split = True
-        else:
-            mt, lxx = raw, ""
-            column_split = False
+        mt, lxx, column_split = _split_raw_columns(raw)
 
     source_mt = mt.strip()
     source_lxx = lxx.strip()
-    semantic_mt, semantic_lxx, repairs = _repair_source_row(
-        source_name,
-        chapter,
-        verse,
-        source_mt,
-        source_lxx,
-    )
     return _PhysicalRow(
         line_no=line_no,
         raw=raw,
         source_mt=source_mt,
         source_lxx=source_lxx,
-        mt=semantic_mt,
-        lxx=semantic_lxx,
-        repairs=repairs,
+        mt=source_mt,
+        lxx=source_lxx,
         column_split=column_split,
     )
+
+
+def _split_raw_columns(raw: str) -> tuple[str, str, bool]:
+    if "\t" in raw:
+        mt, lxx = raw.split("\t", 1)
+        return mt, lxx, True
+    match = _COLUMN_SPACES.search(raw)
+    if match is not None:
+        return raw[: match.start()], raw[match.end() :], True
+    return raw, "", False
+
+
+def _layout_dummy(row: _PhysicalRow) -> _PhysicalRow:
+    return dataclasses.replace(
+        row,
+        source_mt="",
+        source_lxx="",
+        mt="",
+        lxx="",
+        column_split=True,
+        layout_dummy=True,
+    )
+
+
+def _pending_psalms_orphans(pending: list[_PhysicalRow]) -> bool:
+    return bool(pending) and all(not row.column_split for row in pending)
+
+
+def _append_export_orphan_to_previous_lxx(
+    pending: list[_PhysicalRow],
+    orphan: _PhysicalRow,
+) -> bool:
+    target_index = None
+    for index in range(len(pending) - 1, -1, -1):
+        if not pending[index].layout_dummy:
+            target_index = index
+            break
+    if target_index is None or not pending[target_index].column_split:
+        return False
+
+    target = pending[target_index]
+    has_prior_orphan = any(row.layout_dummy for row in pending[target_index + 1 :])
+    if has_prior_orphan:
+        source_lxx = target.source_lxx
+    else:
+        _raw_mt, raw_lxx, raw_split = _split_raw_columns(target.raw)
+        source_lxx = raw_lxx if raw_split else target.source_lxx
+
+    repaired_lxx = source_lxx + orphan.raw
+    pending[target_index] = dataclasses.replace(
+        target,
+        source_lxx=repaired_lxx,
+        lxx=repaired_lxx,
+    )
+    pending.append(_layout_dummy(orphan))
+    return True
+
+
+def _attach_psalms_orphans_to_following_mt(
+    pending: list[_PhysicalRow],
+    target: _PhysicalRow,
+) -> list[_PhysicalRow]:
+    prefix = "".join(row.raw for row in pending)
+    raw_mt, _raw_lxx, raw_split = _split_raw_columns(target.raw)
+    source_mt = prefix + (raw_mt if raw_split else target.source_mt)
+    semantic_mt = prefix + target.mt
+    repaired_target = dataclasses.replace(
+        target,
+        source_mt=source_mt,
+        mt=semantic_mt,
+    )
+    return [*(_layout_dummy(row) for row in pending), repaired_target]
 
 
 def _repair_source_row(
@@ -406,8 +518,13 @@ def _build_alignment(
     row_diagnostics: list[ParseDiagnostic] = []
     mt_raw = _join_continued_cells(row.source_mt for row in physical_rows)
     lxx_raw = _join_continued_cells(row.source_lxx for row in physical_rows)
-    semantic_mt = _join_continued_cells(row.mt for row in physical_rows)
-    semantic_lxx = _join_continued_cells(row.lxx for row in physical_rows)
+    semantic_mt, semantic_lxx, repairs = _repair_source_row(
+        source_name,
+        verse.chapter,
+        verse.verse,
+        mt_raw,
+        lxx_raw,
+    )
     column_split = all(row.column_split for row in physical_rows)
 
     if not column_split:
@@ -451,8 +568,7 @@ def _build_alignment(
                     contextual=True,
                     payload=repair.semantic,
                 )
-                for row in physical_rows
-                for repair in row.repairs
+                for repair in repairs
             ),
         ]
     )

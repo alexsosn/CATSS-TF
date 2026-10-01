@@ -75,6 +75,63 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Assert export-orphan layout repair
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          no_tab_physical = []
+          unsplit_alignments = []
+          unsplit_diagnostics = []
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              covered = []
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      covered.extend(alignment.source_lines)
+                      if not alignment.column_split:
+                          unsplit_alignments.append(
+                              (name, verse.header_raw, alignment.source_lines, alignment.raw_lines)
+                          )
+                      for line_no, raw_line in zip(
+                          alignment.source_lines,
+                          alignment.raw_lines,
+                      ):
+                          if '\t' not in raw_line:
+                              no_tab_physical.append(
+                                  (
+                                      name,
+                                      verse.header_raw,
+                                      line_no,
+                                      raw_line,
+                                      alignment.column_split,
+                                      alignment.source_lines,
+                                  )
+                              )
+              unsplit_diagnostics.extend(
+                  (name, diagnostic.line_no, diagnostic.raw_line)
+                  for diagnostic in document.diagnostics
+                  if diagnostic.code == 'unsplit_row'
+              )
+              assert len(covered) == len(set(covered)), (name, 'duplicate source lines')
+              assert sorted(covered) == sorted(document.data_line_numbers), (
+                  name,
+                  set(document.data_line_numbers) - set(covered),
+                  set(covered) - set(document.data_line_numbers),
+              )
+
+          assert len(no_tab_physical) == 208, len(no_tab_physical)
+          assert all(row[4] for row in no_tab_physical), no_tab_physical[:20]
+          assert unsplit_alignments == [], unsplit_alignments[:20]
+          assert unsplit_diagnostics == [], unsplit_diagnostics[:20]
+          print(f'export_orphan_physical_lines={len(no_tab_physical)}')
+          print('unsplit_alignments=0')
+          print('unsplit_diagnostics=0')
+          PY
       - name: Assert chained continuation grouping
         run: |
           python - <<'PY'
