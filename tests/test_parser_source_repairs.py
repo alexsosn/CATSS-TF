@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from catss_tf.parser import alignment_id_for, parse_parallel_text
-from catss_tf.technique import derive_alignment_technique
+from catss_tf.technique import TechniqueError, derive_alignment_technique
 from catss_tf.tf_schema import FEATURE_SPECS
 
 
@@ -271,7 +271,6 @@ def test_greek_side_plus_repair_does_not_generalize_to_same_cells_elsewhere() ->
     assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
 
 
-
 def test_1kings_22_50_ahab_is_exact_missing_minus_source_repair() -> None:
     raw = ")X)B\t[16.28g]"
     document = parse_parallel_text(
@@ -327,5 +326,5 @@ def test_1kings_missing_minus_repair_is_reference_pinned() -> None:
     assert alignment.lxx_raw == "[16.28g]"
     assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
 
-    with pytest.raises(Exception, match="Greek-empty"):
+    with pytest.raises(TechniqueError, match="Greek-empty"):
         derive_alignment_technique("13.1Kings.par", alignment)
