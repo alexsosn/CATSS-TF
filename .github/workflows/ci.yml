@@ -517,6 +517,137 @@ jobs:
           assert len(observed) == 7, observed
           print(f'doubt_decorated_lxx_minus={len(observed)}')
           PY
+      - name: Assert parent-grounded JoshB contextual-reference range
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-lxx-range /tmp/catss-range-source /tmp/catss-range-module
+          git init -q /tmp/centerblc-lxx-range
+          git -C /tmp/centerblc-lxx-range remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-lxx-range fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-lxx-range checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-lxx-range rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+
+          from tf.fabric import Fabric
+
+          from catss_tf.lxx_materializer import materialize_lxx
+          from catss_tf.lxx_resolver import TextFabricLxxProvider, resolve_lxx_document
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE,
+              LXX_MAX_SLOT,
+              LXX_NODE_COUNTS,
+              LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG,
+              LXX_REPOSITORY,
+              LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES,
+              LXX_SLOT_TYPE,
+              LXX_VERSION,
+              LxxParentProbe,
+          )
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/06.JoshB.par'))
+          targets = [
+              alignment
+              for verse in source.verses
+              if verse.chapter == 9 and verse.verse == 2
+              for alignment in verse.alignments
+              if alignment.mt_raw == '{...} <8.30-35>'
+              and alignment.lxx_raw == '[[9.2a-2f]]'
+          ]
+          assert len(targets) == 1, targets
+          alignment = targets[0]
+          assert alignment.raw_lines == ('{...} <8.30-35>\t[[9.2a-2f]]',)
+          assert (alignment.mt_count, alignment.lxx_count) == (0, 0)
+          assert alignment.lxx_references == ()
+          assert len(alignment.lxx_reference_ranges) == 1
+          range_ref = alignment.lxx_reference_ranges[0]
+          assert (
+              range_ref.start_chapter,
+              range_ref.start_verse,
+              range_ref.start_subverse,
+              range_ref.end_chapter,
+              range_ref.end_verse,
+              range_ref.end_subverse,
+              range_ref.raw,
+          ) == (9, 2, 'a', 9, 2, 'f', '[[9.2a-2f]]')
+          assert not any(
+              diagnostic.code == 'invalid_lxx_reference'
+              and diagnostic.raw_line == alignment.raw_lines[0]
+              for diagnostic in source.diagnostics
+          )
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.kind == 'transposition_remote'
+              and annotation.raw == '{...}'
+              for annotation in alignment.annotations
+          )
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.raw == '<8.30-35>'
+              and annotation.payload == '8.30-35'
+              for annotation in alignment.annotations
+          )
+
+          TF = Fabric(locations='/tmp/centerblc-lxx-range/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          spans = [provider.get_span('Josh', 9, 2, subverse) for subverse in 'abcdef']
+          assert all(span is not None for span in spans), spans
+          parent_nodes = [span.node for span in spans if span is not None]
+          assert len(parent_nodes) == len(set(parent_nodes)) == 6, parent_nodes
+
+          focused = parse_parallel_text(
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
+              source_name='06.JoshB.par',
+          )
+          report = resolve_lxx_document(focused, provider)
+          assert report.ok is True, report.findings
+          assert report.word_mappings == ()
+          assert report.reference_anchors == ()
+          assert [member.lxx_reference_node for member in report.reference_range_memberships] == (
+              parent_nodes
+          )
+          assert [member.reference_subverse for member in report.reference_range_memberships] == list(
+              'abcdef'
+          )
+
+          materialize_source = pathlib.Path('/tmp/catss-range-source')
+          materialize_source.mkdir()
+          (materialize_source / '06.JoshB.par').write_text(
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
+              encoding='utf-8',
+          )
+          result = materialize_lxx(
+              materialize_source,
+              pathlib.Path('/tmp/catss-range-module'),
+              provider=provider,
+          )
+          assert result.summary.reference_range_memberships == 6
+          assert not (result.output_path / 'otype.tf').exists()
+          assert not (result.output_path / 'oslots.tf').exists()
+          for node, index in zip(parent_nodes, range(1, 7), strict=True):
+              member_feature = (
+                  result.output_path / 'catss_lxx_reference_range_member_i.tf'
+              ).read_text(encoding='utf-8')
+              assert f'{node}\t{index}' in member_feature
+          print('joshb_9_2_reference_range_nodes=' + ','.join(map(str, parent_nodes)))
+          PY
       - name: Assert complete notation coverage
         run: |
           set +e

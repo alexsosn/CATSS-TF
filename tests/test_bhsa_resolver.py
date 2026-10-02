@@ -87,6 +87,36 @@ BR)\tEPOI
     assert report.findings == ()
 
 
+def test_contextual_range_record_does_not_enter_bhsa_lexical_word_count() -> None:
+    doc = parse_parallel_text(
+        """JoshB 9:2
+BR)\tLOGOS
+JoshB 9:2
+{...} <8.30-35>\t[[9.2a-2f]]
+""",
+        source_name="06.JoshB.par",
+    )
+    provider = FakeProvider(
+        {
+            ("Josua", 9, 2): BhsaVerse(
+                node=900902,
+                book="Josua",
+                chapter=9,
+                verse=2,
+                words=(BhsaWord(101, "ברא", None, None),),
+            )
+        }
+    )
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.ok is True, report.findings
+    assert report.summary.resolved_verses == 1
+    assert report.summary.mismatched_verses == 0
+    assert len(report.word_mappings) == 1
+    assert report.word_mappings[0].bhsa_node == 101
+
+
 def test_one_word_mismatch_emits_no_partial_word_mappings() -> None:
     doc = parse_parallel_text(
         """Gen 1:1
