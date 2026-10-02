@@ -172,6 +172,37 @@ def test_1esdr_exact_repair_maps_restored_umin_to_parent_word() -> None:
     assert mapping.mapping_kind == "exact"
 
 
+def test_1esdr_repair_pairs_with_existing_transposition_carrier() -> None:
+    doc = parse_parallel_text(
+        """1Esdr 6:4
+{...}\tU(MI=N [e5.3]
+L/KM\t[e5.3]
+""",
+        source_name="17.1Esdras.par",
+    )
+    provider = FakeProvider(
+        (
+            _span(
+                "ὑμῖν",
+                book="1Esdr",
+                chapter=6,
+                verse=4,
+                node=900604,
+                start_node=294471,
+            ),
+        )
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is True, report.findings
+    assert report.reference_anchors == ()
+    assert [(mapping.lxx_node, mapping.mapping_kind) for mapping in report.word_mappings] == [
+        (294471, "transposition_carrier"),
+        (294471, "transposition_alignment"),
+    ]
+
+
 def test_repeated_surface_without_unique_joint_assignment_fails_closed() -> None:
     doc = parse_parallel_text(
         """Gen 1:1
