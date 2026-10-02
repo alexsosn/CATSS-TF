@@ -60,3 +60,80 @@ annotation and source-derived alignment id must remain unchanged.
 
 No generic contextual-reference-only carrier rule and no generic lexical restoration
 from Hebrew morphology is permitted.
+
+
+## Parent-grounding result
+
+The research gate cloned the exact configured parent commit
+`f32a98eddf7eb239aa73ab863d70381e416d5076`, loaded
+`CenterBLC/LXX/tf/1935` with Text-Fabric 13.1, and inspected `1Esdr 6:4`.
+
+The parent verse contains the following opening slots:
+
+- node 294470: `τίνος`;
+- node **294471: `ὑμῖν`**;
+- node 294472: `συντάξαντος`.
+
+Across the complete parent verse, CATSS `U(MI=N` normalizes to exactly one word:
+node **294471**, `ὑμῖν`, `orig_order=294471`.
+
+A synthetic row using the proposed semantic cell
+
+`L/KM -> U(MI=N [e5.3]`
+
+was then passed through the production `TextFabricLxxProvider` and
+`resolve_lxx_document()` against that pinned parent. The result was:
+
+- one supported document;
+- one reference group;
+- one resolved reference group;
+- exactly one word mapping;
+- mapped parent node 294471;
+- no reference anchor;
+- no mapping finding;
+- no normalization or parent failure.
+
+Thus the proposed lexical restoration is parent-real, unique, and already compatible
+with the strict resolver. No fabricated node, anchor, fuzzy placement or resolver
+exception is required.
+
+## Decision R82-1 — exact lexical source repair
+
+Repair only the exact identity
+
+`("17.1Esdras.par", 6, 4, "L/KM", "[e5.3]")`
+
+to semantic Greek
+
+`U(MI=N [e5.3]`.
+
+Do not infer Greek lexemes from Hebrew morphology or from contextual references
+generically.
+
+## Decision R82-2 — preserve source provenance
+
+The repair must keep unchanged:
+
+- original physical raw line;
+- `mt_raw == "L/KM"`;
+- `lxx_raw == "[e5.3]"`;
+- source line(s);
+- source-derived alignment id;
+- typed Greek-side `contextual_reference` annotation with payload `e5.3`.
+
+Emit the existing LXX-side `source_repair` provenance annotation whose payload is
+`U(MI=N [e5.3]`.
+
+## Decision R82-3 — ordinary lexical mapping after repair
+
+After repair the canonical state is lexical-to-lexical:
+
+- MT count 1;
+- Greek count 1;
+- Greek token `U(MI=N`;
+- neither LXX-plus nor LXX-minus;
+- technique cardinality `one_one`;
+- neither addition nor omission.
+
+The LXX projection must resolve the restored token to CenterBLC node 294471 through the
+ordinary exact word-mapping path.
