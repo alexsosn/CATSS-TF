@@ -410,6 +410,49 @@ jobs:
           assert unresolved == [], unresolved
           print(f'greek_side_plus_exact_repairs={len(observed)}')
           PY
+      - name: Assert exact 1 Kings missing-minus repair
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.technique import derive_alignment_technique
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          document = parse_parallel_file(root / '13.1Kings.par')
+          matches = []
+          for verse in document.verses:
+              for alignment in verse.alignments:
+                  if (
+                      verse.chapter == 22
+                      and verse.verse == 50
+                      and alignment.mt_raw == ')X)B'
+                      and alignment.lxx_raw == '[16.28g]'
+                  ):
+                      matches.append(alignment)
+
+          assert len(matches) == 1, len(matches)
+          alignment = matches[0]
+          assert alignment.is_lxx_minus is True
+          assert alignment.mt_count == 1
+          assert alignment.lxx_count == 0
+          refs = [
+              a for a in alignment.annotations
+              if a.side == 'lxx' and a.kind == 'contextual_reference'
+          ]
+          assert [(a.raw, a.payload) for a in refs] == [('[16.28g]', '16.28g')]
+          repairs = [
+              a for a in alignment.annotations
+              if a.side == 'lxx' and a.kind == 'source_repair'
+          ]
+          assert [(a.raw, a.payload) for a in repairs] == [
+              ('[16.28g]', '--- [16.28g]')
+          ]
+          technique = derive_alignment_technique('13.1Kings.par', alignment)
+          assert technique.omission_vs_mt is True
+          assert technique.addition_vs_mt is False
+          print('one_kings_22_50_missing_minus_repairs=1')
+          PY
       - name: Assert doubt-decorated Greek minus semantics
         run: |
           python - <<'PY'
