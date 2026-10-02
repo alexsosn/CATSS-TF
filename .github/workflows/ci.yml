@@ -132,22 +132,28 @@ jobs:
           print('unsplit_alignments=0')
           print('unsplit_diagnostics=0')
           PY
-      - name: Research Greek-preverb population
+      - name: Assert zero-token Greek-preverb carriers
         run: |
           python - <<'PY'
-          import collections
           import pathlib
 
           from catss_tf.parser import parse_parallel_file
           from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
 
+          expected = {
+              ('23.Prov.par', 28, 18, 'B/)XT', '{p} ---'),
+              ('27.Sirach.par', 5, 2, ')XRY 3', '{p} ---'),
+              ('27.Sirach.par', 23, 17, 'B/W 3', '{p}'),
+          }
           root = pathlib.Path('/tmp/catss-parallel')
-          rows = []
+          observed = set()
+          preverb_total = 0
+
           for name in CATSS_PARALLEL_FILENAMES:
               document = parse_parallel_file(root / name)
               for verse in document.verses:
-                  alignments = verse.alignments
-                  for index, alignment in enumerate(alignments):
+                  for alignment in verse.alignments:
                       preverbs = [
                           annotation
                           for annotation in alignment.annotations
@@ -156,47 +162,28 @@ jobs:
                       ]
                       if not preverbs:
                           continue
-                      rows.append(
-                          {
-                              'source': name,
-                              'verse': verse.header_raw,
-                              'source_lines': alignment.source_lines,
-                              'mt': alignment.mt_raw,
-                              'lxx': alignment.lxx_raw,
-                              'first': alignment.lxx_raw.split(maxsplit=1)[0]
-                              if alignment.lxx_raw else '',
-                              'mt_n': alignment.mt_count,
-                              'lxx_n': alignment.lxx_count,
-                              'preverb_raw': tuple(a.raw for a in preverbs),
-                              'annotations': tuple(
-                                  (a.side, a.kind, a.raw, a.payload)
-                                  for a in alignment.annotations
-                              ),
-                              'previous': (
-                                  (alignments[index - 1].mt_raw, alignments[index - 1].lxx_raw)
-                                  if index > 0 else None
-                              ),
-                              'next': (
-                                  (alignments[index + 1].mt_raw, alignments[index + 1].lxx_raw)
-                                  if index + 1 < len(alignments) else None
-                              ),
-                          }
-                      )
+                      preverb_total += 1
+                      if alignment.mt_count <= 0 or alignment.lxx_count != 0:
+                          continue
 
-          print('GREEK_PREVERB_COUNT', len(rows))
-          print(
-              'GREEK_PREVERB_CARDINALITIES',
-              collections.Counter((row['mt_n'], row['lxx_n']) for row in rows),
-          )
-          print(
-              'GREEK_PREVERB_FIRST_TOKENS',
-              collections.Counter(row['first'] for row in rows),
-          )
-          zero = [row for row in rows if row['mt_n'] > 0 and row['lxx_n'] == 0]
-          print('GREEK_PREVERB_MT_NONEMPTY_LXX_EMPTY', len(zero))
-          for row in rows:
-              if row['mt_n'] > 0 and row['lxx_n'] == 0:
-                  print('GREEK_PREVERB_ZERO', row)
+                      identity = (
+                          name,
+                          verse.chapter,
+                          verse.verse,
+                          alignment.mt_raw,
+                          alignment.lxx_raw,
+                      )
+                      observed.add(identity)
+                      assert alignment.is_lxx_minus is False, identity
+                      technique = derive_alignment_technique(name, alignment)
+                      assert technique.addition_vs_mt is False, identity
+                      assert technique.omission_vs_mt is False, identity
+                      assert technique.token_balance_mt_lxx == 'not_applicable', identity
+
+          assert preverb_total == 290, preverb_total
+          assert observed == expected, (expected - observed, observed - expected)
+          print(f'greek_preverb_alignments={preverb_total}')
+          print(f'zero_token_greek_preverb_carriers={len(observed)}')
           PY
       - name: Assert chained continuation grouping
         run: |
