@@ -502,6 +502,13 @@ jobs:
           assert alignment.raw_lines == ('L/KM\t[e5.3]',)
           assert alignment.mt_tokens == ('L/KM',)
           assert alignment.lxx_tokens == ('U(MI=N',)
+          assert alignment.is_transposition_stylistic is True
+          assert any(
+              annotation.side == 'lxx'
+              and annotation.kind == 'transposition_stylistic'
+              and annotation.payload == 'U(MI=N'
+              for annotation in alignment.annotations
+          )
           assert (alignment.mt_count, alignment.lxx_count) == (1, 1)
           assert alignment.is_lxx_plus is False
           assert alignment.is_lxx_minus is False
@@ -518,10 +525,28 @@ jobs:
               if annotation.side == 'lxx' and annotation.kind == 'source_repair'
           ]
           assert [(repair.raw, repair.payload) for repair in repairs] == [
-              ('[e5.3]', 'U(MI=N [e5.3]')
+              ('[e5.3]', '{..^U(MI=N} [e5.3]')
           ]
+          carriers = [
+              candidate
+              for verse in source.verses
+              if verse.chapter == 6 and verse.verse == 4
+              for candidate in verse.alignments
+              if candidate.mt_raw == '{...}' and candidate.lxx_raw == 'U(MI=N [e5.3]'
+          ]
+          assert len(carriers) == 1, carriers
+          carrier = carriers[0]
+          assert carrier.lxx_tokens == ('U(MI=N',)
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.kind == 'transposition_remote'
+              and annotation.raw == '{...}'
+              for annotation in carrier.annotations
+          )
+          assert carrier.source_lines[0] < alignment.source_lines[0]
           technique = derive_alignment_technique('17.1Esdras.par', alignment)
           assert technique.cardinality_mt_lxx == 'one_one'
+          assert technique.transposition_mt_lxx == 'stylistic'
           assert technique.addition_vs_mt is False
           assert technique.omission_vs_mt is False
 
@@ -558,21 +583,23 @@ jobs:
           )
           provider = TextFabricLxxProvider(api, probe)
           repaired = parse_parallel_text(
-              '1Esdr 6:4\nL/KM\t[e5.3]\n',
+              '1Esdr 6:4\n{...}\tU(MI=N [e5.3]\nL/KM\t[e5.3]\n',
               source_name='17.1Esdras.par',
           )
           report = resolve_lxx_document(repaired, provider)
           assert report.ok is True, report.findings
           assert report.reference_anchors == ()
-          assert len(report.word_mappings) == 1
-          mapping = report.word_mappings[0]
-          assert mapping.lxx_node == 294471
-          assert mapping.mapping_kind == 'exact'
-          assert (mapping.reference_book, mapping.reference_chapter, mapping.reference_verse) == (
-              '1Esdr',
-              6,
-              4,
-          )
+          assert [
+              (mapping.lxx_node, mapping.mapping_kind)
+              for mapping in report.word_mappings
+          ] == [
+              (294471, 'transposition_carrier'),
+              (294471, 'transposition_alignment'),
+          ]
+          assert {
+              (mapping.reference_book, mapping.reference_chapter, mapping.reference_verse)
+              for mapping in report.word_mappings
+          } == {('1Esdr', 6, 4)}
           print('1esdr_6_4_parent_node=294471')
           print('1esdr_6_4_parent_word=ὑμῖν')
           PY
