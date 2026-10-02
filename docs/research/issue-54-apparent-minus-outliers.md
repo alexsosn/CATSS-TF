@@ -70,15 +70,19 @@ Independent textual evidence matches that formal structure: Jonah 4:3 has MT י�
 against Greek δέσποτα κύριε, and published discussion of the divine-name rendering
 explicitly notes that the Greek has two titles where MT has only the tetragram.
 
-The source therefore encodes two element-level facts in one row:
+The best-supported formal interpretation to test in #85 is two element-level facts
+inside one row:
 
-1. an apparent MT-minus counterpart for Greek `DE/SPOTA`;
-2. ordinary lexical `YHWH -> KU/RIE`.
+1. the leading apparent-MT-minus marker scopes the first Greek element
+   `DE/SPOTA`;
+2. lexical `YHWH` corresponds to the following `KU/RIE`.
 
-The whole row must not be forced into the pure apparent-minus cardinality class.
+The current evidence is sufficient to reject a *pure* apparent-minus treatment of the
+whole row, but the exact element scope remains a hypothesis until it is verified against
+the configured LXX parent and projection behavior.
 
-Follow-up: #85 models the scope at element level, grounded in the configured LXX parent
-and canonical TF element/annotation nodes.
+Follow-up: #85 tests and models that scope at element level, grounded in the configured
+LXX parent and canonical TF element/annotation nodes.
 
 ## Decision R54-1 — the outliers are heterogeneous
 
