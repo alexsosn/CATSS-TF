@@ -161,7 +161,7 @@ def split_catss_hebrew_words(value: str) -> tuple[str, ...]:
     return parts
 
 
-def _is_structural_reference_range_record(verse: typing.Any) -> bool:
+def _is_structural_reference_range_record(verse: VerseRecord) -> bool:
     """Whether a CATSS verse record consists only of typed contextual-range carriers."""
 
     return bool(verse.alignments) and all(
