@@ -8,15 +8,16 @@ Before production changes, require the exact 1 Esdras 6:4 row to:
 
 1. preserve raw `L/KM -> [e5.3]` and physical source provenance;
 2. preserve the typed `contextual_reference` annotation/payload `e5.3`;
-3. expose semantic Greek token `U(MI=N`;
+3. expose semantic Greek token `U(MI=N` through restored stylistic-transposition markup;
 4. become lexical cardinality `(1,1)` with neither plus nor minus;
 5. derive technique-v1 `one_one`, neither addition nor omission;
 6. emit exactly one LXX-side `source_repair` annotation with payload
-   `U(MI=N [e5.3]`;
+   `{..^U(MI=N} [e5.3]` and an LXX-side `transposition_stylistic` annotation;
 7. preserve the source-derived alignment id;
 8. leave the same cells at another reference unrepaired and fail closed;
-9. resolve through `resolve_lxx_document()` with a parent span containing `ὑμῖν`
-   to the exact word node, with no anchor or finding.
+9. resolve the real two-row pair `{...} -> U(MI=N [e5.3]` plus `L/KM -> [e5.3]`
+   to the same exact parent word as `transposition_carrier` + `transposition_alignment`,
+   with no anchor or finding.
 
 Commit the tests first and confirm semantic RED.
 
@@ -24,7 +25,7 @@ Commit the tests first and confirm semantic RED.
 
 Add one closed entry to the existing LXX-side exact source-repair table:
 
-`("17.1Esdras.par", 6, 4, "L/KM", "[e5.3]") -> "U(MI=N [e5.3]"`.
+`("17.1Esdras.par", 6, 4, "L/KM", "[e5.3]") -> "{..^U(MI=N} [e5.3]"`.
 
 Do not change:
 
@@ -45,7 +46,8 @@ Convert the temporary research step into an assertion that:
 - technique is `one_one` with no addition/omission;
 - the exact configured `CenterBLC/LXX@f32a98ed...` parent still contains exactly one
   normalized `U(MI=N` in `1Esdr 6:4`;
-- production resolver maps the repaired row to node 294471;
+- production resolver maps both the existing carrier and repaired alignment to node 294471
+  with the two explicit transposition mapping roles;
 - no reference anchor is emitted.
 
 Any parent drift or new ambiguity fails the guard.
