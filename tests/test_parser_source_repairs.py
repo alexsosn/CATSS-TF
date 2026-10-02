@@ -328,3 +328,65 @@ def test_1kings_missing_minus_repair_is_reference_pinned() -> None:
 
     with pytest.raises(TechniqueError, match="Greek-empty"):
         derive_alignment_technique("13.1Kings.par", alignment)
+
+
+def test_1esdr_6_4_missing_greek_token_is_exact_source_repair() -> None:
+    raw = "L/KM\t[e5.3]"
+    document = parse_parallel_text(
+        f"1Esdr 6:4\n{raw}\n",
+        source_name="17.1Esdras.par",
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.mt_raw == "L/KM"
+    assert alignment.lxx_raw == "[e5.3]"
+    assert alignment.mt_tokens == ("L/KM",)
+    assert alignment.lxx_tokens == ("U(MI=N",)
+    assert alignment.mt_count == 1
+    assert alignment.lxx_count == 1
+    assert alignment.is_lxx_plus is False
+    assert alignment.is_lxx_minus is False
+
+    assert any(
+        annotation.side == "lxx"
+        and annotation.kind == "contextual_reference"
+        and annotation.raw == "[e5.3]"
+        and annotation.payload == "e5.3"
+        for annotation in alignment.annotations
+    )
+
+    technique = derive_alignment_technique("17.1Esdras.par", alignment)
+    assert technique.cardinality_mt_lxx == "one_one"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+    repairs = tuple(
+        annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
+    )
+    assert len(repairs) == 1
+    assert repairs[0].side == "lxx"
+    assert repairs[0].raw == "[e5.3]"
+    assert repairs[0].payload == "U(MI=N [e5.3]"
+
+    assert alignment.alignment_id == alignment_id_for(
+        source_name="17.1Esdras.par",
+        header_raw="1Esdr 6:4",
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+
+
+def test_1esdr_missing_greek_token_repair_is_reference_pinned() -> None:
+    document = parse_parallel_text(
+        "1Esdr 6:5\nL/KM\t[e5.3]\n",
+        source_name="17.1Esdras.par",
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.lxx_raw == "[e5.3]"
+    assert alignment.lxx_tokens == ()
+    assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
+
+    with pytest.raises(TechniqueError, match="Greek-empty"):
+        derive_alignment_technique("17.1Esdras.par", alignment)
