@@ -190,6 +190,71 @@ def test_alignment_apparent_minus_evidence_is_taken_from_typed_annotation() -> N
     assert technique.omission_vs_mt is False
 
 
+@pytest.mark.parametrize(
+    ("source_name", "header", "mt_cell", "lxx_cell", "expected_cardinality"),
+    (
+        ("23.Prov.par", "Prov 28:18", "B/)XT", "{p} ---", "one_zero"),
+        ("27.Sirach.par", "Sir 5:2", ")XRY 3", "{p} ---", "many_zero"),
+        ("27.Sirach.par", "Sir 23:17", "B/W 3", "{p}", "many_zero"),
+    ),
+)
+def test_zero_token_greek_preverb_carriers_are_not_omissions(
+    source_name: str,
+    header: str,
+    mt_cell: str,
+    lxx_cell: str,
+    expected_cardinality: str,
+) -> None:
+    doc = parse_parallel_text(
+        f"{header}\n{mt_cell}\t{lxx_cell}\n",
+        source_name=source_name,
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.lxx_count == 0
+    assert alignment.is_lxx_minus is False
+    assert any(
+        annotation.side == "lxx" and annotation.kind == "greek_preverb"
+        for annotation in alignment.annotations
+    )
+
+    technique = derive_alignment_technique(source_name, alignment)
+
+    assert technique.cardinality_mt_lxx == expected_cardinality
+    assert technique.token_balance_mt_lxx == "not_applicable"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+
+def test_greek_preverb_carrier_is_explicit_technique_evidence() -> None:
+    state_fn = derive_technique_state
+    state = state_fn(
+        mt_n=1,
+        lxx_n=0,
+        is_lxx_plus=False,
+        is_lxx_minus=False,
+        trans_local=False,
+        trans_remote=False,
+        trans_style=False,
+        greek_preverb_carrier=True,
+    )
+
+    assert state.cardinality_mt_lxx == "one_zero"
+    assert state.addition_vs_mt is False
+    assert state.omission_vs_mt is False
+
+
+def test_generic_greek_empty_alignment_still_fails_closed() -> None:
+    doc = parse_parallel_text(
+        "Test 1:1\nHB\t\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    with pytest.raises(TechniqueError, match="Greek-empty"):
+        derive_alignment_technique("99.Test.par", alignment)
+
+
 def test_source_flags_cannot_contradict_nonempty_sides() -> None:
     with pytest.raises(TechniqueError, match="non-empty MT"):
         derive_technique_state(
