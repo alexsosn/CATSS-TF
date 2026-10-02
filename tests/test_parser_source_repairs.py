@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from catss_tf.parser import alignment_id_for, parse_parallel_text
-from catss_tf.technique import derive_alignment_technique
+from catss_tf.technique import TechniqueError, derive_alignment_technique
 from catss_tf.tf_schema import FEATURE_SPECS
 
 
@@ -269,3 +269,62 @@ def test_greek_side_plus_repair_does_not_generalize_to_same_cells_elsewhere() ->
     assert alignment.lxx_raw == "--+"
     assert alignment.is_lxx_minus is False
     assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
+
+
+def test_1kings_22_50_ahab_is_exact_missing_minus_source_repair() -> None:
+    raw = ")X)B\t[16.28g]"
+    document = parse_parallel_text(
+        f"1/3Kgs 22:50\n{raw}\n",
+        source_name="13.1Kings.par",
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.mt_raw == ")X)B"
+    assert alignment.lxx_raw == "[16.28g]"
+    assert alignment.mt_count == 1
+    assert alignment.lxx_count == 0
+    assert alignment.is_lxx_minus is True
+    assert alignment.is_lxx_plus is False
+
+    assert any(
+        annotation.side == "lxx"
+        and annotation.kind == "contextual_reference"
+        and annotation.raw == "[16.28g]"
+        and annotation.payload == "16.28g"
+        for annotation in alignment.annotations
+    )
+
+    technique = derive_alignment_technique("13.1Kings.par", alignment)
+    assert technique.omission_vs_mt is True
+    assert technique.addition_vs_mt is False
+
+    repairs = tuple(
+        annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
+    )
+    assert len(repairs) == 1
+    assert repairs[0].side == "lxx"
+    assert repairs[0].raw == "[16.28g]"
+    assert repairs[0].payload == "--- [16.28g]"
+
+    assert alignment.alignment_id == alignment_id_for(
+        source_name="13.1Kings.par",
+        header_raw="1/3Kgs 22:50",
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+
+
+def test_1kings_missing_minus_repair_is_reference_pinned() -> None:
+    document = parse_parallel_text(
+        "1/3Kgs 22:49\n)X)B\t[16.28g]\n",
+        source_name="13.1Kings.par",
+    )
+    alignment = document.verses[0].alignments[0]
+
+    assert alignment.is_lxx_minus is False
+    assert alignment.lxx_raw == "[16.28g]"
+    assert not any(annotation.kind == "source_repair" for annotation in alignment.annotations)
+
+    with pytest.raises(TechniqueError, match="Greek-empty"):
+        derive_alignment_technique("13.1Kings.par", alignment)

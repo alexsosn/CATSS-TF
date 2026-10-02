@@ -64,6 +64,7 @@ _KNOWN_LXX_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
     ("23.Prov.par", 24, 5, "GBR", "--+"): "---",
     ("23.Prov.par", 30, 32, "L/PH", "--+ {x}"): "--- {x}",
     ("41.Jer.par", 51, 57, "PXWT/YH", "--+ [28.57]"): "--- [28.57]",
+    ("13.1Kings.par", 22, 50, ")X)B", "[16.28g]"): "--- [16.28g]",
 }
 
 
