@@ -93,19 +93,23 @@ was then passed through the production `TextFabricLxxProvider` and
 - no mapping finding;
 - no normalization or parent failure.
 
-Thus the proposed lexical restoration is parent-real, unique, and already compatible
-with the strict resolver. No fabricated node, anchor, fuzzy placement or resolver
-exception is required.
+Thus the lexical surface `U(MI=N` is parent-real and unique. This first check was
+performed on an isolated synthetic row; it did not yet exercise the pre-existing
+`{...} -> U(MI=N` transposition carrier in the actual verse. The adversarial finding
+below supersedes the resulting bare-token mapping conclusion.
 
-## Decision R82-1 — exact lexical source repair
+## Initial decision R82-1 — bare lexical source repair (superseded)
 
-Repair only the exact identity
+Initial hypothesis: repair only the exact identity
 
 `("17.1Esdras.par", 6, 4, "L/KM", "[e5.3]")`
 
-to semantic Greek
+to bare semantic Greek
 
 `U(MI=N [e5.3]`.
+
+This hypothesis is retained here as research history and is superseded by the
+transposition-aware decision below.
 
 Do not infer Greek lexemes from Hebrew morphology or from contextual references
 generically.
@@ -124,7 +128,7 @@ The repair must keep unchanged:
 Emit the existing LXX-side `source_repair` provenance annotation whose payload is
 `U(MI=N [e5.3]`.
 
-## Decision R82-3 — ordinary lexical mapping after repair
+## Initial decision R82-3 — ordinary lexical mapping (superseded)
 
 After repair the canonical state is lexical-to-lexical:
 
@@ -135,8 +139,10 @@ After repair the canonical state is lexical-to-lexical:
 - technique cardinality `one_one`;
 - neither addition nor omission.
 
-The LXX projection must resolve the restored token to CenterBLC node 294471 through the
-ordinary exact word-mapping path.
+The isolated-row experiment resolved the restored token to CenterBLC node 294471 through
+the ordinary exact word-mapping path. On the real verse this conflicts with the existing
+transposition carrier; the revised decision below requires the explicit transposition
+mapping pair instead.
 
 
 ## Adversarial finding — existing transposition carrier
