@@ -68,6 +68,7 @@ def derive_technique_state(
     trans_remote: bool,
     trans_style: bool,
     apparent_mt_minus: bool = False,
+    greek_preverb_carrier: bool = False,
 ) -> TechniqueState:
     """Derive conservative MT↔LXX technique facts from canonical scalar state."""
 
@@ -100,9 +101,16 @@ def derive_technique_state(
             "Hebrew-empty Greek alignment requires CATSS LXX-plus, apparent MT minus, "
             "or transposition evidence"
         )
-    if mt_n > 0 and lxx_n == 0 and not is_lxx_minus and not transposition_marked:
+    if (
+        mt_n > 0
+        and lxx_n == 0
+        and not is_lxx_minus
+        and not transposition_marked
+        and not greek_preverb_carrier
+    ):
         raise TechniqueError(
-            "Greek-empty MT alignment requires CATSS LXX-minus or transposition evidence"
+            "Greek-empty MT alignment requires CATSS LXX-minus, transposition, "
+            "or Greek-preverb carrier evidence"
         )
     if is_lxx_plus and is_lxx_minus:
         raise TechniqueError("CATSS alignment cannot be both LXX-plus and LXX-minus")
@@ -164,6 +172,10 @@ def derive_alignment_technique(source: str, alignment: AlignmentRecord) -> Techn
         trans_style=alignment.is_transposition_stylistic,
         apparent_mt_minus=any(
             annotation.side == "mt_a" and annotation.kind == "apparent_minus"
+            for annotation in alignment.annotations
+        ),
+        greek_preverb_carrier=any(
+            annotation.side == "lxx" and annotation.kind == "greek_preverb"
             for annotation in alignment.annotations
         ),
     )
