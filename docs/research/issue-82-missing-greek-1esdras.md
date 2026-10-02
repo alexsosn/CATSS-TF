@@ -137,3 +137,48 @@ After repair the canonical state is lexical-to-lexical:
 
 The LXX projection must resolve the restored token to CenterBLC node 294471 through the
 ordinary exact word-mapping path.
+
+
+## Adversarial finding — existing transposition carrier
+
+Independent review of the exact upstream verse found that the proposed bare lexical
+repair would duplicate a Greek token that CATSS already carries elsewhere in the same
+verse. The current source sequence is:
+
+```
+1Esdr 6:4
+MN      TI/NOS [e5.3]
+{...}   U(MI=N [e5.3]
+&M {...+(M}    SUNTA/CANTOS [e5.3]
+L/KM    [e5.3]
++(M     {...} [e5.3]
+```
+
+CATSS documentation classifies `{...}` as the placeholder/carrier side of a
+non-adjacent stylistic transposition, paired with a `{..^...}` alignment annotation.
+CATSS-TF's resolver deliberately permits one parent word to be shared only by the pair
+`transposition_alignment` + `transposition_carrier`; two unmarked/exact mappings to
+the same parent word are rejected.
+
+Therefore the earlier candidate semantic cell `U(MI=N [e5.3]` is too weak: it makes
+the repaired `L/KM` row an ordinary exact mapping and conflicts with the already
+present carrier `{...} -> U(MI=N [e5.3]`.
+
+## Revised decision R82-1 — restore the missing transposition alignment
+
+Repair only the exact source identity
+
+`("17.1Esdras.par", 6, 4, "L/KM", "[e5.3]")`
+
+to semantic Greek
+
+`{..^U(MI=N} [e5.3]`.
+
+This preserves one lexical Greek surface `U(MI=N` for the repaired row while restoring
+its CATSS relationship to the existing `{...}` carrier. The resolver must map both
+records to the same pinned parent word, with mapping kinds
+`transposition_alignment` and `transposition_carrier`, respectively.
+
+The complete regression must include both real rows. An isolated synthetic
+`L/KM -> U(MI=N` test is insufficient because it cannot detect the duplicate-placement
+conflict.
