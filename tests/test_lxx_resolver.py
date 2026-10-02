@@ -138,7 +138,7 @@ HB2\tKAI\\
     ]
 
 
-def test_1esdr_exact_repair_maps_restored_umin_to_parent_word() -> None:
+def test_1esdr_exact_repair_maps_restored_transposition_alignment_to_parent_word() -> None:
     doc = parse_parallel_text(
         "1Esdr 6:4\nL/KM\t[e5.3]\n",
         source_name="17.1Esdras.par",
@@ -169,7 +169,7 @@ def test_1esdr_exact_repair_maps_restored_umin_to_parent_word() -> None:
     assert mapping.reference_book == "1Esdr"
     assert mapping.reference_chapter == 6
     assert mapping.reference_verse == 4
-    assert mapping.mapping_kind == "exact"
+    assert mapping.mapping_kind == "transposition_alignment"
 
 
 def test_1esdr_repair_pairs_with_existing_transposition_carrier() -> None:
