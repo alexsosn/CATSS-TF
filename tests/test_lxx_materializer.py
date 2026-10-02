@@ -300,9 +300,7 @@ def test_1esdr_restored_greek_token_projects_to_real_parent_word(
     repair = (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
     scoped = (output / "catss_sem_source_repair_lxx.tf").read_text(encoding="utf-8")
     payload = (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
-    scoped_payload = (output / "catss_sem_source_repair_lxx_payload.tf").read_text(
-        encoding="utf-8"
-    )
+    scoped_payload = (output / "catss_sem_source_repair_lxx_payload.tf").read_text(encoding="utf-8")
     assert "294471\t1" in repair
     assert "294471\t1" in scoped
     assert "294471\tU(MI=N [e5.3]" in payload
