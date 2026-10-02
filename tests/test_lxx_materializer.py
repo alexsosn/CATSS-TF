@@ -293,7 +293,7 @@ def test_1esdr_restored_greek_token_projects_to_real_parent_word(
     assert result.summary.reference_anchors == 0
     mappings = _read_tsv(output / "catss-mappings.tsv")
     assert [(row["parent_node"], row["lxx_i"], row["mapping_kind"]) for row in mappings] == [
-        ("294471", "1", "exact")
+        ("294471", "1", "transposition_alignment")
     ]
     assert _read_tsv(output / "catss-anchors.tsv") == []
 
@@ -303,8 +303,8 @@ def test_1esdr_restored_greek_token_projects_to_real_parent_word(
     scoped_payload = (output / "catss_sem_source_repair_lxx_payload.tf").read_text(encoding="utf-8")
     assert "294471\t1" in repair
     assert "294471\t1" in scoped
-    assert "294471\tU(MI=N [e5.3]" in payload
-    assert "294471\tU(MI=N [e5.3]" in scoped_payload
+    assert "294471\t{..^U(MI=N} [e5.3]" in payload
+    assert "294471\t{..^U(MI=N} [e5.3]" in scoped_payload
 
 
 def test_mt_apparent_minus_is_query_native_on_lxx_words(
