@@ -1,3 +1,5 @@
+import typing
+
 import pytest
 
 from catss_tf.parser import parse_parallel_text
@@ -227,7 +229,7 @@ def test_zero_token_greek_preverb_carriers_are_not_omissions(
 
 
 def test_greek_preverb_carrier_is_explicit_technique_evidence() -> None:
-    state_fn = derive_technique_state
+    state_fn = typing.cast(typing.Any, derive_technique_state)
     state = state_fn(
         mt_n=1,
         lxx_n=0,
