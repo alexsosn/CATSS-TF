@@ -161,6 +161,17 @@ def split_catss_hebrew_words(value: str) -> tuple[str, ...]:
     return parts
 
 
+def _is_structural_reference_range_record(verse: typing.Any) -> bool:
+    """Whether a CATSS verse record consists only of typed contextual-range carriers."""
+
+    return bool(verse.alignments) and all(
+        alignment.lxx_reference_ranges
+        and not alignment.mt_tokens
+        and not alignment.lxx_tokens
+        for alignment in verse.alignments
+    )
+
+
 def normalize_catss_hebrew(value: str) -> str:
     """Convert one CATSS Michigan-Claremont MT word to consonantal Unicode.
 
@@ -294,6 +305,9 @@ def resolve_bhsa_document(
     normalization_errors = 0
 
     for verse in document.verses:
+        if _is_structural_reference_range_record(verse):
+            continue
+
         parent = provider.get_verse(
             classification.bhsa_book,
             verse.chapter,
