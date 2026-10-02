@@ -928,7 +928,11 @@ def _extract_greek_references(
         if not any(character.isdigit() for character in inner):
             continue
 
-        range_match = _GREEK_REFERENCE_RANGE_VALUE.fullmatch(inner)
+        range_match = (
+            _GREEK_REFERENCE_RANGE_VALUE.fullmatch(inner)
+            if raw.startswith("[[") and raw.endswith("]]")
+            else None
+        )
         if range_match is not None:
             start_chapter = int(range_match.group(1))
             start_verse = int(range_match.group(2))
