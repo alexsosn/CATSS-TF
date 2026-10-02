@@ -343,6 +343,13 @@ def test_1esdr_6_4_missing_greek_token_is_exact_source_repair() -> None:
     assert alignment.lxx_raw == "[e5.3]"
     assert alignment.mt_tokens == ("L/KM",)
     assert alignment.lxx_tokens == ("U(MI=N",)
+    assert alignment.is_transposition_stylistic is True
+    assert any(
+        annotation.side == "lxx"
+        and annotation.kind == "transposition_stylistic"
+        and annotation.payload == "U(MI=N"
+        for annotation in alignment.annotations
+    )
     assert alignment.mt_count == 1
     assert alignment.lxx_count == 1
     assert alignment.is_lxx_plus is False
@@ -358,6 +365,7 @@ def test_1esdr_6_4_missing_greek_token_is_exact_source_repair() -> None:
 
     technique = derive_alignment_technique("17.1Esdras.par", alignment)
     assert technique.cardinality_mt_lxx == "one_one"
+    assert technique.transposition_mt_lxx == "stylistic"
     assert technique.addition_vs_mt is False
     assert technique.omission_vs_mt is False
 
@@ -367,7 +375,7 @@ def test_1esdr_6_4_missing_greek_token_is_exact_source_repair() -> None:
     assert len(repairs) == 1
     assert repairs[0].side == "lxx"
     assert repairs[0].raw == "[e5.3]"
-    assert repairs[0].payload == "U(MI=N [e5.3]"
+    assert repairs[0].payload == "{..^U(MI=N} [e5.3]"
 
     assert alignment.alignment_id == alignment_id_for(
         source_name="17.1Esdras.par",
