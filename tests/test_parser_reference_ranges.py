@@ -48,7 +48,9 @@ def test_joshb_contextual_reference_range_is_structured_without_lexical_fabricat
         and annotation.payload == "9.2a-2f"
         for annotation in alignment.annotations
     )
-    assert not any(diagnostic.code == "invalid_lxx_reference" for diagnostic in document.diagnostics)
+    assert not any(
+        diagnostic.code == "invalid_lxx_reference" for diagnostic in document.diagnostics
+    )
 
     assert alignment.alignment_id == alignment_id_for(
         source_name="06.JoshB.par",
