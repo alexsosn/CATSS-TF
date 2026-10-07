@@ -517,6 +517,83 @@ jobs:
           assert len(observed) == 7, observed
           print(f'doubt_decorated_lxx_minus={len(observed)}')
           PY
+      - name: Research pinned Jonah 4:3 Greek token scope
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/catss-jonah-parent
+          git init -q /tmp/catss-jonah-parent
+          git -C /tmp/catss-jonah-parent remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/catss-jonah-parent fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/catss-jonah-parent checkout -q FETCH_HEAD
+          test "$(git -C /tmp/catss-jonah-parent rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+          from tf.fabric import Fabric
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.lxx_resolver import (
+              TextFabricLxxProvider, normalize_catss_greek, normalize_lxx_greek,
+              resolve_lxx_document,
+          )
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE, LXX_MAX_SLOT, LXX_NODE_COUNTS, LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG, LXX_REPOSITORY, LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES, LXX_SLOT_TYPE, LXX_VERSION, LxxParentProbe,
+          )
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/32.Jonah.par'))
+          rows = [
+              a for v in source.verses if (v.chapter, v.verse) == (4, 3)
+              for a in v.alignments
+              if a.mt_raw == '--- YHWH' and a.lxx_raw == 'DE/SPOTA KU/RIE'
+          ]
+          assert len(rows) == 1, rows
+          alignment = rows[0]
+          assert alignment.mt_tokens == ('YHWH',)
+          assert alignment.lxx_tokens == ('DE/SPOTA', 'KU/RIE')
+          assert any(a.side == 'mt_a' and a.kind == 'apparent_minus' for a in alignment.annotations)
+
+          TF = Fabric(locations='/tmp/catss-jonah-parent/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          verse_node = api.T.nodeFromSection(('Jonah', 4, 3))
+          assert verse_node is not None
+          slots = tuple(api.L.d(verse_node, otype='word'))
+          normalized = [normalize_lxx_greek(api.F.word.v(n)) for n in slots]
+          expected = tuple(map(normalize_catss_greek, alignment.lxx_tokens))
+          matches = [
+              (slots[i], slots[i+1])
+              for i in range(len(slots) - 1)
+              if tuple(normalized[i:i+2]) == expected
+          ]
+          print('JONAH_4_3_MATCHES', [
+              ((left, api.F.word.v(left)), (right, api.F.word.v(right)))
+              for left, right in matches
+          ])
+          assert len(matches) == 1, matches
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY, version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG, release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE, max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE, section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS, feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          focused = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/32.Jonah.par'))
+          report = resolve_lxx_document(focused, provider)
+          print('JONAH_4_3_REPORT', report.summary)
+          print('JONAH_4_3_FOCUS_MAPPINGS', [
+              (m.lxx_index, m.lxx_node, m.mapping_kind)
+              for m in report.word_mappings if m.alignment_id == alignment.alignment_id
+          ])
+          print('JONAH_4_3_FOCUS_FINDINGS', [
+              f for f in report.findings if f.alignment_id == alignment.alignment_id
+          ])
+          assert [
+              m.lxx_node for m in report.word_mappings
+              if m.alignment_id == alignment.alignment_id
+          ] == list(matches[0])
+          PY
       - name: Assert complete notation coverage
         run: |
           set +e
