@@ -620,3 +620,37 @@ HB\tMH/ [6] [[23:6]]
     assert report.ok is True
     assert report.summary.reference_overrides == 1
     assert report.word_mappings[0].lxx_node == 700
+
+
+def test_1esdr_exact_repair_maps_restored_transposition_alignment_to_parent_word() -> None:
+    doc = parse_parallel_text(
+        "1Esdr 6:4\nL/KM\t[e5.3]\n",
+        source_name="17.1Esdras.par",
+    )
+    provider = FakeProvider(
+        (
+            _span(
+                "τίνος",
+                "ὑμῖν",
+                "συντάξαντος",
+                book="1Esdr",
+                chapter=6,
+                verse=4,
+                node=900604,
+                start_node=294470,
+            ),
+        )
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is True
+    assert report.reference_anchors == ()
+    assert len(report.word_mappings) == 1
+    mapping = report.word_mappings[0]
+    assert mapping.lxx_node == 294471
+    assert mapping.lxx_index == 0
+    assert mapping.reference_book == "1Esdr"
+    assert mapping.reference_chapter == 6
+    assert mapping.reference_verse == 4
+    assert mapping.mapping_kind == "transposition_alignment"
