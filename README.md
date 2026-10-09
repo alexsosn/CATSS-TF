@@ -22,12 +22,16 @@ pip install \\
   https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
-Install with Text-Fabric integration:
+Install with Text-Fabric integration from current source (including the GitHub backend):
 
 ```sh
 pip install \\
-  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
+  "catss-tf[tf] @ git+https://github.com/alexsosn/CATSS-TF.git"
 ```
+
+The already-published v0.1.0 wheel retains its original dependency metadata.
+If using that wheel, additionally run `pip install "text-fabric[github]>=13.1,<14"`
+for BHSA/LXX downloads; a future release will include the fix automatically.
 
 Verify:
 
