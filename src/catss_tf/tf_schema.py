@@ -585,9 +585,7 @@ def compile_tf_features(
             )
         seen_range_nodes.add(event.node)
         if event.member_n < 1 or not (1 <= event.member_i <= event.member_n):
-            raise TfSchemaError(
-                f"invalid reference range member {event.member_i}/{event.member_n}"
-            )
+            raise TfSchemaError(f"invalid reference range member {event.member_i}/{event.member_n}")
 
         values: dict[str, FeatureValue] = {
             "catss_lxx_reference_range_id": event.alignment_id,
