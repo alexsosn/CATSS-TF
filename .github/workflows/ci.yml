@@ -667,6 +667,73 @@ jobs:
           assert len(observed) == 7, observed
           print(f'doubt_decorated_lxx_minus={len(observed)}')
           PY
+      - name: Research pinned Josh 9:2 subverse node hierarchy
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-josh
+          git init -q /tmp/centerblc-josh
+          git -C /tmp/centerblc-josh remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-josh fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-josh checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-josh rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          from collections import Counter
+          from tf.fabric import Fabric
+          from catss_tf.lxx_resolver import TextFabricLxxProvider
+          from catss_tf.lxx_schema import (
+              LXX_REPOSITORY, LXX_VERSION, LXX_RELEASE_TAG, LXX_RELEASE_COMMIT,
+              LXX_SLOT_TYPE, LXX_MAX_SLOT, LXX_MAX_NODE, LXX_SECTION_TYPES,
+              LXX_NODE_COUNTS, LXX_REQUIRED_FEATURES, LxxParentProbe,
+          )
+
+          fabric = Fabric(locations='/tmp/centerblc-josh/tf/1935', silent='deep')
+          api = fabric.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          verse_node = api.T.nodeFromSection(('Josh', 9, 2))
+          assert verse_node is not None
+          words = tuple(api.L.d(verse_node, otype='word'))
+          subverses = tuple(api.L.d(verse_node, otype='subverse'))
+          print('JOSH_9_2_VERSE_NODE', verse_node)
+          print('JOSH_9_2_WORD_COUNT', len(words))
+          print('JOSH_9_2_SUBVERSE_COUNT', len(subverses))
+          print('JOSH_9_2_SUBVERSE_NODES', [
+              (
+                  node,
+                  api.F.subverse.v(node),
+                  tuple(api.L.d(node, otype='word')),
+              )
+              for node in subverses
+          ])
+          print('JOSH_9_2_WORD_FEATURE_VALUES', [
+              (
+                  word,
+                  api.F.word.v(word),
+                  api.F.subverse.v(word),
+                  tuple(api.L.u(word, otype='subverse')),
+              )
+              for word in words
+          ])
+          print('JOSH_9_2_WORD_LABEL_COUNTS', dict(Counter(
+              api.F.subverse.v(word) for word in words
+          )))
+          print('JOSH_9_2_SUBVERSE_LABEL_COUNTS', dict(Counter(
+              api.F.subverse.v(node) for node in subverses
+          )))
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY, version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG, release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE, max_slot=LXX_MAX_SLOT, max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES, node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          print('JOSH_9_2_RANGE_PROVIDER', [
+              (label, span.node if span else None)
+              for label in 'abcdef'
+              for span in (provider.get_span('Josh', 9, 2, label),)
+          ])
+          PY
       - name: Assert complete notation coverage
         run: |
           set +e
