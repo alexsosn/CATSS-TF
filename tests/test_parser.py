@@ -58,6 +58,38 @@ HBA =:ALT .dr\tGRA
     assert retro.lxx_tokens == ("GRA",)
 
 
+def test_jonah_mixed_apparent_minus_is_scoped_to_first_greek_element() -> None:
+    raw = "--- YHWH\tDE/SPOTA KU/RIE"
+    doc = parse_parallel_text(
+        "Jonah 4:3\n" + raw + "\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+    assert alignment.mt_raw == "--- YHWH"
+    assert alignment.lxx_raw == "DE/SPOTA KU/RIE"
+    assert alignment.mt_tokens == ("YHWH",)
+    assert alignment.lxx_tokens == ("DE/SPOTA", "KU/RIE")
+    apparent = [
+        a for a in alignment.annotations
+        if a.side == "mt_a" and a.kind == "apparent_minus"
+    ]
+    assert len(apparent) == 1
+    assert getattr(apparent[0], "target_side", None) == "lxx"
+    assert getattr(apparent[0], "target_index", None) == 1
+
+
+def test_pure_apparent_minus_does_not_gain_element_scope() -> None:
+    doc = parse_parallel_text(
+        "Gen 8:8\n--- =;ALT\tLOGOS\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+    apparent = [a for a in alignment.annotations if a.kind == "apparent_minus"]
+    assert len(apparent) == 1
+    assert getattr(apparent[0], "target_side", None) is None
+    assert getattr(apparent[0], "target_index", None) is None
+
+
 def test_mt_side_apparent_minus_is_typed_without_becoming_lxx_plus() -> None:
     raw = "--- =;L/R)T <8.8>\tTOU= I)DEI=N"
     doc = parse_parallel_text(
