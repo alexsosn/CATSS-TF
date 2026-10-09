@@ -867,6 +867,7 @@ def test_distinct_mt_a_mt_b_payloads_coexist_query_natively() -> None:
     assert compiled["catss_sem_distributive_mt_a_payload"] == {1: "A"}
     assert compiled["catss_sem_distributive_mt_b_payload"] == {1: "B"}
 
+
 def _range_member(
     *,
     node: int = 8,
