@@ -772,9 +772,7 @@ jobs:
           assert report.ok is True, report.findings
           assert report.word_mappings == ()
           assert report.reference_anchors == ()
-          assert [member.lxx_reference_node for member in report.reference_range_memberships] == (
-              parent_nodes
-          )
+          assert [member.lxx_reference_node for member in report.reference_range_memberships] == parent_nodes
           assert [member.reference_subverse for member in report.reference_range_memberships] == list(
               'abcdef'
           )
