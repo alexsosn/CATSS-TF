@@ -43,8 +43,9 @@ def test_text_fabric_is_an_explicit_optional_extra() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     extras = pyproject["project"]["optional-dependencies"]
 
-    assert extras["tf"] == ["text-fabric>=13.1,<14"]
-    assert "text-fabric>=13.1,<14" in extras["dev"]
+    assert extras["tf"] == ["text-fabric[github]>=13.1,<14"]
+    assert "text-fabric[github]>=13.1,<14" in extras["dev"]
+    assert not any("text-fabric[all]" in spec for specs in extras.values() for spec in specs)
 
 
 def test_release_notes_and_changelog_name_the_release() -> None:
