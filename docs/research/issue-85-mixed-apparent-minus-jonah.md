@@ -69,3 +69,31 @@ the exact adjacent sequence `δέσποτα κύριε`, and that production nor
 
 This research ticket must not weaken the pure apparent-minus cardinality invariant for
 the 61 homogeneous rows.
+
+## Pinned-parent empirical result (complete snapshot, 2026-10-09)
+
+The `CenterBLC/LXX` parent at exact commit
+`f32a98eddf7eb239aa73ab863d70381e416d5076` contains **one unique adjacent
+normalization match** for CATSS `DE/SPOTA KU/RIE` at Jonah 4:3:
+
+- node **495520**: `δέσποτα` ↔ `DE/SPOTA`;
+- node **495521**: `κύριε` ↔ `KU/RIE`.
+
+This satisfies the primary parent lexical-grounding gate. The existing full-document
+`resolve_lxx_document` **does not** place the mixed CATSS row on either node.
+Observed `JONAH_4_3_FOCUS_MAPPINGS = []`, with 19 resolver findings elsewhere in
+the Jonah document (14 mismatched, 5 ambiguous reference groups).
+
+This is the exact behavior defect to fix: the lexical parent pair exists and is
+unambiguous in the verse, yet mapping is dropped at the group/alignment layer.
+
+The research CI gate now checks the concrete parent words and **asserts the
+current missing-mapping defect**, rather than falsely demanding an existing
+mapping before development. The implementation PR must flip that RED assertion
+only after producing the correct two parent memberships, with the first Greek
+word scoped to apparent-MT-minus and the second to lexical YHWH.
+
+The unsupported punctuation character `᾿` in unrelated parent token `ἀπ᾿`
+must not cause the parent lexical inventory audit to abort. Research comparison
+skips only such unrelated unnormalizable words; production normalization rules
+remain unchanged.
