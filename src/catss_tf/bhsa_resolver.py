@@ -165,9 +165,7 @@ def _is_structural_reference_range_record(verse: VerseRecord) -> bool:
     """Whether a CATSS verse record consists only of typed contextual-range carriers."""
 
     return bool(verse.alignments) and all(
-        alignment.lxx_reference_ranges
-        and not alignment.mt_tokens
-        and not alignment.lxx_tokens
+        alignment.lxx_reference_ranges and not alignment.mt_tokens and not alignment.lxx_tokens
         for alignment in verse.alignments
     )
 
