@@ -8,9 +8,12 @@ Verify against the exact configured parent `CenterBLC/LXX@f32a98eddf7eb239aa73ab
 
 1. `Jonah 4:3` contains adjacent parent words corresponding uniquely to CATSS `DE/SPOTA KU/RIE`;
 2. `DE/SPOTA` maps to the first of those nodes and `KU/RIE` to the second;
-3. the current production resolver maps the CATSS row in order without ambiguity.
+3. record the current production resolver's behavior, including its mapping gap when
+   the parent contains a unique matching pair.
 
-Do not start behavior-changing RED tests until this parent check is recorded.
+**Research result:** the parent uniquely supplies nodes 495520–495521, but the
+current resolver produces no mappings for this alignment. The implementation
+must begin with RED tests for this mapping gap, not assume it is already solved.
 
 ## Intended IR design if parent grounding succeeds
 
