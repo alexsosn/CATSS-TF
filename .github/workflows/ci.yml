@@ -558,7 +558,12 @@ jobs:
           verse_node = api.T.nodeFromSection(('Jonah', 4, 3))
           assert verse_node is not None
           slots = tuple(api.L.d(verse_node, otype='word'))
-          normalized = [normalize_lxx_greek(api.F.word.v(n)) for n in slots]
+          normalized = []
+          for n in slots:
+              try:
+                  normalized.append(normalize_lxx_greek(api.F.word.v(n)))
+              except ValueError:
+                  normalized.append(None)  # unrelated parent token with unsupported punctuation
           expected = tuple(map(normalize_catss_greek, alignment.lxx_tokens))
           matches = [
               (slots[i], slots[i+1])
