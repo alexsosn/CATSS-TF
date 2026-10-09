@@ -685,8 +685,7 @@ def _resolve_reference_ranges(
         return 1, 0, 0
 
     subverses = tuple(
-        chr(code)
-        for code in range(ord(reference.start_subverse), ord(reference.end_subverse) + 1)
+        chr(code) for code in range(ord(reference.start_subverse), ord(reference.end_subverse) + 1)
     )
     pending: list[LxxReferenceRangeMembership] = []
     for index, subverse in enumerate(subverses, start=1):
