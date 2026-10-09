@@ -898,9 +898,7 @@ def test_lxx_reference_range_features_are_query_native_on_parent_nodes() -> None
         reference_ranges=(_range_member(),),
     )
 
-    assert features["catss_lxx_reference_range_id"] == {
-        8: "catss:06.JoshB.par:range"
-    }
+    assert features["catss_lxx_reference_range_id"] == {8: "catss:06.JoshB.par:range"}
     assert features["catss_lxx_reference_range_raw"] == {8: "[[9.2a-2f]]"}
     assert features["catss_lxx_reference_range_member_i"] == {8: 1}
     assert features["catss_lxx_reference_range_member_n"] == {8: 6}
