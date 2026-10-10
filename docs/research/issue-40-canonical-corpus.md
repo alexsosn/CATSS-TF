@@ -212,3 +212,23 @@ ordered MT/LXX elements must sort same-alignment element nodes by that feature. 
 canonical corpus must preserve a complete 1..N index sequence for every alignment and
 the user-facing TF-load test must reconstruct the original token order from
 `catss_index`, rather than depending on undocumented locality sibling ordering.
+
+## R40-12 — Jonah #85 has an element-scoped MT-column marker
+
+The source-grounded research in [PR #90](https://github.com/alexsosn/CATSS-TF/pull/90)
+establishes that `32.Jonah.par`, Jonah 4:3,
+`--- YHWH\tDE/SPOTA KU/RIE`, preserves two different alignments
+inside one physical row: Greek element 1 is the scoped `apparent_minus`
+counterpart, while MT `YHWH` is lexical counterpart to Greek element 2.
+Parent CenterBLC/LXX 1935 at pinned `f32a98ed` supplies adjacent words
+495520 (δέσποτα) and 495521 (κύριε), supporting this scoped reading.
+An annotation's **printed source side** must remain distinct from its
+**lexical target side/index**.
+
+The canonical alignment slot and two `lxx_element` child nodes already
+exist in #47. A separately typed `annotation` node needs one query-native
+`catss_annotation_target` edge to its first Greek lexical child when,
+and only when, the parser IR contains a verified explicit target. This
+edge is internal to the standalone `catss` warp; it never points to a
+CenterBLC/LXX or BHSA foreign node ID. Do not infer targets from ordinary
+one-to-two token cardinality or lose raw annotation provenance.

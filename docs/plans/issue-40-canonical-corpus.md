@@ -133,3 +133,29 @@ unclassified count and the real 2 Samuel witness; discover and report the
 count rather than guessing it.
 
 Research → RED commit → implementation → full real-data gates → independent review.
+
+## Gate 1c — scoped Jonah annotation target from #85 / PR #90
+
+Evidence: the exact 32.Jonah.par, Jonah 4:3 source row
+`--- YHWH\tDE/SPOTA KU/RIE` and pinned LXX parent 495520–495521
+are researched in #85 / PR #90. The marker is physically in MT column A,
+but its *target* is the first Greek lexical element only. The `YHWH`
+lexical MT element corresponds to Greek element 2. No such target can
+be guessed from a generic (1,2) alignment.
+
+RED-before-implementation: materialize the exact mixed Jonah row, assert
+one `catss_annotation_target` edge from the `apparent_minus`
+annotation node to the `lxx_element` node with `catss_index=1`
+and text `DE/SPOTA`, never to Greek `KU/RIE` or an MT element;
+assert query-native `catss_target_side=lxx` and
+`catss_target_index=1` on the annotation node. A pure apparent-minus
+marker has no target edge. The RED must fail on current #47 production
+before the implementation.
+
+After #85's typed `Annotation.target_side/target_index` merges to main,
+build only edges for **explicit** scoped targets, not inferred count
+ratios. Reject invalid/missing targets; audit same-alignment slot membership,
+index and target type. Preserve global contiguous TF node-type intervals.
+Complete 46-file audit must yield exactly one scoped Jonah annotation edge,
+with no new slots and no fabricated Greek/MT nodes. Run final-head matrix,
+pinned-parent smoke and logically independent adversarial review.

@@ -382,3 +382,61 @@ def test_exodus_corrupt_header_blank_lines_survive_canonical_tf_round_trip(
     assert tuple(api.F.catss_line_no.v(node) for node in source_line_nodes) == tuple(range(2, 9))
     assert tuple(api.F.catss_raw.v(node) for node in source_line_nodes) == raw_lines
     assert tuple(api.F.otype.s("verse")) and len(tuple(api.F.otype.s("verse"))) == 1
+def test_jonah_mixed_apparent_minus_targets_first_greek_element_in_canonical_tf(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The first Greek element is CATSS's scoped missing-MT counterpart (#85)."""
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "32.Jonah.par",
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+    )
+    result = materialize_corpus(source, tmp_path / "catss")
+    assert result.summary.alignments == 1
+    assert result.summary.mt_elements == 1
+    assert result.summary.lxx_elements == 2
+
+    api = _load_corpus(tmp_path)
+    annotations = [
+        node
+        for node in api.L.u(1, otype="annotation")
+        if api.F.catss_kind.v(node) == "apparent_minus"
+    ]
+    assert len(annotations) == 1
+    node = annotations[0]
+
+    # RED before #85 integration: current canonical corpus has no scoped edge.
+    assert "catss_annotation_target" in api.Eall()
+    targets = tuple(api.E.catss_annotation_target.f(node))
+    assert len(targets) == 1
+    target = targets[0]
+    assert api.F.otype.v(target) == "lxx_element"
+    assert api.F.catss_index.v(target) == 1
+    assert api.F.catss_text.v(target) == "DE/SPOTA"
+    assert api.F.catss_target_side.v(node) == "lxx"
+    assert api.F.catss_target_index.v(node) == 1
+
+    all_greek = tuple(api.L.u(1, otype="lxx_element"))
+    assert len(all_greek) == 2
+    second = next(n for n in all_greek if api.F.catss_index.v(n) == 2)
+    assert api.F.catss_text.v(second) == "KU/RIE"
+    assert second not in targets
+
+
+def test_unscoped_apparent_minus_never_gets_phantom_canonical_target(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 8:8\n--- =;ALT\tLOGOS\n")
+    materialize_corpus(source, tmp_path / "catss")
+    api = _load_corpus(tmp_path)
+    annotations = [
+        node
+        for node in api.L.u(1, otype="annotation")
+        if api.F.catss_kind.v(node) == "apparent_minus"
+    ]
+    assert len(annotations) == 1
+    if "catss_annotation_target" in api.Eall():
+        assert tuple(api.E.catss_annotation_target.f(annotations[0])) == ()
+
