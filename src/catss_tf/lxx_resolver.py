@@ -688,6 +688,7 @@ def _resolve_reference_ranges(
         chr(code) for code in range(ord(reference.start_subverse), ord(reference.end_subverse) + 1)
     )
     pending: list[LxxReferenceRangeMembership] = []
+    seen_nodes: set[int] = set()
     for index, subverse in enumerate(subverses, start=1):
         span = provider.get_span(
             default_book,
@@ -709,6 +710,21 @@ def _resolve_reference_ranges(
                 )
             )
             return len(subverses), 0, 1
+        if span.node in seen_nodes:
+            findings.append(
+                LxxMappingFinding(
+                    code="ambiguous_lxx_reference_range_member",
+                    source_name=source_name,
+                    chapter=chapter,
+                    verse=reference.start_verse,
+                    alignment_id=alignment.alignment_id,
+                    catss_value=f"{reference.raw} member {subverse}",
+                    parent_value=str(span.node),
+                    message="distinct CATSS range labels resolve to the same parent subverse node",
+                )
+            )
+            return len(subverses), 0, 1
+        seen_nodes.add(span.node)
         pending.append(
             LxxReferenceRangeMembership(
                 alignment_id=alignment.alignment_id,
