@@ -252,7 +252,10 @@ def test_joshb_contextual_range_is_first_class_canonical_node(
         and api.F.catss_raw.v(a) == "[[9.2a-2f]]"
         for a in api.L.u(slot, otype="annotation")
     )
-    assert tuple(api.E.catss_reference_target.f(node)) == ()
+    # This isolated source may have no edge feature at all; a range does not
+    # authorize creating a scalar reference edge or fabricating a target.
+    if "catss_reference_target" in api.Eall():
+        assert tuple(api.E.catss_reference_target.f(node)) == ()
 
     parsed = parse_parallel_file(source / "06.JoshB.par")
     assert api.F.catss_alignment_id.v(slot) == parsed.verses[0].alignments[0].alignment_id
