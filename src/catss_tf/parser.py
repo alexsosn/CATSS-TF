@@ -110,6 +110,30 @@ _KNOWN_SOURCE_LAYOUT_REPAIRS: dict[tuple[str, int, int, str], tuple[str, str]] =
 }
 
 
+def _exact_exodus_35_19_corruption(lines: list[str], start: int) -> bool:
+    """Recognize only the known seven-line Exod 35:19 source-layout corruption."""
+
+    if start + 7 > len(lines):
+        return False
+    window = lines[start : start + 7]
+    head, blank1, false_header, hash_row, blank2, duplicate_header, tail = window
+    head_mt, head_lxx, head_split = _split_raw_columns(head)
+    tail_mt, tail_lxx, tail_split = _split_raw_columns(tail)
+    return (
+        head_split
+        and tail_split
+        and " ".join(head_mt.split()) == "^ ^^^ =L/$RT {...?H/&RD} #"
+        and " ".join(head_lxx.split()) == "{+} E)N AI(=S LEITOURGH/SOUSIN"
+        and not blank1.strip()
+        and false_header == "Exod 1:10"
+        and hash_row.strip() == "#"
+        and not blank2.strip()
+        and duplicate_header == "Exod 35:19"
+        and tail_mt.strip() == "--+"
+        and " ".join(tail_lxx.split()) == "E)N AU)TAI=S"
+    )
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class Annotation:
     """One source annotation preserved from a CATSS alignment cell."""
@@ -277,6 +301,11 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
     verses: list[VerseRecord] = []
     current: _VerseBuilder | None = None
     pending: list[_PhysicalRow] = []
+    # Only the exact seven-line Exodus corruption may cross its false headers.
+    # Dummy lines are retained verbatim on the resulting alignment for provenance.
+    corrupt_dummies: set[int] = set()
+    corrupt_tail: int | None = None
+    physical_lines = [line.rstrip("\r") for line in text.splitlines()]
 
     def flush_pending() -> None:
         nonlocal pending
@@ -318,8 +347,21 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
         )
         current = None
 
-    for line_no, raw_with_end in enumerate(text.splitlines(), start=1):
-        raw = raw_with_end.rstrip("\r")
+    for line_no, raw in enumerate(physical_lines, start=1):
+        if line_no in corrupt_dummies:
+            # Preserve blank lines and both false/redundant headers exactly as
+            # alignment evidence; never interpret these as lexical material.
+            assert current is not None and pending
+            data_line_numbers.append(line_no)
+            pending.append(
+                _layout_dummy(
+                    _parse_physical_row(
+                        raw, line_no, canonical_source, current.chapter, current.verse
+                    )
+                )
+            )
+            continue
+
         if not raw.strip():
             continue
 
@@ -357,6 +399,14 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             current.verse,
         )
 
+        if (
+            canonical_source == "02.Exodus.par"
+            and (current.book, current.chapter, current.verse) == ("Exod", 35, 19)
+            and _exact_exodus_35_19_corruption(physical_lines, line_no - 1)
+        ):
+            corrupt_dummies.update(range(line_no + 1, line_no + 6))
+            corrupt_tail = line_no + 6
+
         if not physical.column_split:
             if canonical_source == "20.Psalms.par":
                 if pending and not _pending_psalms_orphans(pending):
@@ -370,7 +420,11 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             continue
 
         if pending:
-            if pending[-1].continues or physical.starts_with_continuation:
+            if (
+                pending[-1].continues
+                or physical.starts_with_continuation
+                or line_no == corrupt_tail
+            ):
                 pending.append(physical)
                 continue
             flush_pending()
