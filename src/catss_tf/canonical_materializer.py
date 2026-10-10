@@ -481,7 +481,8 @@ def _add_detail_nodes(
             builder.feature("catss_aramaic_section", node, int(reading.aramaic_section))
 
     # Column B contains reconstructed evidence, *not* another MT-A word.
-    # Only the issue-59 MT-A-empty/Greek-nonempty group gets carrier nodes.
+    # Only physically empty column A plus Greek lexical content qualifies.
+    # Marker-only column A is NOT physically empty even if mt_count == 0.
     # Greek-empty and already-typed LXX-plus rows are outside this exception.
     # =v, for example, is a vocalization marker rather than a word.
     for context in contexts:
@@ -490,6 +491,7 @@ def _add_detail_nodes(
             alignment.mt_count != 0
             or alignment.lxx_count == 0
             or alignment.is_lxx_plus
+            or alignment.mt_col_a != ""
             or alignment.mt_col_b is None
         ):
             continue
@@ -768,6 +770,7 @@ def _audit_graph(
             alignment.mt_count == 0
             and alignment.lxx_count > 0
             and not alignment.is_lxx_plus
+            and alignment.mt_col_a == ""
             and alignment.mt_col_b is not None
             for _source, _verse, alignment in expected_contexts
         ),
@@ -842,6 +845,7 @@ def _audit_graph(
                 alignment.mt_count == 0
                 and alignment.lxx_count > 0
                 and not alignment.is_lxx_plus
+                and alignment.mt_col_a == ""
                 and alignment.mt_col_b is not None
             ),
             "lxx_element": len(alignment.lxx_tokens),
@@ -868,6 +872,7 @@ def _audit_graph(
             alignment.mt_count != 0
             or alignment.lxx_count == 0
             or alignment.is_lxx_plus
+            or alignment.mt_col_a != ""
             or alignment.mt_col_b is None
             or graph.node_features.get("catss_mt_b_raw", {}).get(node) != alignment.mt_col_b
             or graph.node_features.get("catss_retro_kind", {}).get(node)

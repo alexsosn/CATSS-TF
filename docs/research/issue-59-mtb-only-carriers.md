@@ -39,8 +39,8 @@ reconstruction carrier entity** when MT-A is empty.
 ## Design decision — typed carrier, not fabricated lexical element
 
 Add one standalone `mt_b_carrier` node **only** for an alignment that has
-`mt_count == 0`, `lxx_count > 0`, `is_lxx_plus == False`, and
-a non-null `mt_col_b`. Greek-empty carrier/placeholder groups and
+physically empty MT column A (`mt_col_a == ""`), `mt_count == 0`,
+`lxx_count > 0`, `is_lxx_plus == False`, and a non-null `mt_col_b`. Greek-empty carrier/placeholder groups and
 already-typed LXX-plus reconstructions are deliberately excluded. It receives the same single
 `oslots` alignment slot, the **verbatim** column-B payload as
 `catss_mt_b_raw`, and the parser's `catss_retro_kind`. It is not named
@@ -100,3 +100,25 @@ writer created an unwanted `mt_b_carrier` on this LXX-plus row.
 The corrected predicate therefore excludes `alignment.is_lxx_plus`.
 No new Hebrew word or LXX-addition judgment is inferred by this change;
 the actual source distribution must still be proven by the 46-file audit.
+
+## R59-4 — physically empty column A is exactly the six-witness criterion
+
+The 46-file opt-in source audit at `f25fff97` enumerated zero-MT-token,
+nonempty Greek, nonempty B, non-LXX-plus rows from the **real CATSS source**:
+**860** candidates, of which **exactly six** have a blank `mt_col_a`.
+They are four `12.2Sam.par` 15:18, one `17.1Esdras.par` 9:33
+and one `44.Ezekiel.par` 4:5. Their raw B/kind values are
+`(;W/KL,context)`, `(;H/KRTY,context)`,
+`(;W/KL,context)`, `(;H/PLTY,context)`,
+`(W/M/BNY,plain)` and `(v,vocalization)`.
+
+The other 854 have a nonempty MT column A containing nonlexical notation:
+`^ ^^^` (436), `^^^ ^` (360), `--- ''` (13),
+`^^^` (10), `---` (9), or other markers. These must not
+be treated as physically empty even when `mt_count==0`.
+The `85d83f6` RED test uses a source-observed structural shape
+`^^^ ^ =W/KL\tLOGOS`; Python 3.12 CI shows one intentional
+failure with 418 other tests passing. The correction is
+`alignment.mt_col_a == ""`, not a whitelist of six verses.
+No reconstructed Hebrew word, parent mapping or generic translation
+technique is inferred from this shape.

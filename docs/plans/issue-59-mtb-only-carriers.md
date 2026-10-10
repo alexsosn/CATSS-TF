@@ -25,7 +25,7 @@ intentional test failure. Keep checks from RED from accidentally merging.
 
 Add a contiguous type block for `mt_b_carrier` to
 `_add_detail_nodes`; validate one carrier for every `mt_count==0`,
-`lxx_count>0`, `is_lxx_plus=False` and `mt_col_b is not None`
+`lxx_count>0`, `is_lxx_plus=False`, `mt_col_a == ""` and `mt_col_b is not None`
 in `_audit_graph`.
 The prior overbroad condition produced 8,887 false-positive carriers on
 the actual 46-file source; a Greek-empty RED counterexample must fail
@@ -55,3 +55,12 @@ alignment would incorrectly get the exception node despite having an
 explicit LXX-plus marker. Keep the ordinary LXX-plus/retroversion semantics
 on its alignment slot and exclude it from #59 carriers. The final real
 snapshot guard still requires the six genuinely unmarked cases.
+
+## Physical column-A emptiness
+
+The source audit at `f25fff97` found 860 otherwise eligible groups but
+only six with exact `mt_col_a == ""`. The remaining 854 contain
+nonlexical column-A notation, largely transposition markers. The
+`85d83f6` RED test intentionally fails before adding this predicate.
+The next full-source audit must verify all six source witnesses and
+exclude the other 854.
