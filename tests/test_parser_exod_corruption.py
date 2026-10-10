@@ -7,7 +7,6 @@ import pytest
 from catss_tf.parser import alignment_id_for, parse_parallel_text
 from catss_tf.validation import validate_document
 
-
 HEAD = "^ ^^^ =L/$RT {...?H/&RD} #\t{+} E)N AI(=S LEITOURGH/SOUSIN"
 TAIL = "--+\tE)N AU)TAI=S"
 CORRUPTION = (HEAD, "", "Exod 1:10", "    #", "", "Exod 35:19", TAIL)
