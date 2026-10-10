@@ -110,6 +110,38 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Assert complete Sirach manuscript-lacuna technique class
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.technique import derive_alignment_technique
+
+          document = parse_parallel_file(Path('/tmp/catss-parallel/27.Sirach.par'))
+          witnessed = [
+              alignment
+              for verse in document.verses
+              for alignment in verse.alignments
+              if (
+                  alignment.mt_count == 0
+                  and alignment.lxx_count > 0
+                  and alignment.mt_col_a.split()[:1] == ['[..]']
+              )
+          ]
+          assert len(witnessed) == 4278, len(witnessed)
+          for alignment in witnessed:
+              assert not alignment.is_lxx_plus and not alignment.is_lxx_minus
+              assert any(
+                  annotation.side == 'mt_a'
+                  and annotation.kind == 'sirach_lacuna_or_illegible'
+                  for annotation in alignment.annotations
+              ), alignment.alignment_id
+              technique = derive_alignment_technique(document.source_name, alignment)
+              assert technique.cardinality_mt_lxx in {'zero_one', 'zero_many'}
+              assert technique.token_balance_mt_lxx == 'not_applicable'
+              assert not technique.addition_vs_mt and not technique.omission_vs_mt
+          print('SIRACH_WITNESS_LACUNAE_DERIVED', len(witnessed), flush=True)
+          PY
       - name: Research actual column-A marker classes for MT-B-only carriers
         run: |
           python - <<'PY'
@@ -1210,7 +1242,7 @@ jobs:
           assert result.summary.reference_ranges == 1, result.summary.reference_ranges
           assert result.summary.mt_b_carriers == 6, result.summary.mt_b_carriers
           # Preserve all CATSS alignments without guessing formal translation technique.
-          assert 1 <= result.summary.unclassified_techniques < result.summary.alignments
+          assert result.summary.unclassified_techniques == 27, result.summary.unclassified_techniques
           assert result.summary.alignment_slots == result.summary.alignments
           assert result.summary.audit_ok
           assert (output / 'otype.tf').is_file()

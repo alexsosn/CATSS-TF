@@ -99,7 +99,7 @@ def derive_technique_state(
         raise TechniqueError("CATSS alignment cannot be both LXX-plus and apparent MT minus")
     if sirach_witness_lacuna:
         if mt_n != 0 or lxx_n == 0:
-            raise TechniqueError("Sirach witness lacuna requires empty MT and Greek lexical material")
+            raise TechniqueError("Sirach witness lacuna requires empty MT and nonempty Greek")
         if is_lxx_plus or is_lxx_minus or apparent_mt_minus:
             raise TechniqueError("Sirach witness lacuna cannot assert Greek addition or omission")
     transposition_marked = trans_local or trans_remote or trans_style

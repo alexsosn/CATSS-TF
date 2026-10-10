@@ -8,6 +8,7 @@ import pytest
 from catss_tf.lxx_materializer import _semantic_kinds
 from catss_tf.parser import AlignmentRecord, parse_parallel_text
 from catss_tf.technique import TechniqueError, derive_alignment_technique, derive_technique_state
+from catss_tf.tf_schema import TfMembership, TfSchemaError, compile_tf_features
 
 
 def _alignment(row: str, *, source: str = "27.Sirach.par") -> AlignmentRecord:
@@ -79,3 +80,49 @@ def test_lxx_word_inherits_scoped_sirach_mt_witness_evidence() -> None:
     alignment = _alignment("[..]\tOU)AI\\")
     semantics = _semantic_kinds(alignment, side="lxx", element_index=1)
     assert "sirach_lacuna_or_illegible" in semantics
+
+
+def test_lxx_tf_membership_retains_witness_semantics_and_rejects_forgery() -> None:
+    lacuna = TfMembership(
+        node=1,
+        source="27.Sirach.par",
+        alignment_id="catss:27.Sirach.par:synthetic",
+        mapping_kind="exact",
+        mt_n=0,
+        lxx_n=1,
+        mt_i=None,
+        mt_segment=None,
+        lxx_i=1,
+        line_first=2,
+        line_last=2,
+        line_n=1,
+        retro_kind=None,
+        semantic_kinds=("sirach_lacuna_or_illegible",),
+        semantic_scopes=(("sirach_lacuna_or_illegible", "mt_a"),),
+    )
+    features = compile_tf_features(
+        projection="lxx", max_node=10, memberships=(lacuna,), anchors=()
+    )
+    assert features["catss_sem_sirach_lacuna_or_illegible"] == {1: 1}
+    assert features["catss_sem_sirach_lacuna_or_illegible_mt_a"] == {1: 1}
+    assert features["catss_tt_cardinality_mt_lxx"] == {1: "zero_one"}
+    assert features.get("catss_tt_addition_vs_mt", {}) == {}
+    assert features.get("catss_tt_omission_vs_mt", {}) == {}
+
+    for bad in (
+        dataclasses.replace(
+            lacuna,
+            source="01.Genesis.par",
+            alignment_id="catss:01.Genesis.par:synthetic",
+        ),
+        dataclasses.replace(lacuna, semantic_scopes=()),
+        dataclasses.replace(
+            lacuna,
+            semantic_scopes=(("sirach_lacuna_or_illegible", "lxx"),),
+        ),
+        dataclasses.replace(lacuna, flags=frozenset({"catss_lxx_plus"})),
+    ):
+        with pytest.raises(TfSchemaError, match="Hebrew-empty|Sirach witness lacuna"):
+            compile_tf_features(
+                projection="lxx", max_node=10, memberships=(bad,), anchors=()
+            )
