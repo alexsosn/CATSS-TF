@@ -54,6 +54,7 @@ class CanonicalMaterializationSummary:
     alignments: int
     alignment_slots: int
     mt_elements: int
+    mt_b_carriers: int
     lxx_elements: int
     annotations: int
     references: int
@@ -187,6 +188,7 @@ def materialize_corpus(
             alignments=graph.max_slot,
             alignment_slots=graph.max_slot,
             mt_elements=node_type_counts.get("mt_element", 0),
+            mt_b_carriers=node_type_counts.get("mt_b_carrier", 0),
             lxx_elements=node_type_counts.get("lxx_element", 0),
             annotations=node_type_counts.get("annotation", 0),
             references=node_type_counts.get("reference", 0),
@@ -478,6 +480,17 @@ def _add_detail_nodes(
             builder.feature("catss_doubt", node, int(reading.doubtful))
             builder.feature("catss_aramaic_section", node, int(reading.aramaic_section))
 
+    # Column B contains reconstructed evidence, *not* another MT-A word.
+    # When MT-A is empty, preserve the standalone carrier as its own TF
+    # entity; =v, for example, is a vocalization marker rather than a word.
+    for context in contexts:
+        alignment = context.alignment
+        if alignment.mt_count != 0 or alignment.mt_col_b is None:
+            continue
+        node = builder.add_node("mt_b_carrier", (context.slot,))
+        builder.feature("catss_mt_b_raw", node, alignment.mt_col_b)
+        builder.feature("catss_retro_kind", node, alignment.retroversion_kind)
+
     for context in contexts:
         alignment = context.alignment
         slot = context.slot
@@ -745,6 +758,10 @@ def _audit_graph(
         "mt_element": sum(
             len(alignment.mt_readings) for _source, _verse, alignment in expected_contexts
         ),
+        "mt_b_carrier": sum(
+            alignment.mt_count == 0 and alignment.mt_col_b is not None
+            for _source, _verse, alignment in expected_contexts
+        ),
         "lxx_element": sum(
             len(alignment.lxx_tokens) for _source, _verse, alignment in expected_contexts
         ),
@@ -789,6 +806,7 @@ def _audit_graph(
 
     child_types = {
         "mt_element",
+        "mt_b_carrier",
         "lxx_element",
         "annotation",
         "reference",
@@ -811,6 +829,7 @@ def _audit_graph(
     for slot, (_source, _verse, alignment) in enumerate(expected_contexts, start=1):
         expected_counts = {
             "mt_element": len(alignment.mt_readings),
+            "mt_b_carrier": int(alignment.mt_count == 0 and alignment.mt_col_b is not None),
             "lxx_element": len(alignment.lxx_tokens),
             "annotation": len(alignment.annotations),
             "reference": len(alignment.lxx_references),
@@ -821,6 +840,25 @@ def _audit_graph(
             raise CanonicalMaterializationError(
                 "canonical preservation audit failed: "
                 f"alignment child mismatch for {alignment.alignment_id}"
+            )
+
+    # A carrier is a source reading, not an inferred MT word. Assert exact
+    # alignment ownership, source raw B, strategy kind and a truly empty A.
+    for node, node_type in graph.node_types.items():
+        if node_type != "mt_b_carrier":
+            continue
+        slots = graph.oslots[node]
+        slot = slots[0]
+        alignment = expected_contexts[slot - 1][2]
+        if (
+            alignment.mt_count != 0
+            or alignment.mt_col_b is None
+            or graph.node_features.get("catss_mt_b_raw", {}).get(node) != alignment.mt_col_b
+            or graph.node_features.get("catss_retro_kind", {}).get(node)
+            != alignment.retroversion_kind
+        ):
+            raise CanonicalMaterializationError(
+                "canonical preservation audit failed: incorrect MT-B-only carrier"
             )
 
     # The scoped target is a single, typed relation *inside* the canonical
