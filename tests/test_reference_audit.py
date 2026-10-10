@@ -1,7 +1,7 @@
 """Fail-closed source-only inventory of Greek-reference numeric coincidences."""
 
-from catss_tf.parser import parse_parallel_text
 from catss_tf.reference_audit import audit_greek_references
+from catss_tf.parser import parse_parallel_text
 
 
 def test_scalar_reference_audit_never_calls_numeric_candidates_verified_targets() -> None:
