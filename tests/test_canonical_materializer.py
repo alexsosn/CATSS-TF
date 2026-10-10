@@ -441,3 +441,71 @@ def test_unscoped_apparent_minus_never_gets_phantom_canonical_target(
     assert len(annotations) == 1
     if "catss_annotation_target" in api.Eall():
         assert tuple(api.E.catss_annotation_target.f(annotations[0])) == ()
+
+
+def test_mt_b_only_reconstruction_carriers_are_query_native_not_mt_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The 2Sam, 1Esdr and Ezek MT-B-only shapes preserve distinct carrier nodes."""
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "12.2Sam.par",
+        "2Sam 15:18\n=;W/KL\tKAI\\ PA=S\n=;W/KL\tLOGOS\nHB=;WORDS\tQEOS\n",
+    )
+    _write_source(
+        source,
+        "17.1Esdras.par",
+        "1Esdr 9:33\n=W/M/BNY\tKAI\\ E)K TW=N UI(W=N\n",
+    )
+    _write_source(
+        source,
+        "44.Ezekiel.par",
+        "Ezek 4:5\n=v\tA)DIKI/AS AU)TW=N\n",
+    )
+    result = materialize_corpus(source, tmp_path / "catss")
+    assert result.summary.alignments == 5
+    assert result.summary.mt_elements == 1
+    assert result.summary.audit_ok
+
+    api = _load_corpus(tmp_path)
+    carriers = tuple(api.F.otype.s("mt_b_carrier"))
+    assert len(carriers) == 4  # RED: canonical writer has no MT-B carrier type
+    actual = [
+        (
+            tuple(api.L.d(node, otype="alignment")),
+            api.F.catss_mt_b_raw.v(node),
+            api.F.catss_retro_kind.v(node),
+        )
+        for node in carriers
+    ]
+    assert [(raw, kind) for _, raw, kind in actual] == [
+        (";W/KL", "context"),
+        (";W/KL", "context"),
+        ("W/M/BNY", "plain"),
+        ("v", "vocalization"),
+    ]
+    assert all(len(slots) == 1 for slots, _, _ in actual)
+    assert len({slots[0] for slots, _, _ in actual}) == 4
+    for slots, _, _ in actual:
+        assert tuple(api.L.u(slots[0], otype="mt_element")) == ()
+        if "catss_tt_addition_vs_mt" in api.Fall():
+            assert api.F.catss_tt_addition_vs_mt.v(slots[0]) is None
+    # A real column-A word must *not* become a fabricated reconstruction node.
+    normal = next(
+        slot for slot in api.F.otype.s("alignment")
+        if api.F.catss_mt_col_a.v(slot) == "HB"
+    )
+    assert tuple(api.L.u(normal, otype="mt_element"))
+    assert tuple(api.L.u(normal, otype="mt_b_carrier")) == ()
+
+    second = materialize_corpus(source, tmp_path / "catss2")
+    assert second.summary.alignments == result.summary.alignments
+    first_files = sorted(p.name for p in (tmp_path / "catss").iterdir())
+    second_files = sorted(p.name for p in (tmp_path / "catss2").iterdir())
+    assert first_files == second_files
+    for name in first_files:
+        assert (tmp_path / "catss" / name).read_bytes() == (
+            tmp_path / "catss2" / name
+        ).read_bytes()
+
