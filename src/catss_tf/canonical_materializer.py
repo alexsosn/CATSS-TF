@@ -460,8 +460,7 @@ def _add_detail_nodes(
                 or not 1 <= annotation.target_index <= len(context.alignment.lxx_tokens)
             ):
                 raise CanonicalMaterializationError(
-                    "invalid canonical annotation target scope: "
-                    f"{context.alignment.alignment_id}"
+                    f"invalid canonical annotation target scope: {context.alignment.alignment_id}"
                 )
             scoped_lxx.add((context.slot, annotation.target_index))
 
@@ -505,8 +504,7 @@ def _add_detail_nodes(
                 target = target_lxx_nodes.get((slot, annotation.target_index))
                 if target is None:
                     raise CanonicalMaterializationError(
-                        "canonical annotation target cannot be resolved: "
-                        f"{alignment.alignment_id}"
+                        f"canonical annotation target cannot be resolved: {alignment.alignment_id}"
                     )
                 builder.feature("catss_target_side", node, annotation.target_side)
                 builder.feature("catss_target_index", node, annotation.target_index)
