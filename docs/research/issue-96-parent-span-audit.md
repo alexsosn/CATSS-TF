@@ -49,3 +49,45 @@ Even an existing parent span is **not** a verified CATSS/LXX alignment;
 textual normalization/unique sequence matching and the reference's
 relationship to the current alignment must be investigated separately
 before generating any canonical semantic target edge. Keep issue #96 open.
+
+## R96-6 — measured pinned-LXX availability, not textual validation
+
+The full 46-file source audit on PR #99 at `156d1543b76fbbacc85759f2929dc7897acc501d`
+loaded the pinned CenterBLC/LXX 1935 v1.0.1 parent (Git commit
+`f32a98eddf7eb239aa73ab863d70381e416d5076`) and used the
+existing `TextFabricLxxProvider` to compare each exact Greek-reference
+span key. Actual results:
+
+| Outcome | Count |
+| --- | ---: |
+| Exact parent span contains words | **5,555** |
+| No exact parent span | **641** |
+| CATSS source explicitly unsupported | **22** |
+| Source profile unknown | **0** |
+| Total scalar Greek references | **6,218** |
+
+All **424** references carrying an explicit lettered Greek subverse are
+*absent* at the exact pinned parent subverse label:
+`subverse_present=0`, `subverse_missing=424`,
+`subverse_unprofiled=0`. The provider must not degrade them to an
+unlabeled verse node. The 22 unsupported references are in
+sources outside the v1.0.1 CATSS-to-LXX projection scope.
+
+The total does not imply 5,555 lexical alignments. It means only
+that those 5,555 reference keys have a nonempty parent span. No Greek
+token matching or uniquely verified destination edge was done.
+The unchanged complete canonical Text-Fabric audit also succeeded
+(349,670 alignment slots, 6,218 references, no speculative target edge).
+
+## Adversarial review finding R96-6a: word-label consistency
+
+The first GREEN code verifies `LxxSpan` book/chapter/verse/subverse
+against the requested key, but trusts the `LxxWord.subverse` labels
+supplied within that span. A dishonest or broken provider could return
+a `9:2a` span whose *words* are labeled `b` (or a plain span made
+of lettered words). Source-identity metadata alone would not reject
+that forged approximation. Add a RED test on such a provider, then
+fail closed when a claimed present span contains any word whose
+subverse label is not exactly the requested label (or empty for a
+plain verse). This is a local integrity check; it does not solve
+the broader question of textual correspondence.
