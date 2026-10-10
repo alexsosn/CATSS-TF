@@ -61,3 +61,90 @@ must not be silently promoted into a semantic TF edge.
 
 No CATSS, BHSA or LXX data are stored in the Git repository. Real-data
 checks run only on user-acquired or ephemeral opt-in CI inputs.
+
+## R96-2 — make the 6,218-reference inventory independently reproducible
+
+After merged PR #47, the `catss` warp correctly preserves **6,218** scalar
+Greek-reference nodes and **zero** speculative `catss_reference_target`
+edges. A candidate lookup by chapter/verse can still be useful as an
+*audited diagnostic*, but cannot be called a resolved Greek destination.
+
+The existing parser IR exposes `GreekReference(chapter: int|None,
+verse: int, subverse: str|None, raw: str)` and the source `ParallelVerse`
+header chapter/verse. Comparing these labels is a *comparison of numbers
+from different source organizations*, not a proof of corresponding text.
+In particular:
+
+- `[2]` inherits its *source header's* chapter for a diagnostic comparison;
+- `[9:2a]` carries explicit chapter and Greek subverse, but the
+  `JoshB 9:2` MT-header section cannot validate Greek `2a`;
+- duplicates of MT-header chapter/verse across distinct physical headers
+  are not distinct Greek destinations.
+
+A **read-only reference inventory** should report the number of scalar
+references, explicit chapters, subverse suffixes, and zero/one/multiple
+numeric MT-header candidates per source. It must retain the distinction
+between a *numeric candidate* and a verified LXX verse identity. This is
+not permission to create `catss_reference_target` edges. The report
+must contain only counts/distributions and no raw CATSS-derived corpus,
+LXX text, or projected node IDs. It must accept user-local CATSS files,
+require no default upstream network fetch, and work without BHSA/LXX.
+
+The next, separate research step is to compare candidate cases with a
+pinned Greek parent where full versification identity can be proven.
+Given absent subverse nodes and changed numbering, some references will
+remain unresolved. Fail closed, without fabricating subverses or marking
+numeric matches as semantically validated.
+
+## R96-3 — diagnostic API boundary
+
+`catss_tf.reference_audit.audit_greek_references` accepts an iterable of
+already parsed `ParallelDocument` objects, with no network or parent
+corpus access. For each scalar Greek reference, it counts **physical**
+CATSS source headers having the same chapter/verse label (using the current
+source-header chapter for `[2]`, and an explicitly supplied chapter for
+`[9:2a]`). It reports zero/one/multiple *numeric MT-header candidates*
+plus counts of explicit chapter notation, subverse suffixes, and per-source
+references.
+
+A unique numeric candidate is **not** a verified Greek textual target:
+the function creates no edges and never maps subverse suffixes onto
+unnumbered CATSS section nodes. Counts are read-only research evidence
+that can guide future pinned CenterBLC/LXX validation.
+
+## R96-4 — real 46-file reference inventory (2026-10-10)
+
+The opt-in pinned-source CI audit on exact head `a8ec254c7d0a5a7d654a51a6d48dddd602203f67`
+executed `audit_greek_references()` over all **46** CATSS parallel
+source files (parsed once per file). Actual result:
+
+| Field | Value |
+| --- | ---: |
+| `scalar_references` | 6,218 |
+| `explicit_chapters` | 6 |
+| `subverse_suffixes` | 424 |
+| `numeric_candidates_zero` | 1,749 |
+| `numeric_candidates_one` | 4,433 |
+| `numeric_candidates_multiple` | 36 |
+
+All 6,218 references are accounted for by the disjoint three-way
+classification. Large source-specific concentrations include
+`45.DanielOG.par` (2,021 references), `46.DanielTh.par` (1,366),
+`13.1Kings.par` (966), `04.Num.par` (504) and `27.Sirach.par`
+(275). Source detail is reproducible from `report.by_source`.
+
+**Interpretation caution:** the 4,433 single-number matches are
+precisely the potentially seductive false-positive class: one Hebrew
+source header happens to share a chapter/verse number with the
+*Greek* reference, but this says nothing about Greek verse
+identity, changes of versification, or subverse membership.
+The 36 multiple-numeric-header cases also demonstrate non-uniqueness
+inside the CATSS source organization itself. At least 1,749 have
+no MT-source-header numeric candidate at all. No semantic
+`catss_reference_target` edges were introduced; the canonical 46-file
+TF round-trip remains valid and has **zero** such inferred edges.
+
+This study is **source-only**. It does not yet compare the 6,218
+references against pinned Greek parent text, and cannot establish
+a verified target count. Issue #96 stays open for that separate
+parent-grounded decision.
