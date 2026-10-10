@@ -930,6 +930,7 @@ jobs:
           )
           assert result.summary.source_files == 46
           assert result.summary.alignments > 300_000
+          assert result.summary.reference_ranges == 1, result.summary.reference_ranges
           assert result.summary.alignment_slots == result.summary.alignments
           assert result.summary.audit_ok
           assert (output / 'otype.tf').is_file()
