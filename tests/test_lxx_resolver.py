@@ -138,71 +138,6 @@ HB2\tKAI\\
     ]
 
 
-def test_1esdr_exact_repair_maps_restored_transposition_alignment_to_parent_word() -> None:
-    doc = parse_parallel_text(
-        "1Esdr 6:4\nL/KM\t[e5.3]\n",
-        source_name="17.1Esdras.par",
-    )
-    provider = FakeProvider(
-        (
-            _span(
-                "τίνος",
-                "ὑμῖν",
-                "συντάξαντος",
-                book="1Esdr",
-                chapter=6,
-                verse=4,
-                node=900604,
-                start_node=294470,
-            ),
-        )
-    )
-
-    report = resolve_lxx_document(doc, provider)
-
-    assert report.ok is True
-    assert report.reference_anchors == ()
-    assert len(report.word_mappings) == 1
-    mapping = report.word_mappings[0]
-    assert mapping.lxx_node == 294471
-    assert mapping.lxx_index == 0
-    assert mapping.reference_book == "1Esdr"
-    assert mapping.reference_chapter == 6
-    assert mapping.reference_verse == 4
-    assert mapping.mapping_kind == "transposition_alignment"
-
-
-def test_1esdr_repair_pairs_with_existing_transposition_carrier() -> None:
-    doc = parse_parallel_text(
-        """1Esdr 6:4
-{...}\tU(MI=N [e5.3]
-L/KM\t[e5.3]
-""",
-        source_name="17.1Esdras.par",
-    )
-    provider = FakeProvider(
-        (
-            _span(
-                "ὑμῖν",
-                book="1Esdr",
-                chapter=6,
-                verse=4,
-                node=900604,
-                start_node=294471,
-            ),
-        )
-    )
-
-    report = resolve_lxx_document(doc, provider)
-
-    assert report.ok is True, report.findings
-    assert report.reference_anchors == ()
-    assert [(mapping.lxx_node, mapping.mapping_kind) for mapping in report.word_mappings] == [
-        (294471, "transposition_carrier"),
-        (294471, "transposition_alignment"),
-    ]
-
-
 def test_repeated_surface_without_unique_joint_assignment_fails_closed() -> None:
     doc = parse_parallel_text(
         """Gen 1:1
@@ -269,6 +204,124 @@ HB\tLOGOS [1:1a]
     mapping = report.word_mappings[0]
     assert mapping.reference_subverse == "a"
     assert mapping.lxx_node == 100
+
+
+def test_contextual_reference_range_resolves_all_subverse_members_in_order() -> None:
+    doc = parse_parallel_text(
+        "JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n",
+        source_name="06.JoshB.par",
+    )
+    provider = FakeProvider(
+        tuple(
+            _span(
+                "καί",
+                book="Josh",
+                chapter=9,
+                verse=2,
+                subverse=subverse,
+                node=930200 + index,
+                start_node=302000 + index,
+            )
+            for index, subverse in enumerate("abcdef", start=1)
+        )
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is True, report.findings
+    assert report.word_mappings == ()
+    assert report.reference_anchors == ()
+    assert [
+        (
+            member.lxx_reference_node,
+            member.member_index,
+            member.member_count,
+            member.start_chapter,
+            member.start_verse,
+            member.start_subverse,
+            member.end_chapter,
+            member.end_verse,
+            member.end_subverse,
+            member.raw,
+        )
+        for member in report.reference_range_memberships
+    ] == [
+        (930201, 1, 6, 9, 2, "a", 9, 2, "f", "[[9.2a-2f]]"),
+        (930202, 2, 6, 9, 2, "a", 9, 2, "f", "[[9.2a-2f]]"),
+        (930203, 3, 6, 9, 2, "a", 9, 2, "f", "[[9.2a-2f]]"),
+        (930204, 4, 6, 9, 2, "a", 9, 2, "f", "[[9.2a-2f]]"),
+        (930205, 5, 6, 9, 2, "a", 9, 2, "f", "[[9.2a-2f]]"),
+        (930206, 6, 6, 9, 2, "a", 9, 2, "f", "[[9.2a-2f]]"),
+    ]
+    assert {member.alignment_id for member in report.reference_range_memberships} == {
+        doc.verses[0].alignments[0].alignment_id
+    }
+    assert report.summary.reference_groups == 1
+    assert report.summary.resolved_reference_groups == 1
+    assert report.summary.reference_range_memberships == 6
+
+
+def test_contextual_reference_range_fails_closed_when_parent_member_is_missing() -> None:
+    doc = parse_parallel_text(
+        "JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n",
+        source_name="06.JoshB.par",
+    )
+    provider = FakeProvider(
+        tuple(
+            _span(
+                "καί",
+                book="Josh",
+                chapter=9,
+                verse=2,
+                subverse=subverse,
+                node=930200 + index,
+                start_node=302000 + index,
+            )
+            for index, subverse in enumerate("abcef", start=1)
+        )
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is False
+    assert report.reference_range_memberships == ()
+    assert any(finding.code == "missing_lxx_reference_range_member" for finding in report.findings)
+    assert report.summary.reference_groups == 1
+    assert report.summary.missing_reference_groups == 1
+    assert report.summary.ambiguous_reference_groups == 0
+
+
+def test_contextual_reference_range_rejects_aliased_parent_subverse_nodes() -> None:
+    """Six labels cannot all resolve to the same physical parent node."""
+    doc = parse_parallel_text(
+        "JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n",
+        source_name="06.JoshB.par",
+    )
+    provider = FakeProvider(
+        tuple(
+            _span(
+                "καί",
+                book="Josh",
+                chapter=9,
+                verse=2,
+                subverse=subverse,
+                node=630920,
+                start_node=128883,
+            )
+            for subverse in "abcdef"
+        )
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is False
+    assert report.reference_range_memberships == ()
+    assert any(
+        finding.code == "ambiguous_lxx_reference_range_member" for finding in report.findings
+    )
+    assert report.summary.reference_groups == 1
+    assert report.summary.ambiguous_reference_groups == 1
+    assert report.summary.missing_reference_groups == 0
 
 
 def test_psalm_151_default_reference_transform_is_applied() -> None:
@@ -606,3 +659,37 @@ HB\tMH/ [6] [[23:6]]
     assert report.ok is True
     assert report.summary.reference_overrides == 1
     assert report.word_mappings[0].lxx_node == 700
+
+
+def test_1esdr_exact_repair_maps_restored_transposition_alignment_to_parent_word() -> None:
+    doc = parse_parallel_text(
+        "1Esdr 6:4\nL/KM\t[e5.3]\n",
+        source_name="17.1Esdras.par",
+    )
+    provider = FakeProvider(
+        (
+            _span(
+                "τίνος",
+                "ὑμῖν",
+                "συντάξαντος",
+                book="1Esdr",
+                chapter=6,
+                verse=4,
+                node=900604,
+                start_node=294470,
+            ),
+        )
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is True
+    assert report.reference_anchors == ()
+    assert len(report.word_mappings) == 1
+    mapping = report.word_mappings[0]
+    assert mapping.lxx_node == 294471
+    assert mapping.lxx_index == 0
+    assert mapping.reference_book == "1Esdr"
+    assert mapping.reference_chapter == 6
+    assert mapping.reference_verse == 4
+    assert mapping.mapping_kind == "transposition_alignment"

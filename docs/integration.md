@@ -144,6 +144,16 @@ result = materialize_lxx(
 print(result.summary)
 ```
 
+**Limitation for the complete current CATSS snapshot:** JoshB 9:2 contains
+`[[9.2a-2f]]`, but the supported CenterBLC/LXX release has only one
+unlabeled Josh 9:2 subverse node. After contextual-range support is enabled,
+materializing the *entire* CATSS snapshot against this pinned LXX release
+fails with `missing_lxx_reference_range_member`, and no partial module is
+published. Synthetic range tests demonstrate the feature contract only;
+they do not establish that the pinned parent can represent these six targets.
+Preservation in the canonical corpus is tracked by #40 / PR #47.
+See [special notation](special-notation.md#contextual-greek-reference-ranges).
+
 ## 5. Compare both projections
 
 ```python

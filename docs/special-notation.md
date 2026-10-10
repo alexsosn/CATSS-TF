@@ -32,6 +32,34 @@ Cross-language Hebrew↔Greek relations cannot be TF edges because BHSA and LXX 
 
 Within a projection, CATSS-TF uses resolved parent nodes and the alignment membership features. A semantic annotation is attached only to the source side on which CATSS records it. Provenance sidecars retain exact one-to-many source records but are not the semantic query API.
 
+## Contextual Greek reference ranges
+
+CATSS occasionally uses double-bracketed Greek references rather than Greek lexical
+tokens. The JoshB 9:2 structural record has MT provenance
+`{...} <8.30-35>` and Greek reference range `[[9.2a-2f]]`. Its typed
+`lxx_reference_ranges` record preserves the inclusive endpoints **9:2a–9:2f**,
+the exact raw spelling, and the shared `catss_alignment_id`. It has no Greek
+or Hebrew lexical tokens; the reference is not a translation word pair.
+
+Where a compatible LXX parent actually provides six *distinct* and correctly
+labeled subverse nodes, the optional `catss_lxx_reference_range_*` features
+encode member ordinal/count, both endpoints, the CATSS alignment ID and raw range.
+They are attached to existing parent nodes, without changing the TF warp.
+
+**Current pinned-parent limitation:** CenterBLC/LXX `1935` at
+`f32a98eddf7eb239aa73ab863d70381e416d5076` has only **one
+unlabeled subverse node (630920)** for Josh 9:2, covering 191 words.
+Consequently `a` through `f` cannot be resolved to distinct parent nodes.
+The LXX resolver reports `missing_lxx_reference_range_member`; the
+materializer refuses publication rather than silently dropping this evidence,
+reusing one node six times or inventing parent word/subverse nodes.
+
+The standalone canonical CATSS corpus is the proper place for a first-class
+reference-range node even when the parent LXX cannot represent the targets.
+Canonical integration is tracked in #40 / PR #47; the range projection
+behavior is in #88 / PR #89. Do not interpret conditional range features as
+currently available for this pinned Joshua passage.
+
 ## Sirach
 
 Sirach has a book-specific notation profile. In particular `*` means an uncertain/fragmentary letter, not the general CATSS asterisked-passage meaning; `[..]` is a Sirach lacuna/illegibility marker. Witness numbers and manuscript-addition/lacuna notation are decoded separately. Researchers should therefore query the resulting semantic kind rather than interpret the raw glyph globally.
