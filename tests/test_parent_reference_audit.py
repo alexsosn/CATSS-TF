@@ -141,3 +141,25 @@ def test_parent_aliasing_subverse_must_fail_closed() -> None:
     )
     with pytest.raises(ValueError, match="span"):
         audit_lxx_parent_span_availability((doc,), AliasProvider(()))
+
+
+@pytest.mark.parametrize(
+    ("requested_subverse", "word_subverse"),
+    [("a", "b"), (None, "a")],
+)
+def test_parent_span_word_subverse_labels_must_match_claimed_span(
+    requested_subverse: str | None,
+    word_subverse: str,
+) -> None:
+    """The span's correct section key does not make mislabeled words valid."""
+    ref = "[9:2a]" if requested_subverse == "a" else "[9:2]"
+    doc = parse_parallel_text(
+        f"JoshB 9:2\nHB\tLOGOS {ref}\n",
+        source_name="06.JoshB.par",
+    )
+    span = dataclasses.replace(
+        _span("Josh", 9, 2, requested_subverse),
+        words=(LxxWord(node=1, word="λόγος", subverse=word_subverse, orig_order="1"),),
+    )
+    with pytest.raises(ValueError, match="word subverse"):
+        audit_lxx_parent_span_availability((doc,), Provider((span,)))
