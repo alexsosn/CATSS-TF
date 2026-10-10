@@ -1,0 +1,66 @@
+# Research — issue #59: column-B-only reconstruction carriers
+
+## Source evidence and current parser contract
+
+The current 46-file audit and issue #59 identify exactly **six** CATSS alignment records
+with (i) no MT-column-A lexical `MtReading`, (ii) a non-null MT column B and
+(iii) non-empty Greek lexical material:
+
+| CATSS source | Verse | MT cell | Parser `retroversion_kind` |
+| --- | --- | --- | --- |
+| `12.2Sam.par` | 15:18 | `=;W/KL` | `context` |
+| `12.2Sam.par` | 15:18 | `=;H/KRTY` | `context` |
+| `12.2Sam.par` | 15:18 | `=;W/KL` | `context` |
+| `12.2Sam.par` | 15:18 | `=;H/PLTY` | `context` |
+| `17.1Esdras.par` | 9:33 | `=W/M/BNY` | `plain` |
+| `44.Ezekiel.par` | 4:5 | `=v` | `vocalization` |
+
+The *two* `=;W/KL` rows are distinct source records and must stay distinct,
+not deduplicated by text. The exact neighboring contexts and equivalence to
+parent lexical words have **not** yet been independently validated; issue #59
+remains open for that separate analysis.
+
+`src/catss_tf/parser.py` handles `=` by splitting column A and column B
+(`_split_mt_columns`). It builds MT lexical readings using **only column A**
+(`_mt_lexical_readings(mt_col_a)`) and separately sets
+`retroversion_kind = _retroversion_kind(mt_col_b)`. The latter distinguishes
+`;` as contextual reconstruction, `v` as vocalization and bare column B
+as plain; hence `=v` cannot safely be advertised as a reconstructed Hebrew
+*lexical word*. The graph writer currently allocates `mt_element` solely
+from `alignment.mt_readings`, and stores column B only as a scalar
+`catss_mt_col_b` on its alignment slot, with typed annotations when present.
+
+The full 46-file canonical materialization in merged PR #47 showed
+349,670 alignment slots, 350,219 genuine MT elements, 546,020 Greek elements,
+and 4,305 unclassified techniques. This is correctly *lossless at the
+alignment/raw-source level* but not independently queryable as a **typed
+reconstruction carrier entity** when MT-A is empty.
+
+## Design decision — typed carrier, not fabricated lexical element
+
+Add one standalone `mt_b_carrier` node **only** for an alignment that has
+`mt_count == 0` and a non-null `mt_col_b`. It receives the same single
+`oslots` alignment slot, the **verbatim** column-B payload as
+`catss_mt_b_raw`, and the parser's `catss_retro_kind`. It is not named
+`mt_element`, has no `catss_text` pretending `=v` is a Hebrew word, and
+does not map to a BHSA parent word or an LXX word. This isolates all six
+source-grounded carriers as separate query-native entities. The original
+group-level raw and status features remain unchanged.
+
+All other (MT-A-bearing) column-B annotations remain scalar on their
+alignment slots; this issue does **not** globally tokenize or reinterpret
+column B. Individual lexical segmentation and counterpart relations require
+separate upstream study and evidence, not a generic whitespace or prefix
+stripper. Existing `derive_alignment_technique` remains strict; no
+LXX-plus/addition/omission is inferred from a zero-MT count.
+
+A plain TF node feature exposes raw and type without JSON or provenance
+sidecar lookup; TF `L.u(slot, otype='mt_b_carrier')` reaches that node.
+
+## Upstream/data boundaries
+
+The source records above are present in issue #59; no whole CATSS text,
+generated TF corpus, or third-party parent data is copied into this repo.
+Normal CI uses small fragments only, and opt-in complete-CATSS CI must
+assert exactly six carrier nodes, with their source distribution and
+nonlexical status. The output remains a user-local derivative.
