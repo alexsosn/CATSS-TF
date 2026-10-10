@@ -1159,7 +1159,8 @@ jobs:
           ).load(
               'catss_alignment_id catss_source catss_raw '
               'catss_range_start_verse catss_range_end_subverse '
-              'catss_kind catss_target_side catss_target_index catss_text catss_index',
+              'catss_kind catss_target_side catss_target_index catss_text catss_index '
+              'catss_annotation_target',
               silent='deep',
           )
           assert api is not None
