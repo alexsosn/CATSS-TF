@@ -100,9 +100,7 @@ def test_lxx_tf_membership_retains_witness_semantics_and_rejects_forgery() -> No
         semantic_kinds=("sirach_lacuna_or_illegible",),
         semantic_scopes=(("sirach_lacuna_or_illegible", "mt_a"),),
     )
-    features = compile_tf_features(
-        projection="lxx", max_node=10, memberships=(lacuna,), anchors=()
-    )
+    features = compile_tf_features(projection="lxx", max_node=10, memberships=(lacuna,), anchors=())
     assert features["catss_sem_sirach_lacuna_or_illegible"] == {1: 1}
     assert features["catss_sem_sirach_lacuna_or_illegible_mt_a"] == {1: 1}
     assert features["catss_tt_cardinality_mt_lxx"] == {1: "zero_one"}
@@ -123,6 +121,4 @@ def test_lxx_tf_membership_retains_witness_semantics_and_rejects_forgery() -> No
         dataclasses.replace(lacuna, flags=frozenset({"catss_lxx_plus"})),
     ):
         with pytest.raises(TfSchemaError, match="Hebrew-empty|Sirach witness lacuna"):
-            compile_tf_features(
-                projection="lxx", max_node=10, memberships=(bad,), anchors=()
-            )
+            compile_tf_features(projection="lxx", max_node=10, memberships=(bad,), anchors=())
