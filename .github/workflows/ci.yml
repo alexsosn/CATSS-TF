@@ -733,6 +733,15 @@ jobs:
               for label in 'abcdef'
               for span in (provider.get_span('Josh', 9, 2, label),)
           ])
+          # Encode the real-data observation as a fail-closed regression gate:
+          # all six CATSS subverse labels are ABSENT from this pinned parent.
+          assert verse_node == 661339, verse_node
+          assert len(words) == 191, len(words)
+          assert subverses == (630920,), subverses
+          assert all(api.F.subverse.v(word) == '' for word in words)
+          assert api.F.subverse.v(subverses[0]) == ''
+          assert all(tuple(api.L.u(word, otype='subverse')) == subverses for word in words)
+          assert all(provider.get_span('Josh', 9, 2, label) is None for label in 'abcdef')
           PY
       - name: Assert complete notation coverage
         run: |
