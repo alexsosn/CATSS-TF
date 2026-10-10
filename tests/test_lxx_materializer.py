@@ -539,3 +539,21 @@ def test_lxx_does_not_project_mt_scoped_annotation_onto_greek_word(
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
 
     assert not (output / "catss_distributive_payload.tf").exists()
+
+
+def test_scoped_minus_is_attached_only_to_first_greek_element() -> None:
+    from catss_tf.lxx_materializer import _semantic_kinds, _semantic_scopes
+    from catss_tf.parser import parse_parallel_text
+
+    doc = parse_parallel_text(
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert "apparent_minus" in _semantic_kinds(alignment, side="lxx", element_index=1)
+    assert ("apparent_minus", "mt_a") in _semantic_scopes(
+        alignment, side="lxx", element_index=1
+    )
+    assert "apparent_minus" not in _semantic_kinds(alignment, side="lxx", element_index=2)
+    assert "apparent_minus" not in _semantic_kinds(alignment, side="mt", element_index=1)
