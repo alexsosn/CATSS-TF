@@ -23,7 +23,13 @@ from catss_tf.lxx_schema import (
     classify_catss_source,
     validate_lxx_parent,
 )
-from catss_tf.parser import AlignmentRecord, Annotation, ParallelDocument, VerseRecord, parse_parallel_text
+from catss_tf.parser import (
+    AlignmentRecord,
+    Annotation,
+    ParallelDocument,
+    VerseRecord,
+    parse_parallel_text,
+)
 from catss_tf.source import (
     ParallelSourceManifest,
     SourceFileFingerprint,
