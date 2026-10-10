@@ -525,3 +525,18 @@ def test_mt_b_carriers_do_not_capture_greek_empty_placeholder_rows(
     assert tuple(api.F.otype.s("mt_element")) == ()
     assert tuple(api.F.otype.s("lxx_element")) == ()
     assert tuple(api.F.otype.s("mt_b_carrier")) == ()
+
+
+def test_mt_b_exceptional_carriers_exclude_explicit_lxx_plus_with_reconstruction(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Already-typed LXX-plus retroversions are not #59 exceptional carriers."""
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n--+ =;W/KL\tLOGOS\n")
+    materialize_corpus(source, tmp_path / "catss")
+    api = _load_corpus(tmp_path)
+    assert api.F.catss_lxx_plus.v(1) == 1
+    assert api.F.catss_mt_col_b.v(1) == ";W/KL"
+    assert tuple(api.F.otype.s("mt_element")) == ()
+    assert tuple(api.F.otype.s("lxx_element"))
+    assert tuple(api.F.otype.s("mt_b_carrier")) == ()
