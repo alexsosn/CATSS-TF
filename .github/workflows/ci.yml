@@ -1007,3 +1007,36 @@ jobs:
           assert len(diagnostic_rows) == result.summary.ignored_validation_findings
           print(result.summary)
           PY
+      - name: Reload complete canonical CATSS corpus with Text-Fabric
+        run: |
+          python - <<'PY'
+          from tf.fabric import Fabric
+
+          # Validate the complete 46-file TF warp from the researcher's API,
+          # not only in-memory compiler counters or tiny synthetic fixtures.
+          api = Fabric(
+              locations='/tmp',
+              modules=('catss-canonical',),
+              silent='deep',
+          ).load(
+              'catss_alignment_id catss_source catss_raw '
+              'catss_range_start_verse catss_range_end_subverse',
+              silent='deep',
+          )
+          assert api is not None
+          assert len(api.F.otype.s('alignment')) == 349670
+          assert len(api.F.otype.s('mt_element')) == 350219
+          assert len(api.F.otype.s('lxx_element')) == 546020
+          ranges = tuple(api.F.otype.s('reference_range'))
+          assert len(ranges) == 1, ranges
+          range_node = ranges[0]
+          assert api.F.catss_raw.v(range_node) == '[[9.2a-2f]]'
+          assert api.F.catss_range_start_verse.v(range_node) == 2
+          assert api.F.catss_range_end_subverse.v(range_node) == 'f'
+          slots = tuple(api.L.d(range_node, otype='alignment'))
+          assert len(slots) == 1, slots
+          assert api.F.catss_source.v(slots[0]) == '06.JoshB.par'
+          assert str(api.F.catss_alignment_id.v(slots[0])).startswith('catss:06.JoshB.par:')
+          print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
+                'alignments, single JoshB contextual reference_range')
+          PY
