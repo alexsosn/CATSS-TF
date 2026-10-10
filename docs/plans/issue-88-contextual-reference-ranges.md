@@ -51,6 +51,7 @@ Add a parent fixture with six subverse spans a–f and require the structural ra
 - preserve one alignment identity across six range members;
 - expose member ordinal/count and range endpoint metadata;
 - fail closed if one member is absent;
+- fail closed when distinct range labels alias the same parent `subverse` node, even if each provider lookup returns a span;
 - leave ordinary scalar-reference and transposition-anchor tests unchanged.
 
 Add a BHSA regression proving the duplicate structural `JoshB 9:2` record is not fed
