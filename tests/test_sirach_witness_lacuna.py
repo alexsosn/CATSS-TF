@@ -5,7 +5,11 @@ from typing import Any
 
 import pytest
 
-from catss_tf.lxx_materializer import _semantic_kinds, _semantic_scopes
+from catss_tf.lxx_materializer import (
+    _semantic_annotation_applies,
+    _semantic_kinds,
+    _semantic_scopes,
+)
 from catss_tf.parser import AlignmentRecord, parse_parallel_text
 from catss_tf.technique import TechniqueError, derive_alignment_technique, derive_technique_state
 from catss_tf.tf_schema import TfMembership, TfSchemaError, compile_tf_features
@@ -136,4 +140,17 @@ def test_lxx_projection_must_not_propagate_noninitial_sirach_lacuna(
     )
     assert ("sirach_lacuna_or_illegible", "mt_a") not in _semantic_scopes(
         forged, side="lxx", element_index=1
+    )
+
+
+def test_mt_a_crossing_preserves_existing_same_side_witness_annotations() -> None:
+    assert _semantic_annotation_applies(
+        annotation_side="lxx",
+        kind="sirach_lacuna_or_illegible",
+        projection_side="lxx",
+    )
+    assert _semantic_annotation_applies(
+        annotation_side="mt_b",
+        kind="sirach_lacuna_or_illegible",
+        projection_side="mt",
     )
