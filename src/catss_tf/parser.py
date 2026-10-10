@@ -118,6 +118,8 @@ class Annotation:
     family: str | None = None
     contextual: bool = False
     payload: str | None = None
+    target_side: typing.Literal["mt", "lxx"] | None = None
+    target_index: int | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -598,6 +600,17 @@ def _build_alignment(
         mt_ketiv_tokens = ()
         mt_qere_tokens = ()
     lxx_tokens = () if is_lxx_minus else _lxx_lexical_candidates(semantic_lxx)
+
+    # In the documented CATSS mixed form, a leading Hebrew-side apparent
+    # minus occupies Greek element 1; the surviving Hebrew lexical element
+    # corresponds to Greek element 2. Do not broaden this to ambiguous ratios.
+    if _first_token(mt_col_a) == "---" and len(mt_tokens) == 1 and len(lxx_tokens) == 2:
+        annotations = tuple(
+            dataclasses.replace(annotation, target_side="lxx", target_index=1)
+            if annotation.side == "mt_a" and annotation.kind == "apparent_minus"
+            else annotation
+            for annotation in annotations
+        )
 
     source_lines = tuple(row.line_no for row in physical_rows)
     raw_lines = tuple(row.raw for row in physical_rows)
