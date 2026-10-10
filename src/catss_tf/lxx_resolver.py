@@ -390,15 +390,15 @@ def resolve_lxx_documents(
                         range_mismatched_groups,
                         range_ambiguous_groups,
                     ) = _resolve_reference_ranges(
-                            document.source_name,
-                            verse.chapter,
-                            verse.verse,
-                            alignment,
-                            default.book,
-                            default.chapter,
-                            provider,
-                            range_memberships,
-                            findings,
+                        document.source_name,
+                        verse.chapter,
+                        verse.verse,
+                        alignment,
+                        default.book,
+                        default.chapter,
+                        provider,
+                        range_memberships,
+                        findings,
                     )
                     reference_groups += range_reference_groups
                     resolved_reference_groups += range_resolved_groups
