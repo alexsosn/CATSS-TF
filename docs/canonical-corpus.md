@@ -26,6 +26,16 @@ explicitly allow-listed by code; an allow-listed finding remains preserved in
 The generated corpus is a local derivative of the CATSS data supplied by the user.
 CATSS-TF does not distribute generated corpus data.
 
+The canonical corpus preserves any source row that passes parser/notation validation,
+even when translation-technique-v1 refuses to classify it. For example, the
+complete CCAT snapshot contains a 2 Samuel row with MT-B retroversion only
+(`=;W/KL`) and Greek `KAI\\ PA=S`, without MT-A lexical material. The
+canonical alignment, provenance and MT-B reading remain first-class; it is
+marked `catss_tt_status=unclassified` with the classifier's reason. No
+LXX-plus or omission meaning is invented. `catss-technique.tsv` includes only
+derived technique rows; the summary's `unclassified_techniques` count and
+query-native status/reason feature make this partiality explicit.
+
 ## Slot and node model
 
 The Text-Fabric slot type is `alignment`. Every parsed CATSS alignment record has
@@ -72,8 +82,13 @@ Alignment slots expose group-level facts including:
 - `catss_mt_n`, `catss_lxx_n` and source-line provenance;
 - `catss_lxx_plus`, `catss_lxx_minus`, Ketiv/Qere and transposition flags;
 - normalized retroversion kind;
-- deterministic translation-technique-v1 cardinality, token-balance,
-  addition/omission and transposition facts.
+- `catss_tt_status` (`derived` / `unclassified`), with
+  `catss_tt_unclassified_reason` for rows whose formal technique cannot be
+  inferred safely from the present MT/LXX elements;
+- translation-technique-v1 cardinality, token-balance, addition/omission and
+  transposition facts **only for derived rows**. The absence of these features
+  on unclassified alignments is intentional, not a claim of no addition,
+  omission, or transposition.
 
 Detailed lexical elements and annotations are nodes rather than delimiter-packed
 strings.
