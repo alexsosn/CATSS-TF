@@ -155,6 +155,14 @@ def materialize_corpus(
         raise CanonicalMaterializationError(f"technique derivation failed: {exc}") from exc
 
     _audit_graph(manifest, documents, graph)
+    unclassified = sum(
+        status == "unclassified" for status in graph.node_features["catss_tt_status"].values()
+    )
+    if len(sidecars["catss-technique.tsv"]) + unclassified != graph.max_slot:
+        raise CanonicalMaterializationError(
+            "canonical technique inventory failed: derived and unclassified counts "
+            "do not account for every alignment"
+        )
 
     _publish_bundle(
         destination,
@@ -795,6 +803,40 @@ def _audit_graph(
             raise CanonicalMaterializationError(
                 "canonical preservation audit failed: "
                 f"alignment child mismatch for {alignment.alignment_id}"
+            )
+
+    statuses = graph.node_features.get("catss_tt_status", {})
+    reasons = graph.node_features.get("catss_tt_unclassified_reason", {})
+    for slot in range(1, graph.max_slot + 1):
+        status = statuses.get(slot)
+        if status == "unclassified":
+            if not reasons.get(slot):
+                raise CanonicalMaterializationError(
+                    "canonical preservation audit failed: unclassified technique lacks reason"
+                )
+            if any(
+                graph.node_features.get(name, {}).get(slot) is not None
+                for name in (
+                    "catss_tt_cardinality_mt_lxx",
+                    "catss_tt_token_balance_mt_lxx",
+                    "catss_tt_transposition_mt_lxx",
+                    "catss_tt_addition_vs_mt",
+                    "catss_tt_omission_vs_mt",
+                )
+            ):
+                raise CanonicalMaterializationError(
+                    "canonical preservation audit failed: guessed unclassified technique fact"
+                )
+        elif status == "derived":
+            if reasons.get(slot) is not None or graph.node_features.get(
+                "catss_tt_cardinality_mt_lxx", {}
+            ).get(slot) is None:
+                raise CanonicalMaterializationError(
+                    "canonical preservation audit failed: derived technique inconsistent"
+                )
+        else:
+            raise CanonicalMaterializationError(
+                "canonical preservation audit failed: alignment lacks technique status"
             )
 
     manifest_names = tuple(item.relative_path for item in manifest.files)
