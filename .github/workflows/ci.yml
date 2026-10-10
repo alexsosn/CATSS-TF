@@ -110,6 +110,43 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Research actual column-A marker classes for MT-B-only carriers
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          seen = []
+          for source in CATSS_PARALLEL_FILENAMES:
+              for verse in parse_parallel_file(Path('/tmp/catss-parallel') / source).verses:
+                  for alignment in verse.alignments:
+                      if (
+                          alignment.mt_count == 0
+                          and alignment.lxx_count > 0
+                          and alignment.mt_col_b is not None
+                          and not alignment.is_lxx_plus
+                      ):
+                          seen.append((
+                              source,
+                              verse.chapter,
+                              verse.verse,
+                              alignment.mt_col_a,
+                              alignment.mt_col_b,
+                              alignment.retroversion_kind,
+                          ))
+          by_a = Counter(row[3] for row in seen)
+          empty = [row for row in seen if not row[3]]
+          print('R59 candidate total:', len(seen), flush=True)
+          print('R59 MT column-A classes (top 20):', by_a.most_common(20), flush=True)
+          print('R59 actually empty column-A source counts:',
+                Counter(row[0] for row in empty), flush=True)
+          print('R59 empty column-A witnesses:', empty[:12], flush=True)
+          print('R59 nonempty examples:',
+                [(r[0], r[1], r[2], r[3][:45], r[5]) for r in seen if r[3]][:12],
+                flush=True)
+          PY
       - name: Assert export-orphan layout repair
         run: |
           python - <<'PY'
