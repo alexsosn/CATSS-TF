@@ -39,8 +39,9 @@ reconstruction carrier entity** when MT-A is empty.
 ## Design decision — typed carrier, not fabricated lexical element
 
 Add one standalone `mt_b_carrier` node **only** for an alignment that has
-`mt_count == 0`, `lxx_count > 0`, and a non-null `mt_col_b`.
-Greek-empty carrier/placeholder groups are deliberately excluded. It receives the same single
+`mt_count == 0`, `lxx_count > 0`, `is_lxx_plus == False`, and
+a non-null `mt_col_b`. Greek-empty carrier/placeholder groups and
+already-typed LXX-plus reconstructions are deliberately excluded. It receives the same single
 `oslots` alignment slot, the **verbatim** column-B payload as
 `catss_mt_b_raw`, and the parser's `catss_retro_kind`. It is not named
 `mt_element`, has no `catss_text` pretending `=v` is a Hebrew word, and
@@ -81,3 +82,21 @@ The corrected scoped predicate requires non-empty *Greek lexical tokens*
 (`lxx_count > 0`). The real snapshot still needs to establish that
 this narrower criterion corresponds to the six issue-grounded rows;
 do not assume it does until complete CI is green.
+
+## R59-3 — explicit LXX-plus is a second distinct population
+
+The second live 46-file gate at `56fdb712`, after requiring `lxx_count>0`,
+still produced **8,879** carrier nodes, not the six exceptional rows.
+The parser explicitly marks ordinary Greek-addition rows with
+`is_lxx_plus=True` whenever MT column A begins `--+`, `-+`
+or `---+`. Those rows can also have nonempty reconstruction column B;
+their addition semantics are *already* query-native at alignment level
+and must not be counted as exceptional unmarked reconstruction carriers.
+
+The RED counterexample `Gen 1:1\n--+ =;W/KL\tLOGOS\n` was
+committed as `5dbb2b3`. Its first exact-head Python 3.11 CI run
+reported **417 passed and one intentional failure**, because the existing
+writer created an unwanted `mt_b_carrier` on this LXX-plus row.
+The corrected predicate therefore excludes `alignment.is_lxx_plus`.
+No new Hebrew word or LXX-addition judgment is inferred by this change;
+the actual source distribution must still be proven by the 46-file audit.

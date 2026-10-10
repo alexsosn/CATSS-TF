@@ -52,7 +52,7 @@ Additional node types are:
 | `chapter` | chapter structure inside one source |
 | `verse` | one CATSS verse/header record |
 | `mt_element` | one parsed MT-side lexical element |
-| `mt_b_carrier` | one MT-column-B reconstruction carrier when MT-column-A is lexically empty **and Greek lexical material is present**; nonlexical marker values remain markers |
+| `mt_b_carrier` | one MT-column-B reconstruction carrier when MT-column-A is lexically empty, Greek lexical material is present, **and the row is not already marked LXX-plus**; nonlexical marker values remain markers |
 | `lxx_element` | one parsed Greek lexical element |
 | `annotation` | one typed CATSS annotation/siglum occurrence |
 | `reference` | one structured scalar Greek reference override |
@@ -65,8 +65,8 @@ describes. Repeated annotations and source lines remain separate nodes.
 ## MT-column-B-only reconstructed carriers
 
 When CATSS column A is lexically empty, the Greek side has lexical material,
-and the separately marked reconstruction column B contains evidence, the
-canonical corpus creates one
+there is no explicit LXX-plus marker, and the separately marked reconstruction
+column B contains evidence, the canonical corpus creates one
 `mt_b_carrier` node with `catss_mt_b_raw` (the exact column-B content)
 and `catss_retro_kind` (the parser's classification). Its `oslots` points
 to exactly one alignment slot. Duplicate-looking source rows remain distinct
@@ -79,6 +79,9 @@ For example, `=;W/KL` in 2 Samuel 15:18 has raw B `;W/KL` and
 shapes must never be collapsed into invented MT-A word nodes or construed
 as LXX additions. Greek-empty placeholders with column-B marks are **not**
 part of this specialized carrier type, even if the raw column B is nonempty.
+The same holds for ordinary, explicitly marked LXX-plus alignments that
+also have a column-B reconstruction: the existing LXX-plus/retroversion
+features retain that source evidence and do not become #59 exceptional nodes.
 The complete 46-file CATSS snapshot currently contains
 six such carriers, four in 2 Samuel and one each in 1 Esdras and Ezekiel.
 

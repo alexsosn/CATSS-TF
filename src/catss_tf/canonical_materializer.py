@@ -482,11 +482,16 @@ def _add_detail_nodes(
 
     # Column B contains reconstructed evidence, *not* another MT-A word.
     # Only the issue-59 MT-A-empty/Greek-nonempty group gets carrier nodes.
-    # Greek-empty placeholders are not reconstructed lexical correspondences.
+    # Greek-empty and already-typed LXX-plus rows are outside this exception.
     # =v, for example, is a vocalization marker rather than a word.
     for context in contexts:
         alignment = context.alignment
-        if alignment.mt_count != 0 or alignment.lxx_count == 0 or alignment.mt_col_b is None:
+        if (
+            alignment.mt_count != 0
+            or alignment.lxx_count == 0
+            or alignment.is_lxx_plus
+            or alignment.mt_col_b is None
+        ):
             continue
         node = builder.add_node("mt_b_carrier", (context.slot,))
         builder.feature("catss_mt_b_raw", node, alignment.mt_col_b)
@@ -760,7 +765,10 @@ def _audit_graph(
             len(alignment.mt_readings) for _source, _verse, alignment in expected_contexts
         ),
         "mt_b_carrier": sum(
-            alignment.mt_count == 0 and alignment.lxx_count > 0 and alignment.mt_col_b is not None
+            alignment.mt_count == 0
+            and alignment.lxx_count > 0
+            and not alignment.is_lxx_plus
+            and alignment.mt_col_b is not None
             for _source, _verse, alignment in expected_contexts
         ),
         "lxx_element": sum(
@@ -833,6 +841,7 @@ def _audit_graph(
             "mt_b_carrier": int(
                 alignment.mt_count == 0
                 and alignment.lxx_count > 0
+                and not alignment.is_lxx_plus
                 and alignment.mt_col_b is not None
             ),
             "lxx_element": len(alignment.lxx_tokens),
@@ -858,6 +867,7 @@ def _audit_graph(
         if (
             alignment.mt_count != 0
             or alignment.lxx_count == 0
+            or alignment.is_lxx_plus
             or alignment.mt_col_b is None
             or graph.node_features.get("catss_mt_b_raw", {}).get(node) != alignment.mt_col_b
             or graph.node_features.get("catss_retro_kind", {}).get(node)

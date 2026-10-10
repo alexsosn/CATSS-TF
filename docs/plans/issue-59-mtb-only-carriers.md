@@ -25,7 +25,8 @@ intentional test failure. Keep checks from RED from accidentally merging.
 
 Add a contiguous type block for `mt_b_carrier` to
 `_add_detail_nodes`; validate one carrier for every `mt_count==0`,
-`lxx_count>0` and `mt_col_b is not None` in `_audit_graph`.
+`lxx_count>0`, `is_lxx_plus=False` and `mt_col_b is not None`
+in `_audit_graph`.
 The prior overbroad condition produced 8,887 false-positive carriers on
 the actual 46-file source; a Greek-empty RED counterexample must fail
 before this scope correction. The node has one
@@ -45,3 +46,12 @@ elements, Greek counts, source-line provenance or strict technique API.
 - Logically independent adversarial exact-head review, especially
   duplicate rows, distinction from MT-A, no false lexical reconstruction,
   and no fabricated correspondence to BHSA or LXX.
+
+## RED scope extension — already marked LXX-plus rows
+
+Requiring Greek words alone still produced 8,879 carriers across the real
+source. A further RED at `5dbb2b3` demonstrated that a `--+ =;W/KL`
+alignment would incorrectly get the exception node despite having an
+explicit LXX-plus marker. Keep the ordinary LXX-plus/retroversion semantics
+on its alignment slot and exclude it from #59 carriers. The final real
+snapshot guard still requires the six genuinely unmarked cases.
