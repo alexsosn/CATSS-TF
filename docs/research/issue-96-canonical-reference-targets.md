@@ -61,3 +61,37 @@ must not be silently promoted into a semantic TF edge.
 
 No CATSS, BHSA or LXX data are stored in the Git repository. Real-data
 checks run only on user-acquired or ephemeral opt-in CI inputs.
+
+## R96-2 — make the 6,218-reference inventory independently reproducible
+
+After merged PR #47, the `catss` warp correctly preserves **6,218** scalar
+Greek-reference nodes and **zero** speculative `catss_reference_target`
+edges. A candidate lookup by chapter/verse can still be useful as an
+*audited diagnostic*, but cannot be called a resolved Greek destination.
+
+The existing parser IR exposes `GreekReference(chapter: int|None,
+verse: int, subverse: str|None, raw: str)` and the source `ParallelVerse`
+header chapter/verse. Comparing these labels is a *comparison of numbers
+from different source organizations*, not a proof of corresponding text.
+In particular:
+
+- `[2]` inherits its *source header's* chapter for a diagnostic comparison;
+- `[9:2a]` carries explicit chapter and Greek subverse, but the
+  `JoshB 9:2` MT-header section cannot validate Greek `2a`;
+- duplicates of MT-header chapter/verse across distinct physical headers
+  are not distinct Greek destinations.
+
+A **read-only reference inventory** should report the number of scalar
+references, explicit chapters, subverse suffixes, and zero/one/multiple
+numeric MT-header candidates per source. It must retain the distinction
+between a *numeric candidate* and a verified LXX verse identity. This is
+not permission to create `catss_reference_target` edges. The report
+must contain only counts/distributions and no raw CATSS-derived corpus,
+LXX text, or projected node IDs. It must accept user-local CATSS files,
+require no default upstream network fetch, and work without BHSA/LXX.
+
+The next, separate research step is to compare candidate cases with a
+pinned Greek parent where full versification identity can be proven.
+Given absent subverse nodes and changed numbering, some references will
+remain unresolved. Fail closed, without fabricating subverses or marking
+numeric matches as semantically validated.
