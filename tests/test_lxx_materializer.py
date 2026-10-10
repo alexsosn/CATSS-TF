@@ -557,3 +557,29 @@ def test_scoped_minus_is_attached_only_to_first_greek_element() -> None:
     )
     assert "apparent_minus" not in _semantic_kinds(alignment, side="lxx", element_index=2)
     assert "apparent_minus" not in _semantic_kinds(alignment, side="mt", element_index=1)
+
+
+def test_jonah_scoped_minus_materializes_on_despotas_not_kyrios(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "32.Jonah.par", "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n")
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        (_span("δέσποτα", "κύριε", book="Jonah", chapter=4, verse=3, node=9, start_node=7),)
+    )
+
+    result = materialize_lxx(source, output, provider=provider)
+
+    assert result.summary.word_mappings == 2
+    assert result.summary.reference_anchors == 0
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert [(int(m["parent_node"]), int(m["lxx_i"])) for m in mappings] == [
+        (7, 1),
+        (8, 2),
+    ]
+    for feature in ("catss_sem_apparent_minus.tf", "catss_sem_apparent_minus_mt_a.tf"):
+        content = (output / feature).read_text(encoding="utf-8")
+        assert "7\t1" in content
+        assert "8\t1" not in content
+    assert not (output / "catss_apparent_mt_minus_n.tf").exists()
