@@ -89,9 +89,7 @@ def audit_lxx_parent_span_availability(
                         if span is not None and (
                             (span.book, span.chapter, span.verse, span.subverse) != key
                         ):
-                            raise ValueError(
-                                f"LXX parent span identity mismatch for {key}"
-                            )
+                            raise ValueError(f"LXX parent span identity mismatch for {key}")
                         cache[key] = span
                     span = cache[key]
                     if span is not None and span.words:
