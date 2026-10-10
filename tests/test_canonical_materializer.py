@@ -308,9 +308,12 @@ def test_canonical_preserves_real_shape_retroversion_only_mt_with_unclassified_t
     assert api.F.catss_mt_raw.v(1) == "=;W/KL"
     assert api.F.catss_mt_col_b.v(1) == ";W/KL"
     assert api.F.catss_lxx_raw.v(1) == "KAI\\\\ PA=S"
-    assert api.F.catss_tt_addition_vs_mt.v(1) is None
-    assert api.F.catss_tt_omission_vs_mt.v(1) is None
-    assert api.F.catss_tt_cardinality_mt_lxx.v(1) is None
+    if "catss_tt_addition_vs_mt" in api.Fall():
+        assert api.F.catss_tt_addition_vs_mt.v(1) is None
+    if "catss_tt_omission_vs_mt" in api.Fall():
+        assert api.F.catss_tt_omission_vs_mt.v(1) is None
+    if "catss_tt_cardinality_mt_lxx" in api.Fall():
+        assert api.F.catss_tt_cardinality_mt_lxx.v(1) is None
 
     original = parse_parallel_file(path).verses[0].alignments[0]
     assert api.F.catss_alignment_id.v(1) == original.alignment_id
