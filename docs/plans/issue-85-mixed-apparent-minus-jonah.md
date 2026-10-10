@@ -68,3 +68,24 @@ After parent grounding, commit tests before implementation for:
 Run Python 3.11/3.12/3.13, ruff, format, mypy, release smoke, full 46-file audit, canonical materialization, both projections, and pinned-parent Jonah verification on the exact final SHA.
 
 Then perform a logically independent adversarial review grounded in the raw Jonah row, parent nodes, parser IR, canonical edge, both projection modules and technique state.
+
+## Additional RED gate — pinned-parent Greek elision (2026-10-10)
+
+The pinned Jonah 4:3 parent includes `ἀπ᾿` (final U+1FBF GREEK PSILI),
+whose spacing-elision mark is currently rejected by
+`normalize_lxx_greek`; this causes a verse-group-wide
+`parent_greek_normalization_error` before a separate exact
+`δέσποτα κύριε` candidate can be assigned. Add a focused RED regression
+for `ἀπ᾿` <-> CATSS `A)P'` identity and a Jonah synthetic provider
+containing that unrelated word plus the two Greek lexical targets.
+Then explicitly accept U+1FBF as an apostrophe in the strictly
+character-by-character Greek normalizer, without dropping or guessing
+any source token.
+
+The pinned-parent CI gate must assert real unique adjacent 495520/495521
+matches *and* test a focused one-alignment production resolver mapping,
+while disclosing that resolving the full Jonah document may still fail
+because of unrelated ambiguous/mismatched CATSS reference groups. Do not
+claim a successful complete Jonah LXX materializer on synthetic-only
+evidence. Canonical annotation-to-lxx-element edge remains a separate
+blocking #47 dependency.
