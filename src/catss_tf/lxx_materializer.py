@@ -639,8 +639,8 @@ def _semantic_payloads(
             annotation.kind == "unknown"
             or annotation.payload is None
             or not _semantic_annotation_in_scope(
-            annotation, alignment=alignment, side=side, element_index=element_index
-        )
+                annotation, alignment=alignment, side=side, element_index=element_index
+            )
         ):
             continue
         by_kind.setdefault(annotation.kind, set()).add(annotation.payload)
