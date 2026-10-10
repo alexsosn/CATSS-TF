@@ -288,7 +288,7 @@ def test_contextual_reference_range_fails_closed_when_parent_member_is_missing()
 def test_contextual_reference_range_rejects_aliased_parent_subverse_nodes() -> None:
     """Six labels cannot all resolve to the same physical parent node."""
     doc = parse_parallel_text(
-        "JoshB 9:2\\n{...} <8.30-35>\\t[[9.2a-2f]]\\n",
+        "JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n",
         source_name="06.JoshB.par",
     )
     provider = FakeProvider(
