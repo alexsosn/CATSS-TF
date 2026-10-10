@@ -1,3 +1,4 @@
+import csv
 import pathlib
 from typing import Any
 
@@ -284,14 +285,12 @@ def test_canonical_scalar_references_and_ranges_keep_separate_node_types(
     assert api.F.catss_range_end_subverse.v(ranges[0]) == "f"
 
 
-
-
 def test_canonical_preserves_real_shape_retroversion_only_mt_with_unclassified_technique(
     tmp_path: pathlib.Path,
 ) -> None:
     """The complete CCAT snapshot has this exact shape at 2 Samuel line 7070."""
     source = tmp_path / "source"
-    raw = "=;W/KL\tKAI\\\\ PA=S"
+    raw = "=;W/KL\tKAI\\ PA=S"
     path = _write_source(source, "12.2Sam.par", "2Sam 7:19\n" + raw + "\n")
 
     result = materialize_corpus(source, tmp_path / "catss")
@@ -307,7 +306,7 @@ def test_canonical_preserves_real_shape_retroversion_only_mt_with_unclassified_t
     assert tuple(api.L.u(1, otype="lxx_element"))
     assert api.F.catss_mt_raw.v(1) == "=;W/KL"
     assert api.F.catss_mt_col_b.v(1) == ";W/KL"
-    assert api.F.catss_lxx_raw.v(1) == "KAI\\\\ PA=S"
+    assert api.F.catss_lxx_raw.v(1) == "KAI\\ PA=S"
     if "catss_tt_addition_vs_mt" in api.Fall():
         assert api.F.catss_tt_addition_vs_mt.v(1) is None
     if "catss_tt_omission_vs_mt" in api.Fall():
@@ -328,7 +327,7 @@ def test_canonical_technique_partiality_is_visible_per_alignment(
     _write_source(
         source,
         "12.2Sam.par",
-        "2Sam 7:19\n=;W/KL\tKAI\\\\ PA=S\nHB\tLOGOS\n",
+        "2Sam 7:19\n=;W/KL\tKAI\\ PA=S\nHB\tLOGOS\n",
     )
     result = materialize_corpus(source, tmp_path / "catss")
     assert result.summary.alignments == 2
@@ -342,8 +341,6 @@ def test_canonical_technique_partiality_is_visible_per_alignment(
     assert api.F.catss_tt_cardinality_mt_lxx.v(2) == "one_one"
     assert api.F.catss_tt_addition_vs_mt.v(1) is None
     assert api.F.catss_tt_unclassified_reason.v(2) is None
-
-    import csv
 
     with (tmp_path / "catss" / "catss-technique.tsv").open(
         encoding="utf-8", newline=""
