@@ -349,3 +349,40 @@ def test_canonical_technique_partiality_is_visible_per_alignment(
         rows = tuple(csv.DictReader(handle, delimiter="\t"))
     assert len(rows) == 1
     assert rows[0]["alignment_id"] == api.F.catss_alignment_id.v(2)
+
+
+def test_exodus_corrupt_header_blank_lines_survive_canonical_tf_round_trip(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The canonical corpus must retain all 7 physical source lines from #94."""
+    source = tmp_path / "source"
+    raw_lines = (
+        "^ ^^^ =L/$RT {...?H/&RD} #\t{+} E)N AI(=S LEITOURGH/SOUSIN",
+        "",
+        "Exod 1:10",
+        "    #",
+        "",
+        "Exod 35:19",
+        "--+\tE)N AU)TAI=S",
+    )
+    _write_source(
+        source,
+        "02.Exodus.par",
+        "Exod 35:19\n" + "\n".join(raw_lines) + "\n",
+    )
+
+    result = materialize_corpus(source, tmp_path / "catss")
+    assert result.summary.alignments == 1
+    assert result.summary.source_lines == 7
+
+    api = _load_corpus(tmp_path)
+    source_line_nodes = tuple(
+        sorted(api.L.u(1, otype="source_line"), key=api.F.catss_line_no.v)
+    )
+    assert len(source_line_nodes) == 7
+    assert tuple(api.F.catss_line_no.v(node) for node in source_line_nodes) == tuple(
+        range(2, 9)
+    )
+    assert tuple(api.F.catss_raw.v(node) for node in source_line_nodes) == raw_lines
+    assert tuple(api.F.otype.s("verse")) and len(tuple(api.F.otype.s("verse"))) == 1
+
