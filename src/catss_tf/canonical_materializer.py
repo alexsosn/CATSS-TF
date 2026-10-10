@@ -708,8 +708,7 @@ def _audit_graph(
             len(alignment.lxx_references) for _source, _verse, alignment in expected_contexts
         ),
         "reference_range": sum(
-            len(alignment.lxx_reference_ranges)
-            for _source, _verse, alignment in expected_contexts
+            len(alignment.lxx_reference_ranges) for _source, _verse, alignment in expected_contexts
         ),
         "source_line": sum(
             len(alignment.source_lines) for _source, _verse, alignment in expected_contexts
