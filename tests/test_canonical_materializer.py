@@ -500,8 +500,10 @@ def test_mt_b_only_reconstruction_carriers_are_query_native_not_mt_words(
 
     second = materialize_corpus(source, tmp_path / "catss2")
     assert second.summary.alignments == result.summary.alignments
-    first_files = sorted(p.name for p in (tmp_path / "catss").iterdir())
-    second_files = sorted(p.name for p in (tmp_path / "catss2").iterdir())
+    # TF's loader may create a local ".tf" cache alongside the corpus files;
+    # compare only the materializer's actual published files.
+    first_files = sorted(p.name for p in (tmp_path / "catss").iterdir() if p.is_file())
+    second_files = sorted(p.name for p in (tmp_path / "catss2").iterdir() if p.is_file())
     assert first_files == second_files
     for name in first_files:
         assert (tmp_path / "catss" / name).read_bytes() == (tmp_path / "catss2" / name).read_bytes()
