@@ -268,7 +268,7 @@ def test_canonical_scalar_references_and_ranges_keep_separate_node_types(
     _write_source(
         source,
         "06.JoshB.par",
-        "JoshB 9:2\nHB\tLOGOS [9.2a]\n{...} <8.30-35>\t[[9.2a-2f]]\n",
+        "JoshB 9:2\nHB\tLOGOS [9:2a]\n{...} <8.30-35>\t[[9.2a-2f]]\n",
     )
     materialize_corpus(source, tmp_path / "catss")
     api = _load_corpus(tmp_path)
