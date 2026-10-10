@@ -209,3 +209,75 @@ def test_validation_failure_is_atomic(tmp_path: pathlib.Path) -> None:
 
 def test_canonical_materializer_is_public_api() -> None:
     assert catss_tf.materialize_corpus is materialize_corpus
+
+
+def test_joshb_contextual_range_is_first_class_canonical_node(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    row = "{...} <8.30-35>\t[[9.2a-2f]]"
+    _write_source(source, "06.JoshB.par", "JoshB 9:2\n" + row + "\n")
+
+    result = materialize_corpus(source, tmp_path / "catss")
+    assert result.summary.alignments == 1
+    assert result.summary.reference_ranges == 1
+    assert result.summary.references == 0
+    api = _load_corpus(tmp_path)
+    assert api.F.otype.slotType == "alignment"
+
+    ranges = tuple(api.F.otype.s("reference_range"))
+    assert len(ranges) == 1
+    assert tuple(api.F.otype.s("reference")) == ()
+    node = ranges[0]
+    assert tuple(api.L.u(1, otype="reference_range")) == (node,)
+    assert tuple(api.L.d(node, otype="alignment")) == (1,)
+    assert api.F.catss_raw.v(node) == "[[9.2a-2f]]"
+    assert (
+        api.F.catss_range_start_chapter.v(node),
+        api.F.catss_range_start_verse.v(node),
+        api.F.catss_range_start_subverse.v(node),
+        api.F.catss_range_end_chapter.v(node),
+        api.F.catss_range_end_verse.v(node),
+        api.F.catss_range_end_subverse.v(node),
+    ) == (9, 2, "a", 9, 2, "f")
+
+    slot = 1
+    assert api.F.catss_mt_n.v(slot) == 0
+    assert api.F.catss_lxx_n.v(slot) == 0
+    assert tuple(api.L.u(slot, otype="mt_element")) == ()
+    assert tuple(api.L.u(slot, otype="lxx_element")) == ()
+    assert tuple(api.L.u(slot, otype="source_line"))
+    assert any(
+        api.F.catss_kind.v(a) == "contextual_reference"
+        and api.F.catss_raw.v(a) == "[[9.2a-2f]]"
+        for a in api.L.u(slot, otype="annotation")
+    )
+    assert tuple(api.E.catss_reference_target.f(node)) == ()
+
+    parsed = parse_parallel_file(source / "06.JoshB.par")
+    assert api.F.catss_alignment_id.v(slot) == parsed.verses[0].alignments[0].alignment_id
+
+
+def test_canonical_scalar_references_and_ranges_keep_separate_node_types(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "06.JoshB.par",
+        "JoshB 9:2\nHB\tLOGOS [9.2a]\n{...} <8.30-35>\t[[9.2a-2f]]\n",
+    )
+    materialize_corpus(source, tmp_path / "catss")
+    api = _load_corpus(tmp_path)
+
+    scalar = tuple(api.F.otype.s("reference"))
+    ranges = tuple(api.F.otype.s("reference_range"))
+    assert len(scalar) == len(ranges) == 1
+    assert scalar[0] != ranges[0]
+    assert tuple(api.L.u(1, otype="reference")) == scalar
+    assert tuple(api.L.u(1, otype="reference_range")) == ()
+    assert tuple(api.L.u(2, otype="reference_range")) == ranges
+    assert tuple(api.L.u(2, otype="reference")) == ()
+    assert api.F.catss_ref_verse.v(scalar[0]) == 2
+    assert api.F.catss_range_end_subverse.v(ranges[0]) == "f"
+
