@@ -601,10 +601,16 @@ def _build_alignment(
         mt_qere_tokens = ()
     lxx_tokens = () if is_lxx_minus else _lxx_lexical_candidates(semantic_lxx)
 
-    # In the documented CATSS mixed form, a leading Hebrew-side apparent
-    # minus occupies Greek element 1; the surviving Hebrew lexical element
-    # corresponds to Greek element 2. Do not broaden this to ambiguous ratios.
-    if _first_token(mt_col_a) == "---" and len(mt_tokens) == 1 and len(lxx_tokens) == 2:
+    # Exact research-backed mixed apparent-minus from 32.Jonah.par 4:3.
+    # The same 1:2 ratio in arbitrary data is NOT sufficient to infer scope.
+    if (
+        source_name == "32.Jonah.par"
+        and (verse.chapter, verse.verse) == (4, 3)
+        and mt_col_a == "--- YHWH"
+        and semantic_lxx == "DE/SPOTA KU/RIE"
+        and mt_tokens == ("YHWH",)
+        and lxx_tokens == ("DE/SPOTA", "KU/RIE")
+    ):
         annotations = tuple(
             dataclasses.replace(annotation, target_side="lxx", target_index=1)
             if annotation.side == "mt_a" and annotation.kind == "apparent_minus"
