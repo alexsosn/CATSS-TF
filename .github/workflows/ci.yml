@@ -242,6 +242,7 @@ jobs:
           marker_total = 0
           admissible = 0
           outlier_shapes = collections.Counter()
+          scoped_mixed = []
           for name in CATSS_PARALLEL_FILENAMES:
               document = parse_parallel_file(root / name)
               for verse in document.verses:
@@ -264,14 +265,41 @@ jobs:
                           assert technique.omission_vs_mt is False
                       else:
                           outlier_shapes[(alignment.mt_count, alignment.lxx_count)] += 1
-                          try:
-                              derive_alignment_technique(name, alignment)
-                          except TechniqueError:
-                              pass
+                          identity = (
+                              name, verse.chapter, verse.verse,
+                              alignment.mt_raw, alignment.lxx_raw,
+                          )
+                          if identity == (
+                              '32.Jonah.par', 4, 3, '--- YHWH', 'DE/SPOTA KU/RIE',
+                          ):
+                              assert alignment.mt_count == 1
+                              assert alignment.lxx_count == 2
+                              assert len(apparent) == 1
+                              assert apparent[0].target_side == 'lxx'
+                              assert apparent[0].target_index == 1
+                              technique = derive_alignment_technique(name, alignment)
+                              assert technique.cardinality_mt_lxx == 'one_many'
+                              assert technique.token_balance_mt_lxx == 'lxx_more'
+                              assert technique.addition_vs_mt is False
+                              assert technique.omission_vs_mt is False
+                              scoped_mixed.append(identity)
                           else:
-                              raise AssertionError(
-                                  'contradictory apparent-minus cardinality must fail closed'
-                              )
+                              # All other contradictory cardinalities remain errors.
+                              assert not any(
+                                  a.target_side == 'lxx' and a.target_index is not None
+                                  for a in apparent
+                              ), identity
+                              try:
+                                  derive_alignment_technique(name, alignment)
+                              except TechniqueError:
+                                  pass
+                              else:
+                                  raise AssertionError(
+                                      f'unscoped contradictory minus admitted: {identity}'
+                                  )
+          assert scoped_mixed == [
+              ('32.Jonah.par', 4, 3, '--- YHWH', 'DE/SPOTA KU/RIE'),
+          ], scoped_mixed
           assert marker_total == 63, marker_total
           assert admissible == 61, admissible
           assert outlier_shapes == {(0, 0): 1, (1, 2): 1}, outlier_shapes
