@@ -1,5 +1,7 @@
 """RED-first tests for exact Exodus 35:19 corrupted header repair."""
 
+from __future__ import annotations
+
 import pytest
 
 from catss_tf.parser import alignment_id_for, parse_parallel_text
