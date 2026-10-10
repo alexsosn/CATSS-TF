@@ -95,20 +95,23 @@ strings.
 
 ## Reference edges
 
-A `reference` node records the structured chapter/verse/subverse information parsed
-from CATSS. When its target resolves uniquely to a verse in the same CATSS source,
-`catss_reference_target` connects the reference node to that verse node.
+A `reference` node records the exact scalar Greek-side chapter, verse, subverse
+and raw spelling parsed from CATSS. The canonical corpus deliberately does not
+emit `catss_reference_target` edges: its `verse` sections follow the MT-based
+CATSS source headers, so a matching numeric label is **not** a verified Greek
+reference target. Referring from one independently sourced Greek text to another
+requires a separately grounded resolver (see issue #96).
 
 A typed range such as `[[9.2a-2f]]` is kept as a separate `reference_range`
 node attached to its alignment slot. Query-native `catss_range_start_*`
 and `catss_range_end_*` features and `catss_raw` preserve both endpoints
 without creating six fictitious LXX parent nodes or reducing the range to
-scalar endpoints. As with scalar references, no ambiguous target edge is
-fabricated.
+scalar endpoints.
 
-No edge is fabricated when the target is absent or ambiguous. CATSS transposition
-markers currently do not carry a deterministic target alignment in the parser IR, so
-the corpus records their typed semantics without inventing a transposition edge.
+Typed scalar references and ranges remain queryable through their node features
+and links to alignment slots through `oslots`. No cross-versification target
+is inferred from chapter/verse number coincidence. CATSS transposition markers
+likewise remain typed but without invented target alignment edges.
 
 ## Load with Text-Fabric
 

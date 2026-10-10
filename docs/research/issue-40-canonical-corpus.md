@@ -96,12 +96,14 @@ overlap. A separate `book` feature records the CATSS header book.
 
 ## R40-4 — relational semantics are edges only when the IR has an actual target
 
-A structured `GreekReference` is represented as a `reference` node. If its
-chapter/verse target resolves unambiguously to a verse node in the same CATSS source,
-a valueless edge `catss_reference_target` connects the reference node to that verse.
-
-If the target is absent or not uniquely resolvable, the raw/structured reference node
-is preserved without fabricating an edge.
+A structured `GreekReference` is represented as a `reference` node,
+including its raw spelling and typed chapter, verse and optional subverse.
+The initial heuristic that connected it to an MT-based CATSS header with matching
+numeric chapter/verse is explicitly withdrawn by #96: this **did not prove
+Greek-versification identity**, especially when the reference had a subverse
+suffix. All scalar references remain queryable through node features and
+`oslots`, without a speculative `catss_reference_target` edge.
+Only a separately verified Greek-target resolver may add such an edge later.
 
 Current local/remote transposition flags do not identify a target alignment in the
 parser IR. The canonical corpus must not invent such a target. A future parser change

@@ -289,8 +289,8 @@ def _compile_graph(
     for context in contexts:
         _alignment_features(builder, context)
 
-    verse_nodes = _add_structural_nodes(builder, documents, contexts)
-    _add_detail_nodes(builder, contexts, verse_nodes)
+    _add_structural_nodes(builder, documents, contexts)
+    _add_detail_nodes(builder, contexts)
 
     return (
         _CanonicalGraph(
@@ -378,7 +378,7 @@ def _add_structural_nodes(
     builder: _GraphBuilder,
     documents: tuple[ParallelDocument, ...],
     contexts: list[_AlignmentContext],
-) -> dict[tuple[str, int, int], tuple[int, ...]]:
+) -> None:
     slots_by_source: dict[str, list[int]] = {}
     slots_by_chapter: dict[tuple[str, int], list[int]] = {}
     contexts_by_verse: dict[tuple[str, int, int], list[_AlignmentContext]] = {}
@@ -411,7 +411,6 @@ def _add_structural_nodes(
         builder.feature("catss_source", node, source)
         builder.feature("chapter", node, chapter)
 
-    verse_nodes: dict[tuple[str, int, int], list[int]] = {}
     ordered_keys = sorted(
         contexts_by_verse,
         key=lambda key: (
@@ -440,15 +439,12 @@ def _add_structural_nodes(
                 node,
                 verse_contexts[0].verse.header_line_no,
             )
-            verse_nodes.setdefault(key, []).append(node)
 
-    return {key: tuple(nodes) for key, nodes in verse_nodes.items()}
 
 
 def _add_detail_nodes(
     builder: _GraphBuilder,
     contexts: list[_AlignmentContext],
-    verse_nodes: dict[tuple[str, int, int], tuple[int, ...]],
 ) -> None:
     """Allocate each Text-Fabric node type in one contiguous node-id block."""
 
@@ -493,16 +489,6 @@ def _add_detail_nodes(
             builder.feature("catss_ref_verse", node, reference.verse)
             builder.feature("catss_ref_subverse", node, reference.subverse)
             builder.feature("catss_raw", node, reference.raw)
-
-            target_chapter = (
-                reference.chapter if reference.chapter is not None else context.verse.chapter
-            )
-            targets = verse_nodes.get(
-                (context.source, target_chapter, reference.verse),
-                (),
-            )
-            if len(targets) == 1:
-                builder.edge("catss_reference_target", node, targets[0])
 
     for context in contexts:
         alignment = context.alignment
