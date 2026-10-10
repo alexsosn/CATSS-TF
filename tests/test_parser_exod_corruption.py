@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from catss_tf.parser import alignment_id_for, parse_parallel_text
+from catss_tf.parser import ParallelDocument, alignment_id_for, parse_parallel_text
 from catss_tf.validation import validate_document
 
 HEAD = "^ ^^^ =L/$RT {...?H/&RD} #\t{+} E)N AI(=S LEITOURGH/SOUSIN"
@@ -17,7 +17,7 @@ def _parse(
     *,
     source: str = "02.Exodus.par",
     verse: str = "Exod 35:19",
-):
+) -> ParallelDocument:
     return parse_parallel_text(
         verse + "\n" + "\n".join(lines) + "\n",
         source_name=source,
