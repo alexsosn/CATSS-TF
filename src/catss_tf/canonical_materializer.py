@@ -52,6 +52,7 @@ class CanonicalMaterializationSummary:
     lxx_elements: int
     annotations: int
     references: int
+    reference_ranges: int
     source_lines: int
     tf_features: int
     edge_features: int
@@ -175,6 +176,7 @@ def materialize_corpus(
             lxx_elements=node_type_counts.get("lxx_element", 0),
             annotations=node_type_counts.get("annotation", 0),
             references=node_type_counts.get("reference", 0),
+            reference_ranges=node_type_counts.get("reference_range", 0),
             source_lines=node_type_counts.get("source_line", 0),
             tf_features=len(graph.node_features) + 3,
             edge_features=len(graph.edge_features),
@@ -479,6 +481,19 @@ def _add_detail_nodes(
     for context in contexts:
         alignment = context.alignment
         slot = context.slot
+        for reference_range in alignment.lxx_reference_ranges:
+            node = builder.add_node("reference_range", (slot,))
+            builder.feature("catss_range_start_chapter", node, reference_range.start_chapter)
+            builder.feature("catss_range_start_verse", node, reference_range.start_verse)
+            builder.feature("catss_range_start_subverse", node, reference_range.start_subverse)
+            builder.feature("catss_range_end_chapter", node, reference_range.end_chapter)
+            builder.feature("catss_range_end_verse", node, reference_range.end_verse)
+            builder.feature("catss_range_end_subverse", node, reference_range.end_subverse)
+            builder.feature("catss_raw", node, reference_range.raw)
+
+    for context in contexts:
+        alignment = context.alignment
+        slot = context.slot
         for line_no, raw in zip(
             alignment.source_lines,
             alignment.raw_lines,
@@ -692,6 +707,10 @@ def _audit_graph(
         "reference": sum(
             len(alignment.lxx_references) for _source, _verse, alignment in expected_contexts
         ),
+        "reference_range": sum(
+            len(alignment.lxx_reference_ranges)
+            for _source, _verse, alignment in expected_contexts
+        ),
         "source_line": sum(
             len(alignment.source_lines) for _source, _verse, alignment in expected_contexts
         ),
@@ -727,6 +746,7 @@ def _audit_graph(
         "lxx_element",
         "annotation",
         "reference",
+        "reference_range",
         "source_line",
     }
     children_by_slot: dict[int, dict[str, int]] = {
@@ -748,6 +768,7 @@ def _audit_graph(
             "lxx_element": len(alignment.lxx_tokens),
             "annotation": len(alignment.annotations),
             "reference": len(alignment.lxx_references),
+            "reference_range": len(alignment.lxx_reference_ranges),
             "source_line": len(alignment.source_lines),
         }
         if children_by_slot[slot] != expected_counts:
