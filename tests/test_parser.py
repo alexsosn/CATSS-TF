@@ -69,10 +69,7 @@ def test_jonah_mixed_apparent_minus_is_scoped_to_first_greek_element() -> None:
     assert alignment.lxx_raw == "DE/SPOTA KU/RIE"
     assert alignment.mt_tokens == ("YHWH",)
     assert alignment.lxx_tokens == ("DE/SPOTA", "KU/RIE")
-    apparent = [
-        a for a in alignment.annotations
-        if a.side == "mt_a" and a.kind == "apparent_minus"
-    ]
+    apparent = [a for a in alignment.annotations if a.side == "mt_a" and a.kind == "apparent_minus"]
     assert len(apparent) == 1
     assert getattr(apparent[0], "target_side", None) == "lxx"
     assert getattr(apparent[0], "target_index", None) == 1
