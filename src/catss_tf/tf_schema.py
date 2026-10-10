@@ -52,6 +52,7 @@ class TfMembership:
     semantic_scopes: tuple[tuple[str, str], ...] = ()
     semantic_scoped_payloads: tuple[tuple[str, str, str], ...] = ()
     semantic_payloads: tuple[tuple[str, str], ...] = ()
+    scoped_apparent_mt_minus: bool = False
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -596,6 +597,7 @@ def _compile_membership(
             trans_remote="catss_trans_remote" in membership.flags,
             trans_style="catss_trans_style" in membership.flags,
             apparent_mt_minus="apparent_minus" in membership.semantic_kinds,
+            scoped_apparent_mt_minus=membership.scoped_apparent_mt_minus,
         )
     except TechniqueError as exc:
         raise TfSchemaError(f"technique derivation failed: {exc}") from exc
