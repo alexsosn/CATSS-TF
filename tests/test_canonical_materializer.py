@@ -505,4 +505,3 @@ def test_mt_b_only_reconstruction_carriers_are_query_native_not_mt_words(
     assert first_files == second_files
     for name in first_files:
         assert (tmp_path / "catss" / name).read_bytes() == (tmp_path / "catss2" / name).read_bytes()
-
