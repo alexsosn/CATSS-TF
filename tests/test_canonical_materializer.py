@@ -493,8 +493,7 @@ def test_mt_b_only_reconstruction_carriers_are_query_native_not_mt_words(
             assert api.F.catss_tt_addition_vs_mt.v(slots[0]) is None
     # A real column-A word must *not* become a fabricated reconstruction node.
     normal = next(
-        slot for slot in api.F.otype.s("alignment")
-        if api.F.catss_mt_col_a.v(slot) == "HB"
+        slot for slot in api.F.otype.s("alignment") if api.F.catss_mt_col_a.v(slot) == "HB"
     )
     assert tuple(api.L.u(normal, otype="mt_element"))
     assert tuple(api.L.u(normal, otype="mt_b_carrier")) == ()
@@ -505,7 +504,5 @@ def test_mt_b_only_reconstruction_carriers_are_query_native_not_mt_words(
     second_files = sorted(p.name for p in (tmp_path / "catss2").iterdir())
     assert first_files == second_files
     for name in first_files:
-        assert (tmp_path / "catss" / name).read_bytes() == (
-            tmp_path / "catss2" / name
-        ).read_bytes()
+        assert (tmp_path / "catss" / name).read_bytes() == (tmp_path / "catss2" / name).read_bytes()
 
