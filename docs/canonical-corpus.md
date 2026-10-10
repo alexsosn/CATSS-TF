@@ -151,6 +151,32 @@ Alignment slots expose group-level facts including:
 Detailed lexical elements and annotations are nodes rather than delimiter-packed
 strings.
 
+## Auditing scalar Greek reference candidates
+
+For source-level research without guessing LXX destination nodes, inspect
+the local CATSS source with:
+
+```python
+from pathlib import Path
+from catss_tf.parser import parse_parallel_file
+from catss_tf.reference_audit import audit_greek_references
+from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+root = Path("./data/catss-parallel")
+report = audit_greek_references(
+    parse_parallel_file(root / name) for name in CATSS_PARALLEL_FILENAMES
+)
+print(report.scalar_references, report.subverse_suffixes)
+print(report.numeric_candidates_zero, report.numeric_candidates_one,
+      report.numeric_candidates_multiple)
+```
+
+This counts **numeric matches to CATSS MT-based source headers** only, not
+verified Greek target nodes. A `numeric_candidates_one` record is not a
+license to emit `catss_reference_target`: Greek/MT versification and
+subverse identities still require pinned parent evidence (issue #96).
+No corpus data or generated corpus is distributed by this diagnostic.
+
 ## Reference edges
 
 A `reference` node records the exact scalar Greek-side chapter, verse, subverse

@@ -95,3 +95,19 @@ pinned Greek parent where full versification identity can be proven.
 Given absent subverse nodes and changed numbering, some references will
 remain unresolved. Fail closed, without fabricating subverses or marking
 numeric matches as semantically validated.
+
+## R96-3 — diagnostic API boundary
+
+`catss_tf.reference_audit.audit_greek_references` accepts an iterable of
+already parsed `ParallelDocument` objects, with no network or parent
+corpus access. For each scalar Greek reference, it counts **physical**
+CATSS source headers having the same chapter/verse label (using the current
+source-header chapter for `[2]`, and an explicitly supplied chapter for
+`[9:2a]`). It reports zero/one/multiple *numeric MT-header candidates*
+plus counts of explicit chapter notation, subverse suffixes, and per-source
+references.
+
+A unique numeric candidate is **not** a verified Greek textual target:
+the function creates no edges and never maps subverse suffixes onto
+unnumbered CATSS section nodes. Counts are read-only research evidence
+that can guide future pinned CenterBLC/LXX validation.

@@ -23,5 +23,53 @@ class GreekReferenceAudit:
 def audit_greek_references(
     documents: typing.Iterable[ParallelDocument],
 ) -> GreekReferenceAudit:
-    """Build an inventory without ever promoting numeric matches to TF edges."""
-    raise NotImplementedError("source reference inventory not implemented (#96)")
+    """Count numeric MT-header coincidences, *not* proven Greek destinations."""
+    sources = 0
+    scalar = 0
+    explicit = 0
+    suffix = 0
+    zero = 0
+    one = 0
+    multiple = 0
+    by_source: dict[str, int] = {}
+
+    for document in documents:
+        sources += 1
+        header_counts: dict[tuple[int, int], int] = {}
+        for verse in document.verses:
+            key = (verse.chapter, verse.verse)
+            header_counts[key] = header_counts.get(key, 0) + 1
+
+        for verse in document.verses:
+            for alignment in verse.alignments:
+                for reference in alignment.lxx_references:
+                    scalar += 1
+                    if reference.chapter is not None:
+                        explicit += 1
+                    if reference.subverse is not None:
+                        suffix += 1
+                    by_source[document.source_name] = (
+                        by_source.get(document.source_name, 0) + 1
+                    )
+                    key = (
+                        reference.chapter if reference.chapter is not None else verse.chapter,
+                        reference.verse,
+                    )
+                    matching_mt_headers = header_counts.get(key, 0)
+                    if matching_mt_headers == 0:
+                        zero += 1
+                    elif matching_mt_headers == 1:
+                        one += 1
+                    else:
+                        multiple += 1
+
+    return GreekReferenceAudit(
+        source_files=sources,
+        scalar_references=scalar,
+        explicit_chapters=explicit,
+        subverse_suffixes=suffix,
+        numeric_candidates_zero=zero,
+        numeric_candidates_one=one,
+        numeric_candidates_multiple=multiple,
+        by_source=tuple(sorted(by_source.items())),
+    )

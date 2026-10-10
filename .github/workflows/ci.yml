@@ -147,6 +147,28 @@ jobs:
                 [(r[0], r[1], r[2], r[3][:45], r[5]) for r in seen if r[3]][:12],
                 flush=True)
           PY
+      - name: Audit Greek scalar-reference numeric header candidates
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.reference_audit import audit_greek_references
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = Path('/tmp/catss-parallel')
+          audit = audit_greek_references(
+              parse_parallel_file(root / name)
+              for name in CATSS_PARALLEL_FILENAMES
+          )
+          assert audit.source_files == 46, audit
+          assert audit.scalar_references == 6218, audit
+          assert (
+              audit.numeric_candidates_zero
+              + audit.numeric_candidates_one
+              + audit.numeric_candidates_multiple
+          ) == audit.scalar_references
+          print('Greek source-only numeric candidate audit:', audit, flush=True)
+          PY
       - name: Assert export-orphan layout repair
         run: |
           python - <<'PY'
