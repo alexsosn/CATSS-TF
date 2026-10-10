@@ -62,14 +62,20 @@ or competing targets.
 
 ## Parent-model grounding
 
-The configured CenterBLC LXX parent contains first-class `subverse` structure.
-CATSS-TF's `TextFabricLxxProvider.get_span()` already accepts
-`(book, chapter, verse, subverse)` and resolves a subverse to its unique parent
-`subverse` node plus the words below it.
+The configured CenterBLC LXX parent contains a first-class `subverse` node
+type, but the pinned edition does **not** provide Josh 9:2a–f as six distinct
+nodes. Pinned-parent CI in [issue #91](https://github.com/alexsosn/CATSS-TF/issues/91)
+found Josh 9:2 verse node `661339`, 191 word slots, and exactly one unlabeled
+subverse node `630920`. Every word and the subverse itself have empty
+`F.subverse` labels. `get_span('Josh', 9, 2, letter)` correctly returns
+`None` for all `a..f`.
 
-Therefore no synthetic LXX nodes are needed. The range can be expanded deterministically
-to the six existing parent subverse spans 9:2a … 9:2f. The implementation gate must
-verify these six endpoints against the exact pinned CenterBLC/LXX release before merge.
+CATSS supplies a meaningful contextual reference range, but it cannot be
+projected onto six real nodes of this pinned LXX. Preserve the structured
+range in canonical CATSS TF; the LXX module must fail closed rather than
+invent nodes, collapse the six targets onto `630920`, or silently drop
+the reference. A future parent edition needs a new separately validated
+mapping strategy and pinned release.
 
 ## Projection consequences
 
