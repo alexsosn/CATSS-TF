@@ -43,6 +43,25 @@ jobs:
       - run: python -m twine check dist/*
       - run: python -m venv /tmp/catss-tf-release-smoke
       - run: /tmp/catss-tf-release-smoke/bin/pip install --no-deps dist/*.whl
+      - name: Clean wheel installation exercises GitHub backend extra
+        run: |
+          python -m venv /tmp/catss-tf-github-extra
+          /tmp/catss-tf-github-extra/bin/python -m pip install "dist/catss_tf-0.1.0-py3-none-any.whl[tf]"
+          /tmp/catss-tf-github-extra/bin/python - <<'PY'
+          import importlib.metadata
+
+          import github
+          from tf.capable import Capable
+
+          assert github.Github is not None
+          assert Capable('github').can('github')
+          dist = importlib.metadata.distribution('catss-tf')
+          assert any(
+              'text-fabric[github]' in req and 'extra == "tf"' in req
+              for req in (dist.requires or ())
+          ), dist.requires
+          print('clean_wheel_github_backend=True')
+          PY
       - run: /tmp/catss-tf-release-smoke/bin/catss-tf --version
       - run: >-
           /tmp/catss-tf-release-smoke/bin/python -c
