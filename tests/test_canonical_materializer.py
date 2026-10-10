@@ -144,13 +144,11 @@ HB3	QEOS [99]
     assert api.F.catss_line_no.v(source_line_nodes[0]) == 2
     assert api.F.catss_raw.v(source_line_nodes[0]) == "HB\tMH/ [2] {d}"
 
-    target = tuple(api.E.catss_reference_target.f(reference_nodes[0]))
-    assert len(target) == 1
-    assert api.F.otype.v(target[0]) == "verse"
-    assert api.F.verse.v(target[0]) == 2
-
+    # A matching source-header label is not a verified Greek destination.
     unresolved_ref = api.L.u(3, otype="reference")[0]
-    assert tuple(api.E.catss_reference_target.f(unresolved_ref)) == ()
+    assert api.F.catss_ref_verse.v(unresolved_ref) == 99
+    assert api.F.catss_raw.v(unresolved_ref) == "[99]"
+    assert "catss_reference_target" not in api.Eall()
 
 
 def test_node_type_interval_audit_rejects_interleaving() -> None:
@@ -281,8 +279,13 @@ def test_canonical_scalar_references_and_ranges_keep_separate_node_types(
     assert tuple(api.L.u(1, otype="reference_range")) == ()
     assert tuple(api.L.u(2, otype="reference_range")) == ranges
     assert tuple(api.L.u(2, otype="reference")) == ()
+    assert api.F.catss_ref_chapter.v(scalar[0]) == 9
     assert api.F.catss_ref_verse.v(scalar[0]) == 2
+    assert api.F.catss_ref_subverse.v(scalar[0]) == "a"
+    assert api.F.catss_raw.v(scalar[0]) == "[9:2a]"
     assert api.F.catss_range_end_subverse.v(ranges[0]) == "f"
+    # The MT-based JoshB 9:2 header is not a grounded Greek 9:2a target.
+    assert "catss_reference_target" not in api.Eall()
 
 
 def test_canonical_preserves_real_shape_retroversion_only_mt_with_unclassified_technique(
