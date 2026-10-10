@@ -103,3 +103,33 @@ CenterBLC/LXX 1935 has one unlabeled Josh 9:2 subverse, not six a–f nodes.
 
 This is a canonical-only representation of CATSS's own asserted semantics,
 not a change to the LXX parent node topology.
+
+## Canonical preservation vs. optional technique classification — real corpus gate
+
+The complete 46-file snapshot failed at `12.2Sam.par`, physical line 7070:
+`=;W/KL` ↔ `KAI\\ PA=S` (source-derived alignment
+`catss:12.2Sam.par:971b19685ad28e2c3558`). This row contains MT-B
+retroversion material but **no MT-A lexical material**; the Greek side
+has lexical material. The standalone corpus must preserve this witnessed
+alignment even though `derive_alignment_technique` correctly refuses
+to guess whether the Greek is an addition, minus or transposition.
+
+RED: on a synthetic `2Sam 7:19\n=;W/KL\tKAI\\ PA=S\n` require
+successful canonical materialization, one alignment slot, its raw provenance
+and MT-B retroversion annotation, zero fabricated MT elements, Greek
+elements intact, `catss_tt_status=unclassified` plus explicit reason,
+and **no** `catss_tt_addition_vs_mt`, `catss_tt_omission_vs_mt`, or
+other guessed technique facts. The technique TSV should contain only
+successfully classified rows; explicit failed count in the canonical summary
+and node feature must make incompleteness discoverable. Add a mixed
+success/failure regression and byte-determinism assertion.
+
+This is a separation-of-concerns fix, not a relaxation of the strict
+`derive_technique_state` API. Unknown technique must not block lossless
+canonical TF preservation, but must never be converted into false binary
+values or silently disappear. All parser/validation failures still fail
+closed before publishing. Complete CI must assert a nonzero and bounded
+unclassified count and the real 2 Samuel witness; discover and report the
+count rather than guessing it.
+
+Research → RED commit → implementation → full real-data gates → independent review.
