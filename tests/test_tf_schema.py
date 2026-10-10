@@ -11,6 +11,7 @@ from catss_tf.tf_schema import (
     TfAnchorEvent,
     TfMembership,
     TfModuleMetadata,
+    TfReferenceRangeEvent,
     TfSchemaError,
     compile_tf_features,
     lane_feature_name,
@@ -865,3 +866,77 @@ def test_distinct_mt_a_mt_b_payloads_coexist_query_natively() -> None:
     )
     assert compiled["catss_sem_distributive_mt_a_payload"] == {1: "A"}
     assert compiled["catss_sem_distributive_mt_b_payload"] == {1: "B"}
+
+
+def _range_member(
+    *,
+    node: int = 8,
+    alignment_id: str = "catss:06.JoshB.par:range",
+    member_i: int = 1,
+) -> TfReferenceRangeEvent:
+    return TfReferenceRangeEvent(
+        node=node,
+        source="06.JoshB.par",
+        alignment_id=alignment_id,
+        raw="[[9.2a-2f]]",
+        member_i=member_i,
+        member_n=6,
+        start_chapter=9,
+        start_verse=2,
+        start_subverse="a",
+        end_chapter=9,
+        end_verse=2,
+        end_subverse="f",
+    )
+
+
+def test_lxx_reference_range_features_are_query_native_on_parent_nodes() -> None:
+    features = compile_tf_features(
+        projection="lxx",
+        max_node=10,
+        memberships=(),
+        anchors=(),
+        reference_ranges=(_range_member(),),
+    )
+
+    assert features["catss_lxx_reference_range_id"] == {8: "catss:06.JoshB.par:range"}
+    assert features["catss_lxx_reference_range_raw"] == {8: "[[9.2a-2f]]"}
+    assert features["catss_lxx_reference_range_member_i"] == {8: 1}
+    assert features["catss_lxx_reference_range_member_n"] == {8: 6}
+    assert features["catss_lxx_reference_range_start_subverse"] == {8: "a"}
+    assert features["catss_lxx_reference_range_end_subverse"] == {8: "f"}
+    assert "otype" not in features
+    assert "oslots" not in features
+
+
+def test_lxx_reference_range_overlapping_parent_node_fails_closed() -> None:
+    first = _range_member()
+    second = _range_member(alignment_id="catss:06.JoshB.par:second")
+
+    with pytest.raises(TfSchemaError, match="reference_range_overlap"):
+        compile_tf_features(
+            projection="lxx",
+            max_node=10,
+            memberships=(),
+            anchors=(),
+            reference_ranges=(first, second),
+        )
+
+
+@pytest.mark.parametrize(
+    ("projection", "member_i", "error"),
+    (("bhsa", 1, "only valid in the LXX"), ("lxx", 0, "invalid reference range member")),
+)
+def test_reference_range_rejects_wrong_projection_or_member_index(
+    projection: Projection,
+    member_i: int,
+    error: str,
+) -> None:
+    with pytest.raises(TfSchemaError, match=error):
+        compile_tf_features(
+            projection=projection,
+            max_node=10,
+            memberships=(),
+            anchors=(),
+            reference_ranges=(_range_member(member_i=member_i),),
+        )

@@ -114,6 +114,27 @@ class LxxReferenceAnchor:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class LxxReferenceRangeMembership:
+    """One parent subverse member of a typed CATSS contextual-reference range."""
+
+    alignment_id: str
+    lxx_reference_node: int
+    reference_book: str
+    reference_chapter: int
+    reference_verse: int
+    reference_subverse: str
+    member_index: int
+    member_count: int
+    start_chapter: int
+    start_verse: int
+    start_subverse: str
+    end_chapter: int
+    end_verse: int
+    end_subverse: str
+    raw: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class LxxMappingFinding:
     """One explicit LXX resolution failure."""
 
@@ -143,6 +164,7 @@ class LxxMappingSummary:
     ambiguous_reference_groups: int
     word_mappings: int
     reference_anchors: int
+    reference_range_memberships: int
     reference_overrides: int
     normalization_errors: int
     parent_failures: int
@@ -158,6 +180,7 @@ class LxxMappingReport:
     summary: LxxMappingSummary
     word_mappings: tuple[LxxWordMapping, ...]
     reference_anchors: tuple[LxxReferenceAnchor, ...]
+    reference_range_memberships: tuple[LxxReferenceRangeMembership, ...]
     findings: tuple[LxxMappingFinding, ...]
     validation_findings: tuple[ValidationFinding, ...]
 
@@ -288,6 +311,7 @@ def resolve_lxx_documents(
 
     word_mappings: list[LxxWordMapping] = []
     anchors: list[LxxReferenceAnchor] = []
+    range_memberships: list[LxxReferenceRangeMembership] = []
     findings: list[LxxMappingFinding] = []
     validation_findings: list[ValidationFinding] = []
 
@@ -358,6 +382,32 @@ def resolve_lxx_documents(
         for verse in document.verses:
             default = default_lxx_reference(document.source_name, verse.chapter, verse.verse)
             for alignment in verse.alignments:
+                if alignment.lxx_reference_ranges:
+                    (
+                        range_reference_groups,
+                        range_resolved_groups,
+                        range_missing_groups,
+                        range_mismatched_groups,
+                        range_ambiguous_groups,
+                    ) = _resolve_reference_ranges(
+                        document.source_name,
+                        verse.chapter,
+                        verse.verse,
+                        alignment,
+                        default.book,
+                        default.chapter,
+                        provider,
+                        range_memberships,
+                        findings,
+                    )
+                    reference_groups += range_reference_groups
+                    resolved_reference_groups += range_resolved_groups
+                    missing_reference_groups += range_missing_groups
+                    mismatched_reference_groups += range_mismatched_groups
+                    ambiguous_reference_groups += range_ambiguous_groups
+                    reference_overrides += 1
+                    continue
+
                 reference, override, reference_finding = _alignment_reference(
                     document.source_name,
                     verse.chapter,
@@ -578,6 +628,7 @@ def resolve_lxx_documents(
         ambiguous_reference_groups=ambiguous_reference_groups,
         word_mappings=tuple(word_mappings),
         reference_anchors=tuple(anchors),
+        reference_range_memberships=tuple(range_memberships),
         reference_overrides=reference_overrides,
         normalization_errors=normalization_errors,
         parent_failures=0,
@@ -586,6 +637,122 @@ def resolve_lxx_documents(
         findings=tuple(findings),
         validation_findings=tuple(validation_findings),
     )
+
+
+def _resolve_reference_ranges(
+    source_name: str,
+    source_chapter: int,
+    source_verse: int,
+    alignment: AlignmentRecord,
+    default_book: str,
+    default_chapter: int,
+    provider: LxxVerseProvider,
+    memberships: list[LxxReferenceRangeMembership],
+    findings: list[LxxMappingFinding],
+) -> tuple[int, int, int, int, int]:
+    """Resolve one typed same-verse subverse range atomically."""
+
+    if len(alignment.lxx_reference_ranges) != 1 or alignment.lxx_references or alignment.lxx_tokens:
+        findings.append(
+            LxxMappingFinding(
+                code="invalid_lxx_reference_range_context",
+                source_name=source_name,
+                chapter=source_chapter,
+                verse=source_verse,
+                alignment_id=alignment.alignment_id,
+                catss_value=alignment.lxx_raw,
+                parent_value=None,
+                message="typed Greek reference range must be the alignment's only Greek reference",
+            )
+        )
+        return 1, 0, 0, 1, 0
+
+    reference = alignment.lxx_reference_ranges[0]
+    chapter = default_chapter if reference.start_chapter is None else reference.start_chapter
+    end_chapter = chapter if reference.end_chapter is None else reference.end_chapter
+    if (
+        end_chapter != chapter
+        or reference.end_verse != reference.start_verse
+        or len(reference.start_subverse) != 1
+        or len(reference.end_subverse) != 1
+    ):
+        findings.append(
+            LxxMappingFinding(
+                code="unsupported_lxx_reference_range",
+                source_name=source_name,
+                chapter=source_chapter,
+                verse=source_verse,
+                alignment_id=alignment.alignment_id,
+                catss_value=reference.raw,
+                parent_value=None,
+                message="only same-verse alphabetic CATSS subverse ranges are supported",
+            )
+        )
+        return 1, 0, 0, 1, 0
+
+    subverses = tuple(
+        chr(code) for code in range(ord(reference.start_subverse), ord(reference.end_subverse) + 1)
+    )
+    pending: list[LxxReferenceRangeMembership] = []
+    seen_nodes: set[int] = set()
+    for index, subverse in enumerate(subverses, start=1):
+        span = provider.get_span(
+            default_book,
+            chapter,
+            reference.start_verse,
+            subverse,
+        )
+        if span is None:
+            findings.append(
+                LxxMappingFinding(
+                    code="missing_lxx_reference_range_member",
+                    source_name=source_name,
+                    chapter=chapter,
+                    verse=reference.start_verse,
+                    alignment_id=alignment.alignment_id,
+                    catss_value=f"{reference.raw} member {subverse}",
+                    parent_value=None,
+                    message="CenterBLC parent has no matching subverse in CATSS reference range",
+                )
+            )
+            return 1, 0, 1, 0, 0
+        if span.node in seen_nodes:
+            findings.append(
+                LxxMappingFinding(
+                    code="ambiguous_lxx_reference_range_member",
+                    source_name=source_name,
+                    chapter=chapter,
+                    verse=reference.start_verse,
+                    alignment_id=alignment.alignment_id,
+                    catss_value=f"{reference.raw} member {subverse}",
+                    parent_value=str(span.node),
+                    message="distinct CATSS range labels resolve to the same parent subverse node",
+                )
+            )
+            return 1, 0, 0, 0, 1
+        seen_nodes.add(span.node)
+        pending.append(
+            LxxReferenceRangeMembership(
+                alignment_id=alignment.alignment_id,
+                lxx_reference_node=span.node,
+                reference_book=default_book,
+                reference_chapter=chapter,
+                reference_verse=reference.start_verse,
+                reference_subverse=subverse,
+                member_index=index,
+                member_count=len(subverses),
+                start_chapter=chapter,
+                start_verse=reference.start_verse,
+                start_subverse=reference.start_subverse,
+                end_chapter=end_chapter,
+                end_verse=reference.end_verse,
+                end_subverse=reference.end_subverse,
+                raw=reference.raw,
+            )
+        )
+
+    memberships.extend(pending)
+    return 1, 1, 0, 0, 0
 
 
 def _alignment_reference(
@@ -748,6 +915,7 @@ def _report(
     ambiguous_reference_groups: int = 0,
     word_mappings: tuple[LxxWordMapping, ...] = (),
     reference_anchors: tuple[LxxReferenceAnchor, ...] = (),
+    reference_range_memberships: tuple[LxxReferenceRangeMembership, ...] = (),
     reference_overrides: int = 0,
     normalization_errors: int = 0,
     parent_failures: int = 0,
@@ -770,6 +938,7 @@ def _report(
             ambiguous_reference_groups=ambiguous_reference_groups,
             word_mappings=len(word_mappings),
             reference_anchors=len(reference_anchors),
+            reference_range_memberships=len(reference_range_memberships),
             reference_overrides=reference_overrides,
             normalization_errors=normalization_errors,
             parent_failures=parent_failures,
@@ -779,6 +948,7 @@ def _report(
         ),
         word_mappings=word_mappings,
         reference_anchors=reference_anchors,
+        reference_range_memberships=reference_range_memberships,
         findings=findings,
         validation_findings=validation_findings,
     )
