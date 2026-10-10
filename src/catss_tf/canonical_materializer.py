@@ -441,7 +441,6 @@ def _add_structural_nodes(
             )
 
 
-
 def _add_detail_nodes(
     builder: _GraphBuilder,
     contexts: list[_AlignmentContext],
