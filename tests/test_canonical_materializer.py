@@ -382,6 +382,8 @@ def test_exodus_corrupt_header_blank_lines_survive_canonical_tf_round_trip(
     assert tuple(api.F.catss_line_no.v(node) for node in source_line_nodes) == tuple(range(2, 9))
     assert tuple(api.F.catss_raw.v(node) for node in source_line_nodes) == raw_lines
     assert tuple(api.F.otype.s("verse")) and len(tuple(api.F.otype.s("verse"))) == 1
+
+
 def test_jonah_mixed_apparent_minus_targets_first_greek_element_in_canonical_tf(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -439,4 +441,3 @@ def test_unscoped_apparent_minus_never_gets_phantom_canonical_target(
     assert len(annotations) == 1
     if "catss_annotation_target" in api.Eall():
         assert tuple(api.E.catss_annotation_target.f(annotations[0])) == ()
-
