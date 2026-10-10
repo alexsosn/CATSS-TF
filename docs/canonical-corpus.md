@@ -180,6 +180,37 @@ license to emit `catss_reference_target`: Greek/MT versification and
 subverse identities still require pinned parent evidence (issue #96).
 No corpus data or generated corpus is distributed by this diagnostic.
 
+## Checking exact pinned LXX parent span availability
+
+After supplying a validated `TextFabricLxxProvider` for the **pinned**
+CenterBLC/LXX 1935 v1.0.1 corpus, researchers can audit which explicit
+CATSS Greek references have an existing parent verse or labeled subverse
+span:
+
+```python
+from pathlib import Path
+from catss_tf.parser import parse_parallel_file
+from catss_tf.parent_reference_audit import audit_lxx_parent_span_availability
+from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+source_root = Path("./data/catss-parallel")
+audit = audit_lxx_parent_span_availability(
+    (parse_parallel_file(source_root / n) for n in CATSS_PARALLEL_FILENAMES),
+    provider,  # configured, pinned TextFabricLxxProvider
+)
+print(audit)
+```
+
+The audit validates the provider's parent metadata and refuses to silently
+map `Josh 9:2a` to the unlabeled `Josh 9:2` span. Unsupported and
+unknown CATSS sources are counted separately. Missing parent spans
+remain missing, and the report does **not** record parent word/node IDs.
+A parent span's *existence* is **not evidence that CATSS Greek tokens
+align** with that parent span; no `catss_reference_target` edges are
+created. The previous MT-header numeric candidate audit is independent
+of this Greek-parent availability study. See issue #96 for genuine
+textually verified reference destinations.
+
 ## Reference edges
 
 A `reference` node records the exact scalar Greek-side chapter, verse, subverse
