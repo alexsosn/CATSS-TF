@@ -931,9 +931,17 @@ jobs:
           assert result.summary.source_files == 46
           assert result.summary.alignments > 300_000
           assert result.summary.reference_ranges == 1, result.summary.reference_ranges
+          # Preserve all CATSS alignments without guessing formal translation technique.
+          assert 1 <= result.summary.unclassified_techniques < result.summary.alignments
           assert result.summary.alignment_slots == result.summary.alignments
           assert result.summary.audit_ok
           assert (output / 'otype.tf').is_file()
+          assert (output / 'catss_tt_unclassified_reason.tf').is_file()
+          assert (output / 'catss_tt_status.tf').is_file()
+          unclassified_rows = (output / 'catss_tt_unclassified_reason.tf').read_text(
+              encoding='utf-8'
+          )
+          assert 'Hebrew-empty Greek alignment' in unclassified_rows
           assert (output / 'oslots.tf').is_file()
           with (output / 'catss-diagnostics.tsv').open(
               encoding='utf-8', newline=''
