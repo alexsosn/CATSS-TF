@@ -44,7 +44,8 @@ Additional node types are:
 | `mt_element` | one parsed MT-side lexical element |
 | `lxx_element` | one parsed Greek lexical element |
 | `annotation` | one typed CATSS annotation/siglum occurrence |
-| `reference` | one structured Greek reference override |
+| `reference` | one structured scalar Greek reference override |
+| `reference_range` | one typed contextual Greek reference range with explicit start/end chapter, verse, and subverse |
 | `source_line` | one physical CATSS source line owned by the alignment |
 
 Every non-slot node is connected through `oslots` to the alignment slot or slots it
@@ -82,6 +83,13 @@ strings.
 A `reference` node records the structured chapter/verse/subverse information parsed
 from CATSS. When its target resolves uniquely to a verse in the same CATSS source,
 `catss_reference_target` connects the reference node to that verse node.
+
+A typed range such as `[[9.2a-2f]]` is kept as a separate `reference_range`
+node attached to its alignment slot. Query-native `catss_range_start_*`
+and `catss_range_end_*` features and `catss_raw` preserve both endpoints
+without creating six fictitious LXX parent nodes or reducing the range to
+scalar endpoints. As with scalar references, no ambiguous target edge is
+fabricated.
 
 No edge is fabricated when the target is absent or ambiguous. CATSS transposition
 markers currently do not carry a deterministic target alignment in the parser IR, so
@@ -128,7 +136,8 @@ is published. It checks:
 
 - exactly one alignment slot per parser IR alignment;
 - exact stable-ID order and uniqueness;
-- exact counts of MT elements, LXX elements, annotations, references and source lines;
+- exact counts of MT elements, LXX elements, annotations, scalar references,
+  contextual reference ranges and source lines;
 - no child nodes on a lexical side that is actually empty;
 - every non-slot node has valid `oslots`;
 - source manifest order matches the parsed documents.
