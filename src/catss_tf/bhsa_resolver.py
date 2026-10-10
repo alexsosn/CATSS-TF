@@ -327,7 +327,9 @@ def resolve_bhsa_document(
             alignment
             for alignment in verse.alignments
             if any(
-                annotation.side == "mt_a" and annotation.kind == "apparent_minus"
+                annotation.side == "mt_a"
+                and annotation.kind == "apparent_minus"
+                and annotation.target_side is None
                 for annotation in alignment.annotations
             )
         )
