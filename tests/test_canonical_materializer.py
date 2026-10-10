@@ -507,3 +507,20 @@ def test_mt_b_only_reconstruction_carriers_are_query_native_not_mt_words(
     assert first_files == second_files
     for name in first_files:
         assert (tmp_path / "catss" / name).read_bytes() == (tmp_path / "catss2" / name).read_bytes()
+
+
+def test_mt_b_carriers_do_not_capture_greek_empty_placeholder_rows(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Issue #59 is only the MT-A-empty / Greek-nonempty source subset."""
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "12.2Sam.par",
+        "2Sam 15:18\n=;W/KL\t---\n",
+    )
+    materialize_corpus(source, tmp_path / "catss")
+    api = _load_corpus(tmp_path)
+    assert tuple(api.F.otype.s("mt_element")) == ()
+    assert tuple(api.F.otype.s("lxx_element")) == ()
+    assert tuple(api.F.otype.s("mt_b_carrier")) == ()
