@@ -77,3 +77,29 @@ new exact head before merge.
 Merge only after exact-head green CI and no blocking adversarial findings. Close #40
 through the PR. Do not fold #44, #45, or Agora #16 into this PR; continue those as
 independent tickets after #40.
+
+## Gate 1b — typed contextual range integration (#88 / #91)
+
+After merging the independently green `issue-88-contextual-reference-ranges`
+branch into this canonical branch, commit a RED regression before production edits
+requiring a `06.JoshB.par`, JoshB 9:2 `[[9.2a-2f]]` row to become
+one standalone `reference_range` node connected through `oslots` to the
+original alignment slot. The node must preserve its exact raw spelling and all
+six typed start/end values (chapter, verse, subverse); it must not become two
+scalar `reference` nodes, fabricate six parent LXX subverse nodes, invent a
+`catss_reference_target` edge when the source target verse is ambiguous, or
+create Hebrew/Greek lexical elements from the structural carrier.
+
+Preserve exact alignment ID, source-line provenance and typed annotation.
+Assert the `reference_range` node type occupies a contiguous node interval,
+summary counts, audit invariants, and idempotent deterministic bundle output.
+Check a mixed source containing both scalar reference and typed range, so
+reference interval allocation remains correct.
+
+The complete 46-file upstream snapshot must contain exactly one
+`[[9.2a-2f]]` typed range and one canonical `reference_range` node.
+Keep the original LXX projection's missing-parent failure: pinned
+CenterBLC/LXX 1935 has one unlabeled Josh 9:2 subverse, not six a–f nodes.
+
+This is a canonical-only representation of CATSS's own asserted semantics,
+not a change to the LXX parent node topology.
