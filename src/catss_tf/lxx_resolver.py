@@ -43,7 +43,7 @@ _CATSS_GREEK = {
     "W": "ω",
 }
 _CATSS_DIACRITICS = frozenset({"(", ")", "/", "\\", "=", "+", "|", "*"})
-_APOSTROPHES = frozenset({"'", "ʼ", "’", "᾽"})
+_APOSTROPHES = frozenset({"'", "ʼ", "’", "᾽", "᾿"})
 _EMPTY_ALIGNMENT_MESSAGE = "Greek-empty alignment has no recognized empty-row semantics"
 
 
