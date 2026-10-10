@@ -466,6 +466,7 @@ def test_mt_b_only_reconstruction_carriers_are_query_native_not_mt_words(
     result = materialize_corpus(source, tmp_path / "catss")
     assert result.summary.alignments == 5
     assert result.summary.mt_elements == 1
+    assert result.summary.mt_b_carriers == 4
     assert result.summary.audit_ok
 
     api = _load_corpus(tmp_path)

@@ -39,7 +39,8 @@ reconstruction carrier entity** when MT-A is empty.
 ## Design decision — typed carrier, not fabricated lexical element
 
 Add one standalone `mt_b_carrier` node **only** for an alignment that has
-`mt_count == 0` and a non-null `mt_col_b`. It receives the same single
+`mt_count == 0`, `lxx_count > 0`, and a non-null `mt_col_b`.
+Greek-empty carrier/placeholder groups are deliberately excluded. It receives the same single
 `oslots` alignment slot, the **verbatim** column-B payload as
 `catss_mt_b_raw`, and the parser's `catss_retro_kind`. It is not named
 `mt_element`, has no `catss_text` pretending `=v` is a Hebrew word, and
@@ -64,3 +65,19 @@ generated TF corpus, or third-party parent data is copied into this repo.
 Normal CI uses small fragments only, and opt-in complete-CATSS CI must
 assert exactly six carrier nodes, with their source distribution and
 nonlexical status. The output remains a user-local derivative.
+
+## R59-2 — real-data adversarial failure of an overbroad predicate
+
+The first GREEN implementation included all MT-A-empty alignments with non-null
+column B. Running the full 46-file audit on PR #97 at `b58829c`
+reported **8,887** such nodes instead of the issue's six, which is
+strong evidence that column B can occur on Greek-empty carriers too.
+Therefore the first implementation must **not** be merged.
+
+After adding a Greek-empty synthetic `=;W/KL\t---` RED regression on
+`774f111`, Python 3.13 CI logged 416 passed / one intentional failure:
+it emitted `mt_b_carrier` node 5 when none should exist.
+The corrected scoped predicate requires non-empty *Greek lexical tokens*
+(`lxx_count > 0`). The real snapshot still needs to establish that
+this narrower criterion corresponds to the six issue-grounded rows;
+do not assume it does until complete CI is green.

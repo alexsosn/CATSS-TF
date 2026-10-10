@@ -24,8 +24,11 @@ intentional test failure. Keep checks from RED from accidentally merging.
 ## GREEN implementation
 
 Add a contiguous type block for `mt_b_carrier` to
-`_add_detail_nodes`; validate one carrier for every `mt_count==0`
-and `mt_col_b is not None` in `_audit_graph`. The node has one
+`_add_detail_nodes`; validate one carrier for every `mt_count==0`,
+`lxx_count>0` and `mt_col_b is not None` in `_audit_graph`.
+The prior overbroad condition produced 8,887 false-positive carriers on
+the actual 46-file source; a Greek-empty RED counterexample must fail
+before this scope correction. The node has one
 alignment slot, raw B string and retro kind, no purported Hebrew lexical
 token. Update researcher docs, not generic parser or parent projections.
 Do not alter the 349,670 source alignment count, 350,219 genuine MT

@@ -481,11 +481,16 @@ def _add_detail_nodes(
             builder.feature("catss_aramaic_section", node, int(reading.aramaic_section))
 
     # Column B contains reconstructed evidence, *not* another MT-A word.
-    # When MT-A is empty, preserve the standalone carrier as its own TF
-    # entity; =v, for example, is a vocalization marker rather than a word.
+    # Only the issue-59 MT-A-empty/Greek-nonempty group gets carrier nodes.
+    # Greek-empty placeholders are not reconstructed lexical correspondences.
+    # =v, for example, is a vocalization marker rather than a word.
     for context in contexts:
         alignment = context.alignment
-        if alignment.mt_count != 0 or alignment.mt_col_b is None:
+        if (
+            alignment.mt_count != 0
+            or alignment.lxx_count == 0
+            or alignment.mt_col_b is None
+        ):
             continue
         node = builder.add_node("mt_b_carrier", (context.slot,))
         builder.feature("catss_mt_b_raw", node, alignment.mt_col_b)
@@ -759,7 +764,7 @@ def _audit_graph(
             len(alignment.mt_readings) for _source, _verse, alignment in expected_contexts
         ),
         "mt_b_carrier": sum(
-            alignment.mt_count == 0 and alignment.mt_col_b is not None
+            alignment.mt_count == 0 and alignment.lxx_count > 0 and alignment.mt_col_b is not None
             for _source, _verse, alignment in expected_contexts
         ),
         "lxx_element": sum(
@@ -829,7 +834,11 @@ def _audit_graph(
     for slot, (_source, _verse, alignment) in enumerate(expected_contexts, start=1):
         expected_counts = {
             "mt_element": len(alignment.mt_readings),
-            "mt_b_carrier": int(alignment.mt_count == 0 and alignment.mt_col_b is not None),
+            "mt_b_carrier": int(
+                alignment.mt_count == 0
+                and alignment.lxx_count > 0
+                and alignment.mt_col_b is not None
+            ),
             "lxx_element": len(alignment.lxx_tokens),
             "annotation": len(alignment.annotations),
             "reference": len(alignment.lxx_references),
@@ -852,6 +861,7 @@ def _audit_graph(
         alignment = expected_contexts[slot - 1][2]
         if (
             alignment.mt_count != 0
+            or alignment.lxx_count == 0
             or alignment.mt_col_b is None
             or graph.node_features.get("catss_mt_b_raw", {}).get(node) != alignment.mt_col_b
             or graph.node_features.get("catss_retro_kind", {}).get(node)
