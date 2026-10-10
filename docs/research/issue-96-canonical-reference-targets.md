@@ -111,3 +111,40 @@ A unique numeric candidate is **not** a verified Greek textual target:
 the function creates no edges and never maps subverse suffixes onto
 unnumbered CATSS section nodes. Counts are read-only research evidence
 that can guide future pinned CenterBLC/LXX validation.
+
+## R96-4 — real 46-file reference inventory (2026-10-10)
+
+The opt-in pinned-source CI audit on exact head `a8ec254c7d0a5a7d654a51a6d48dddd602203f67`
+executed `audit_greek_references()` over all **46** CATSS parallel
+source files (parsed once per file). Actual result:
+
+| Field | Value |
+| --- | ---: |
+| `scalar_references` | 6,218 |
+| `explicit_chapters` | 6 |
+| `subverse_suffixes` | 424 |
+| `numeric_candidates_zero` | 1,749 |
+| `numeric_candidates_one` | 4,433 |
+| `numeric_candidates_multiple` | 36 |
+
+All 6,218 references are accounted for by the disjoint three-way
+classification. Large source-specific concentrations include
+`45.DanielOG.par` (2,021 references), `46.DanielTh.par` (1,366),
+`13.1Kings.par` (966), `04.Num.par` (504) and `27.Sirach.par`
+(275). Source detail is reproducible from `report.by_source`.
+
+**Interpretation caution:** the 4,433 single-number matches are
+precisely the potentially seductive false-positive class: one Hebrew
+source header happens to share a chapter/verse number with the
+*Greek* reference, but this says nothing about Greek verse
+identity, changes of versification, or subverse membership.
+The 36 multiple-numeric-header cases also demonstrate non-uniqueness
+inside the CATSS source organization itself. At least 1,749 have
+no MT-source-header numeric candidate at all. No semantic
+`catss_reference_target` edges were introduced; the canonical 46-file
+TF round-trip remains valid and has **zero** such inferred edges.
+
+This study is **source-only**. It does not yet compare the 6,218
+references against pinned Greek parent text, and cannot establish
+a verified target count. Issue #96 stays open for that separate
+parent-grounded decision.
