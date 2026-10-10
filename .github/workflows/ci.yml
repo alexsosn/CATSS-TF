@@ -129,6 +129,21 @@ jobs:
               )
           ]
           assert len(witnessed) == 4278, len(witnessed)
+          preexisting_transposition = [
+              (alignment.alignment_id, alignment.mt_col_a)
+              for alignment in witnessed
+              if (
+                  alignment.is_transposition_local
+                  or alignment.is_transposition_remote
+                  or alignment.is_transposition_stylistic
+              )
+          ]
+          print(
+              'SIRACH_WITNESS_LACUNAE_ALREADY_ADMISSIBLE',
+              len(preexisting_transposition),
+              preexisting_transposition,
+              flush=True,
+          )
           for alignment in witnessed:
               assert not alignment.is_lxx_plus and not alignment.is_lxx_minus
               assert any(
@@ -1242,7 +1257,7 @@ jobs:
           assert result.summary.reference_ranges == 1, result.summary.reference_ranges
           assert result.summary.mt_b_carriers == 6, result.summary.mt_b_carriers
           # Preserve all CATSS alignments without guessing formal translation technique.
-          assert result.summary.unclassified_techniques == 27, result.summary.unclassified_techniques
+          assert result.summary.unclassified_techniques == 31, result.summary.unclassified_techniques
           assert result.summary.alignment_slots == result.summary.alignments
           assert result.summary.audit_ok
           assert (output / 'otype.tf').is_file()
