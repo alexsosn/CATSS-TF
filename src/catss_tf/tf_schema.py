@@ -71,6 +71,24 @@ class TfAnchorEvent:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class TfReferenceRangeEvent:
+    """One typed CATSS LXX contextual-reference range member on a parent subverse node."""
+
+    node: int
+    source: str
+    alignment_id: str
+    raw: str
+    member_i: int
+    member_n: int
+    start_chapter: int
+    start_verse: int
+    start_subverse: str
+    end_chapter: int
+    end_verse: int
+    end_subverse: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class TfModuleMetadata:
     """Generic metadata written to every CATSS Text-Fabric feature."""
 
@@ -223,6 +241,20 @@ _ANCHOR_SPECS: dict[str, tuple[ValueType, str]] = {
     ),
 }
 
+_REFERENCE_RANGE_SPECS: dict[str, tuple[ValueType, str]] = {
+    "catss_lxx_reference_range_id": ("str", "stable CATSS alignment identity for this range"),
+    "catss_lxx_reference_range_source": ("str", "CATSS source filename for this range"),
+    "catss_lxx_reference_range_raw": ("str", "raw CATSS contextual-reference range spelling"),
+    "catss_lxx_reference_range_member_i": ("int", "1-based member ordinal within the range"),
+    "catss_lxx_reference_range_member_n": ("int", "number of parent subverse members in range"),
+    "catss_lxx_reference_range_start_chapter": ("int", "range start chapter"),
+    "catss_lxx_reference_range_start_verse": ("int", "range start verse"),
+    "catss_lxx_reference_range_start_subverse": ("str", "range start subverse"),
+    "catss_lxx_reference_range_end_chapter": ("int", "range end chapter"),
+    "catss_lxx_reference_range_end_verse": ("int", "range end verse"),
+    "catss_lxx_reference_range_end_subverse": ("str", "range end subverse"),
+}
+
 
 def lane_feature_name(base_name: str, lane: int) -> str:
     """Return the feature name for one of the two explicit membership lanes."""
@@ -317,6 +349,9 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
         )
 
     for name, (value_type, description) in _ANCHOR_SPECS.items():
+        specs[name] = TfFeatureSpec(name, value_type, description)
+
+    for name, (value_type, description) in _REFERENCE_RANGE_SPECS.items():
         specs[name] = TfFeatureSpec(name, value_type, description)
 
     return specs
@@ -441,6 +476,7 @@ def compile_tf_features(
     max_node: int,
     memberships: tuple[TfMembership, ...],
     anchors: tuple[TfAnchorEvent, ...],
+    reference_ranges: tuple[TfReferenceRangeEvent, ...] = (),
 ) -> dict[str, dict[int, FeatureValue]]:
     """Compile generic resolver facts into sparse query-native TF node features."""
 
@@ -533,6 +569,39 @@ def compile_tf_features(
             _increment(features, "catss_lxx_minus_n", anchor.node, 1)
         else:
             _increment(features, "catss_transposition_placeholder_n", anchor.node, 1)
+
+    seen_range_nodes: set[int] = set()
+    for event in reference_ranges:
+        if projection != "lxx":
+            raise TfSchemaError("contextual-reference ranges are only valid in the LXX projection")
+        _validate_parent_node(max_node, event.node)
+        if event.source not in _SOURCE_RANK:
+            raise TfSchemaError(f"unknown CATSS source {event.source!r}")
+        _validate_alignment_source(event.source, event.alignment_id)
+        if event.node in seen_range_nodes:
+            raise TfSchemaError(
+                "reference_range_overlap: "
+                f"parent node {event.node} carries more than one CATSS reference range"
+            )
+        seen_range_nodes.add(event.node)
+        if event.member_n < 1 or not (1 <= event.member_i <= event.member_n):
+            raise TfSchemaError(f"invalid reference range member {event.member_i}/{event.member_n}")
+
+        values: dict[str, FeatureValue] = {
+            "catss_lxx_reference_range_id": event.alignment_id,
+            "catss_lxx_reference_range_source": event.source,
+            "catss_lxx_reference_range_raw": event.raw,
+            "catss_lxx_reference_range_member_i": event.member_i,
+            "catss_lxx_reference_range_member_n": event.member_n,
+            "catss_lxx_reference_range_start_chapter": event.start_chapter,
+            "catss_lxx_reference_range_start_verse": event.start_verse,
+            "catss_lxx_reference_range_start_subverse": event.start_subverse,
+            "catss_lxx_reference_range_end_chapter": event.end_chapter,
+            "catss_lxx_reference_range_end_verse": event.end_verse,
+            "catss_lxx_reference_range_end_subverse": event.end_subverse,
+        }
+        for name, value in values.items():
+            _put(features, name, event.node, value)
 
     return features
 

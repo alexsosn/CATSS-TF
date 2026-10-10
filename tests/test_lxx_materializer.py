@@ -285,6 +285,61 @@ def test_mt_apparent_minus_is_query_native_on_lxx_words(
     assert not plus_path.exists() or "1\t1" not in plus_path.read_text(encoding="utf-8")
 
 
+def test_contextual_reference_range_is_query_native_on_parent_subverse_nodes(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "06.JoshB.par",
+        "JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        tuple(
+            _span(
+                "καί",
+                book="Josh",
+                chapter=9,
+                verse=2,
+                subverse=subverse,
+                node=640000 + index,
+                start_node=302000 + index,
+            )
+            for index, subverse in enumerate("abcdef", start=1)
+        )
+    )
+
+    result = materialize_lxx(source, output, provider=provider)
+
+    assert result.summary.word_mappings == 0
+    assert result.summary.reference_anchors == 0
+    assert result.summary.reference_range_memberships == 6
+    assert not (output / "otype.tf").exists()
+    assert not (output / "oslots.tf").exists()
+
+    alignment_id = _read_tsv(output / "catss-alignments.tsv")[0]["alignment_id"]
+    expected = {
+        "catss_lxx_reference_range_id.tf": alignment_id,
+        "catss_lxx_reference_range_raw.tf": "[[9.2a-2f]]",
+        "catss_lxx_reference_range_member_n.tf": "6",
+        "catss_lxx_reference_range_start_chapter.tf": "9",
+        "catss_lxx_reference_range_start_verse.tf": "2",
+        "catss_lxx_reference_range_start_subverse.tf": "a",
+        "catss_lxx_reference_range_end_chapter.tf": "9",
+        "catss_lxx_reference_range_end_verse.tf": "2",
+        "catss_lxx_reference_range_end_subverse.tf": "f",
+    }
+    for filename, value in expected.items():
+        payload = (output / filename).read_text(encoding="utf-8")
+        for node in range(640001, 640007):
+            assert f"{node}\t{value}" in payload
+
+    member_i = (output / "catss_lxx_reference_range_member_i.tf").read_text(encoding="utf-8")
+    for index, node in enumerate(range(640001, 640007), start=1):
+        assert f"{node}\t{index}" in member_i
+
+
 def test_transposition_alignment_and_carrier_use_two_scalar_lanes(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -539,3 +594,48 @@ def test_lxx_does_not_project_mt_scoped_annotation_onto_greek_word(
     materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
 
     assert not (output / "catss_distributive_payload.tf").exists()
+
+
+def test_1esdr_restored_greek_token_projects_to_real_parent_word(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "17.1Esdras.par",
+        "1Esdr 6:4\nL/KM\t[e5.3]\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        (
+            _span(
+                "τίνος",
+                "ὑμῖν",
+                "συντάξαντος",
+                book="1Esdr",
+                chapter=6,
+                verse=4,
+                node=900604,
+                start_node=294470,
+            ),
+        )
+    )
+
+    result = materialize_lxx(source, output, provider=provider)
+
+    assert result.summary.word_mappings == 1
+    assert result.summary.reference_anchors == 0
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert [(row["parent_node"], row["lxx_i"], row["mapping_kind"]) for row in mappings] == [
+        ("294471", "1", "transposition_alignment")
+    ]
+    assert _read_tsv(output / "catss-anchors.tsv") == []
+
+    repair = (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_source_repair_lxx.tf").read_text(encoding="utf-8")
+    payload = (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
+    scoped_payload = (output / "catss_sem_source_repair_lxx_payload.tf").read_text(encoding="utf-8")
+    assert "294471\t1" in repair
+    assert "294471\t1" in scoped
+    assert "294471\t{..^U(MI=N} [e5.3]" in payload
+    assert "294471\t{..^U(MI=N} [e5.3]" in scoped_payload

@@ -6,12 +6,16 @@ supported Text-Fabric parents.
 
 ## 1. Install
 
-From a released wheel/package:
+From the current source (including GitHub-capable Text-Fabric):
 
 ```sh
 pip install \
-  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
+  "catss-tf[tf] @ git+https://github.com/alexsosn/CATSS-TF.git"
 ```
+
+The previously published v0.1.0 wheel has older dependency metadata.
+For that wheel, also install `text-fabric[github]>=13.1,<14` explicitly
+before downloading pinned BHSA/LXX parents. These corpora are not included.
 
 Verify:
 
@@ -139,6 +143,16 @@ result = materialize_lxx(
 )
 print(result.summary)
 ```
+
+**Limitation for the complete current CATSS snapshot:** JoshB 9:2 contains
+`[[9.2a-2f]]`, but the supported CenterBLC/LXX release has only one
+unlabeled Josh 9:2 subverse node. After contextual-range support is enabled,
+materializing the *entire* CATSS snapshot against this pinned LXX release
+fails with `missing_lxx_reference_range_member`, and no partial module is
+published. Synthetic range tests demonstrate the feature contract only;
+they do not establish that the pinned parent can represent these six targets.
+Preservation in the canonical corpus is tracked by #40 / PR #47.
+See [special notation](special-notation.md#contextual-greek-reference-ranges).
 
 ## 5. Compare both projections
 

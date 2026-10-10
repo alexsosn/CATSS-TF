@@ -43,12 +43,31 @@ jobs:
       - run: python -m twine check dist/*
       - run: python -m venv /tmp/catss-tf-release-smoke
       - run: /tmp/catss-tf-release-smoke/bin/pip install --no-deps dist/*.whl
+      - name: Clean wheel installation exercises GitHub backend extra
+        run: |
+          python -m venv /tmp/catss-tf-github-extra
+          /tmp/catss-tf-github-extra/bin/python -m pip install "dist/catss_tf-0.1.0-py3-none-any.whl[tf]"
+          /tmp/catss-tf-github-extra/bin/python - <<'PY'
+          import importlib.metadata
+
+          import github
+          from tf.capable import Capable
+
+          assert github.Github is not None
+          assert Capable('github').can('github')
+          dist = importlib.metadata.distribution('catss-tf')
+          assert any(
+              'text-fabric[github]' in req and 'extra == "tf"' in req
+              for req in (dist.requires or ())
+          ), dist.requires
+          print('clean_wheel_github_backend=True')
+          PY
       - run: /tmp/catss-tf-release-smoke/bin/catss-tf --version
       - run: >-
           /tmp/catss-tf-release-smoke/bin/python -c
-          "import catss_tf; from catss_tf import materialize_bhsa, materialize_corpus,
-          materialize_lxx, compare_projection_bundles, TextFabricBhsaProvider,
-          TextFabricLxxProvider; assert catss_tf.__version__ == '0.1.0'"
+          "import catss_tf; from catss_tf import materialize_bhsa, materialize_lxx,
+          compare_projection_bundles, TextFabricBhsaProvider, TextFabricLxxProvider;
+          assert catss_tf.__version__ == '0.1.0'"
 
 
   complete-catss-audit:
@@ -74,6 +93,116 @@ jobs:
               url = f'{CCAT_PARALLEL_BASE_URL}/{name}'
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
+          PY
+      - name: Assert export-orphan layout repair
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          no_tab_physical = []
+          unsplit_alignments = []
+          unsplit_diagnostics = []
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              covered = []
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      covered.extend(alignment.source_lines)
+                      if not alignment.column_split:
+                          unsplit_alignments.append(
+                              (name, verse.header_raw, alignment.source_lines, alignment.raw_lines)
+                          )
+                      for line_no, raw_line in zip(
+                          alignment.source_lines,
+                          alignment.raw_lines,
+                      ):
+                          if '\t' not in raw_line:
+                              no_tab_physical.append(
+                                  (
+                                      name,
+                                      verse.header_raw,
+                                      line_no,
+                                      raw_line,
+                                      alignment.column_split,
+                                      alignment.source_lines,
+                                  )
+                              )
+              unsplit_diagnostics.extend(
+                  (name, diagnostic.line_no, diagnostic.raw_line)
+                  for diagnostic in document.diagnostics
+                  if diagnostic.code == 'unsplit_row'
+              )
+              assert len(covered) == len(set(covered)), (name, 'duplicate source lines')
+              assert sorted(covered) == sorted(document.data_line_numbers), (
+                  name,
+                  set(document.data_line_numbers) - set(covered),
+                  set(covered) - set(document.data_line_numbers),
+              )
+
+          assert len(no_tab_physical) == 208, len(no_tab_physical)
+          assert all(row[4] for row in no_tab_physical), no_tab_physical[:20]
+          assert unsplit_alignments == [], unsplit_alignments[:20]
+          assert unsplit_diagnostics == [], unsplit_diagnostics[:20]
+          print(f'export_orphan_physical_lines={len(no_tab_physical)}')
+          print('unsplit_alignments=0')
+          print('unsplit_diagnostics=0')
+          PY
+      - name: Assert zero-token Greek-preverb carriers
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
+
+          expected = {
+              ('23.Prov.par', 28, 18, 'B/)XT', '{p} ---'),
+              ('27.Sirach.par', 5, 2, ')XRY 3', '{p} ---'),
+              ('27.Sirach.par', 23, 17, 'B/W 3', '{p}'),
+          }
+          root = pathlib.Path('/tmp/catss-parallel')
+          observed = set()
+          preverb_total = 0
+
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      preverbs = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'lxx'
+                          and annotation.kind == 'greek_preverb'
+                      ]
+                      if not preverbs:
+                          continue
+                      preverb_total += 1
+                      if alignment.mt_count <= 0 or alignment.lxx_count != 0:
+                          continue
+
+                      identity = (
+                          name,
+                          verse.chapter,
+                          verse.verse,
+                          alignment.mt_raw,
+                          alignment.lxx_raw,
+                      )
+                      observed.add(identity)
+                      assert alignment.is_lxx_minus is False, identity
+                      technique = derive_alignment_technique(name, alignment)
+                      assert technique.addition_vs_mt is False, identity
+                      assert technique.omission_vs_mt is False, identity
+                      assert technique.token_balance_mt_lxx == 'not_applicable', identity
+
+          assert preverb_total == 290, preverb_total
+          assert observed == expected, (expected - observed, observed - expected)
+          print(f'greek_preverb_alignments={preverb_total}')
+          print(f'zero_token_greek_preverb_carriers={len(observed)}')
           PY
       - name: Assert chained continuation grouping
         run: |
@@ -230,6 +359,547 @@ jobs:
           assert unrepaired_bare == [], unrepaired_bare
           print(f'mt_double_dash_exact_repairs={len(repair_occurrences)}')
           PY
+      - name: Assert exact Greek-side plus source repairs
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
+
+          expected = {
+              ('01.Genesis.par', 34, 29, 'KL', '--+', '---'),
+              ('18.Esther.par', 7, 4, 'W/)LW', '--+', '---'),
+              ('23.Prov.par', 11, 31, ')P KY', '--+', '---'),
+              ('23.Prov.par', 24, 5, 'GBR', '--+', '---'),
+              ('23.Prov.par', 30, 32, 'L/PH', '--+ {x}', '--- {x}'),
+              ('41.Jer.par', 51, 57, 'PXWT/YH', '--+ [28.57]', '--- [28.57]'),
+          }
+          observed = []
+          unresolved = []
+          root = pathlib.Path('/tmp/catss-parallel')
+
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      repairs = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'lxx'
+                          and annotation.kind == 'source_repair'
+                      ]
+                      for repair in repairs:
+                          identity = (
+                              name,
+                              verse.chapter,
+                              verse.verse,
+                              alignment.mt_raw,
+                              alignment.lxx_raw,
+                              repair.payload,
+                          )
+                          if identity in expected:
+                              observed.append(identity)
+                              assert alignment.is_lxx_minus is True
+                              assert alignment.is_lxx_plus is False
+                              technique = derive_alignment_technique(name, alignment)
+                              assert technique.omission_vs_mt is True
+                              assert technique.addition_vs_mt is False
+
+                      first = alignment.lxx_raw.split(maxsplit=1)[0] if alignment.lxx_raw else ''
+                      if (
+                          first == '--+'
+                          and alignment.mt_count > 0
+                          and alignment.lxx_count == 0
+                          and not repairs
+                      ):
+                          unresolved.append(
+                              (
+                                  name,
+                                  verse.chapter,
+                                  verse.verse,
+                                  alignment.mt_raw,
+                                  alignment.lxx_raw,
+                              )
+                          )
+
+          assert set(observed) == expected, (expected - set(observed), set(observed) - expected)
+          assert len(observed) == 6, observed
+          assert unresolved == [], unresolved
+          print(f'greek_side_plus_exact_repairs={len(observed)}')
+          PY
+      - name: Assert exact 1 Kings missing-minus repair
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.technique import derive_alignment_technique
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          document = parse_parallel_file(root / '13.1Kings.par')
+          matches = []
+          for verse in document.verses:
+              for alignment in verse.alignments:
+                  if (
+                      verse.chapter == 22
+                      and verse.verse == 50
+                      and alignment.mt_raw == ')X)B'
+                      and alignment.lxx_raw == '[16.28g]'
+                  ):
+                      matches.append(alignment)
+
+          assert len(matches) == 1, len(matches)
+          alignment = matches[0]
+          assert alignment.is_lxx_minus is True
+          assert alignment.mt_count == 1
+          assert alignment.lxx_count == 0
+          refs = [
+              a for a in alignment.annotations
+              if a.side == 'lxx' and a.kind == 'contextual_reference'
+          ]
+          assert [(a.raw, a.payload) for a in refs] == [('[16.28g]', '16.28g')]
+          repairs = [
+              a for a in alignment.annotations
+              if a.side == 'lxx' and a.kind == 'source_repair'
+          ]
+          assert [(a.raw, a.payload) for a in repairs] == [
+              ('[16.28g]', '--- [16.28g]')
+          ]
+          technique = derive_alignment_technique('13.1Kings.par', alignment)
+          assert technique.omission_vs_mt is True
+          assert technique.addition_vs_mt is False
+          print('one_kings_22_50_missing_minus_repairs=1')
+          PY
+      - name: Assert parent-grounded 1 Esdras lexical repair
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-lxx
+          git init -q /tmp/centerblc-lxx
+          git -C /tmp/centerblc-lxx remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-lxx fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-lxx checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-lxx rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+
+          from tf.fabric import Fabric
+
+          from catss_tf.lxx_resolver import (
+              TextFabricLxxProvider,
+              normalize_catss_greek,
+              normalize_lxx_greek,
+              resolve_lxx_document,
+          )
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE,
+              LXX_MAX_SLOT,
+              LXX_NODE_COUNTS,
+              LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG,
+              LXX_REPOSITORY,
+              LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES,
+              LXX_SLOT_TYPE,
+              LXX_VERSION,
+              LxxParentProbe,
+          )
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+          from catss_tf.technique import derive_alignment_technique
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/17.1Esdras.par'))
+          targets = [
+              alignment
+              for verse in source.verses
+              if verse.chapter == 6 and verse.verse == 4
+              for alignment in verse.alignments
+              if alignment.mt_raw == 'L/KM' and alignment.lxx_raw == '[e5.3]'
+          ]
+          assert len(targets) == 1, targets
+          alignment = targets[0]
+          assert alignment.raw_lines == ('L/KM\t[e5.3]',)
+          assert alignment.mt_tokens == ('L/KM',)
+          assert alignment.lxx_tokens == ('U(MI=N',)
+          assert alignment.is_transposition_stylistic is True
+          assert any(
+              annotation.side == 'lxx'
+              and annotation.kind == 'transposition_stylistic'
+              and annotation.payload == 'U(MI=N'
+              for annotation in alignment.annotations
+          )
+          assert (alignment.mt_count, alignment.lxx_count) == (1, 1)
+          assert alignment.is_lxx_plus is False
+          assert alignment.is_lxx_minus is False
+          assert any(
+              annotation.side == 'lxx'
+              and annotation.kind == 'contextual_reference'
+              and annotation.raw == '[e5.3]'
+              and annotation.payload == 'e5.3'
+              for annotation in alignment.annotations
+          )
+          repairs = [
+              annotation
+              for annotation in alignment.annotations
+              if annotation.side == 'lxx' and annotation.kind == 'source_repair'
+          ]
+          assert [(repair.raw, repair.payload) for repair in repairs] == [
+              ('[e5.3]', '{..^U(MI=N} [e5.3]')
+          ]
+          carriers = [
+              candidate
+              for verse in source.verses
+              if verse.chapter == 6 and verse.verse == 4
+              for candidate in verse.alignments
+              if candidate.mt_raw == '{...}' and candidate.lxx_raw == 'U(MI=N [e5.3]'
+          ]
+          assert len(carriers) == 1, carriers
+          carrier = carriers[0]
+          assert carrier.lxx_tokens == ('U(MI=N',)
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.kind == 'transposition_remote'
+              and annotation.raw == '{...}'
+              for annotation in carrier.annotations
+          )
+          assert carrier.source_lines[0] < alignment.source_lines[0]
+          technique = derive_alignment_technique('17.1Esdras.par', alignment)
+          assert technique.cardinality_mt_lxx == 'one_one'
+          assert technique.transposition_mt_lxx == 'stylistic'
+          assert technique.addition_vs_mt is False
+          assert technique.omission_vs_mt is False
+
+          TF = Fabric(locations='/tmp/centerblc-lxx/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+
+          verse_node = api.T.nodeFromSection(('1Esdr', 6, 4))
+          assert verse_node is not None
+          word_nodes = tuple(api.L.d(verse_node, otype='word'))
+          target = normalize_catss_greek('U(MI=N')
+          matches = [
+              node
+              for node in word_nodes
+              if normalize_lxx_greek(api.F.word.v(node)) == target
+          ]
+          assert matches == [294471], [
+              (node, api.F.word.v(node), api.F.orig_order.v(node))
+              for node in matches
+          ]
+          assert api.F.word.v(294471) == 'ὑμῖν'
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          repaired = parse_parallel_text(
+              '1Esdr 6:4\n{...}\tU(MI=N [e5.3]\nL/KM\t[e5.3]\n',
+              source_name='17.1Esdras.par',
+          )
+          report = resolve_lxx_document(repaired, provider)
+          assert report.ok is True, report.findings
+          assert report.reference_anchors == ()
+          assert [
+              (mapping.lxx_node, mapping.mapping_kind)
+              for mapping in report.word_mappings
+          ] == [
+              (294471, 'transposition_carrier'),
+              (294471, 'transposition_alignment'),
+          ]
+          assert {
+              (mapping.reference_book, mapping.reference_chapter, mapping.reference_verse)
+              for mapping in report.word_mappings
+          } == {('1Esdr', 6, 4)}
+          print('1esdr_6_4_parent_node=294471')
+          print('1esdr_6_4_parent_word=ὑμῖν')
+          PY
+      - name: Assert doubt-decorated Greek minus semantics
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
+
+          expected = {
+              ('09.JudgesA.par', 20, 6, 'ZMH', '---?'),
+              ('15.1Chron.par', 12, 38, 'CB)', '---?'),
+              ('15.1Chron.par', 29, 9, '&MXH', '---?'),
+              ('20.Psalms.par', 35, 20, 'DBRY', '---? [34.20]'),
+              ('40.Isaiah.par', 51, 3, 'W/(RBT/H', '---?'),
+              ('40.Isaiah.par', 51, 3, 'K/GN', '---?'),
+              ('41.Jer.par', 25, 4, 'L/$M(', '---?'),
+          }
+          observed = []
+          root = pathlib.Path('/tmp/catss-parallel')
+
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      first = alignment.lxx_raw.split(maxsplit=1)[0] if alignment.lxx_raw else ''
+                      if first != '---?':
+                          continue
+                      identity = (
+                          name,
+                          verse.chapter,
+                          verse.verse,
+                          alignment.mt_raw,
+                          alignment.lxx_raw,
+                      )
+                      observed.append(identity)
+                      assert alignment.mt_count > 0, identity
+                      assert alignment.lxx_count == 0, identity
+                      assert alignment.is_lxx_minus is True, identity
+                      doubt = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'lxx'
+                          and annotation.kind == 'doubt'
+                      ]
+                      assert [(a.raw, a.payload) for a in doubt] == [('?', None)], (
+                          identity,
+                          doubt,
+                      )
+                      assert not any(
+                          annotation.kind == 'source_repair'
+                          for annotation in alignment.annotations
+                      ), identity
+                      technique = derive_alignment_technique(name, alignment)
+                      assert technique.omission_vs_mt is True, identity
+                      assert technique.addition_vs_mt is False, identity
+
+          assert set(observed) == expected, (
+              expected - set(observed),
+              set(observed) - expected,
+          )
+          assert len(observed) == 7, observed
+          print(f'doubt_decorated_lxx_minus={len(observed)}')
+          PY
+      - name: Assert parent-grounded JoshB contextual-reference range
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-lxx-range /tmp/catss-range-source /tmp/catss-range-module
+          git init -q /tmp/centerblc-lxx-range
+          git -C /tmp/centerblc-lxx-range remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-lxx-range fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-lxx-range checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-lxx-range rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+
+          from tf.fabric import Fabric
+
+          from catss_tf.lxx_materializer import materialize_lxx
+          from catss_tf.lxx_resolver import TextFabricLxxProvider, resolve_lxx_document
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE,
+              LXX_MAX_SLOT,
+              LXX_NODE_COUNTS,
+              LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG,
+              LXX_REPOSITORY,
+              LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES,
+              LXX_SLOT_TYPE,
+              LXX_VERSION,
+              LxxParentProbe,
+          )
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/06.JoshB.par'))
+          targets = [
+              alignment
+              for verse in source.verses
+              if verse.chapter == 9 and verse.verse == 2
+              for alignment in verse.alignments
+              if alignment.mt_raw == '{...} <8.30-35>'
+              and alignment.lxx_raw == '[[9.2a-2f]]'
+          ]
+          assert len(targets) == 1, targets
+          alignment = targets[0]
+          original_lines = pathlib.Path('/tmp/catss-parallel/06.JoshB.par').read_text(encoding='utf-8').splitlines()
+          assert alignment.raw_lines == tuple(original_lines[line - 1] for line in alignment.source_lines)
+          assert len(alignment.source_lines) == 1
+          assert (alignment.mt_count, alignment.lxx_count) == (0, 0)
+          assert alignment.lxx_references == ()
+          assert len(alignment.lxx_reference_ranges) == 1
+          range_ref = alignment.lxx_reference_ranges[0]
+          assert (
+              range_ref.start_chapter,
+              range_ref.start_verse,
+              range_ref.start_subverse,
+              range_ref.end_chapter,
+              range_ref.end_verse,
+              range_ref.end_subverse,
+              range_ref.raw,
+          ) == (9, 2, 'a', 9, 2, 'f', '[[9.2a-2f]]')
+          assert not any(
+              diagnostic.code == 'invalid_lxx_reference'
+              and diagnostic.raw_line == alignment.raw_lines[0]
+              for diagnostic in source.diagnostics
+          )
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.kind == 'transposition_remote'
+              and annotation.raw == '{...}'
+              for annotation in alignment.annotations
+          )
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.raw == '<8.30-35>'
+              and annotation.payload == '8.30-35'
+              for annotation in alignment.annotations
+          )
+
+          TF = Fabric(locations='/tmp/centerblc-lxx-range/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          # Exact pinned CenterBLC/LXX evidence: one unlabeled subverse node,
+          # not six labeled subverse targets. Never fabricate a-f TF nodes.
+          spans = [provider.get_span('Josh', 9, 2, subverse) for subverse in 'abcdef']
+          assert spans == [None] * 6, spans
+          parent_verse = api.T.nodeFromSection(('Josh', 9, 2))
+          assert parent_verse == 661339, parent_verse
+          parent_subverses = tuple(api.L.d(parent_verse, otype='subverse'))
+          assert parent_subverses == (630920,), parent_subverses
+          assert api.F.subverse.v(630920) == ''
+          parent_words = tuple(api.L.d(parent_verse, otype='word'))
+          assert len(parent_words) == 191
+          assert all(api.F.subverse.v(node) == '' for node in parent_words)
+
+          focused = parse_parallel_text(
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
+              source_name='06.JoshB.par',
+          )
+          report = resolve_lxx_document(focused, provider)
+          assert report.ok is False
+          assert report.word_mappings == ()
+          assert report.reference_anchors == ()
+          assert report.reference_range_memberships == ()
+          missing = [f for f in report.findings if f.code == 'missing_lxx_reference_range_member']
+          assert len(missing) == 1, report.findings
+          assert missing[0].alignment_id == focused.verses[0].alignments[0].alignment_id
+          # Do not demand a successful projection against an absent parent range.
+          from catss_tf.lxx_materializer import LxxMaterializationError
+          materialize_source = pathlib.Path('/tmp/catss-range-source')
+          materialize_source.mkdir()
+          (materialize_source / '06.JoshB.par').write_text(
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
+              encoding='utf-8',
+          )
+          try:
+              materialize_lxx(
+                  materialize_source,
+                  pathlib.Path('/tmp/catss-range-module'),
+                  provider=provider,
+              )
+          except LxxMaterializationError as exc:
+              assert 'missing_lxx_reference_range_member' in str(exc), exc
+          else:
+              raise AssertionError('LXX module must fail closed without parent subverses')
+          assert not pathlib.Path('/tmp/catss-range-module').exists()
+          print('joshb_9_2_reference_range_unresolved_parent=abcdef')
+          PY
+      - name: Research pinned Josh 9:2 subverse node hierarchy
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-josh
+          git init -q /tmp/centerblc-josh
+          git -C /tmp/centerblc-josh remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-josh fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-josh checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-josh rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          from collections import Counter
+          from tf.fabric import Fabric
+          from catss_tf.lxx_resolver import TextFabricLxxProvider
+          from catss_tf.lxx_schema import (
+              LXX_REPOSITORY, LXX_VERSION, LXX_RELEASE_TAG, LXX_RELEASE_COMMIT,
+              LXX_SLOT_TYPE, LXX_MAX_SLOT, LXX_MAX_NODE, LXX_SECTION_TYPES,
+              LXX_NODE_COUNTS, LXX_REQUIRED_FEATURES, LxxParentProbe,
+          )
+
+          fabric = Fabric(locations='/tmp/centerblc-josh/tf/1935', silent='deep')
+          api = fabric.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          verse_node = api.T.nodeFromSection(('Josh', 9, 2))
+          assert verse_node is not None
+          words = tuple(api.L.d(verse_node, otype='word'))
+          subverses = tuple(api.L.d(verse_node, otype='subverse'))
+          print('JOSH_9_2_VERSE_NODE', verse_node)
+          print('JOSH_9_2_WORD_COUNT', len(words))
+          print('JOSH_9_2_SUBVERSE_COUNT', len(subverses))
+          print('JOSH_9_2_SUBVERSE_NODES', [
+              (
+                  node,
+                  api.F.subverse.v(node),
+                  tuple(api.L.d(node, otype='word')),
+              )
+              for node in subverses
+          ])
+          print('JOSH_9_2_WORD_FEATURE_VALUES', [
+              (
+                  word,
+                  api.F.word.v(word),
+                  api.F.subverse.v(word),
+                  tuple(api.L.u(word, otype='subverse')),
+              )
+              for word in words
+          ])
+          print('JOSH_9_2_WORD_LABEL_COUNTS', dict(Counter(
+              api.F.subverse.v(word) for word in words
+          )))
+          print('JOSH_9_2_SUBVERSE_LABEL_COUNTS', dict(Counter(
+              api.F.subverse.v(node) for node in subverses
+          )))
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY, version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG, release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE, max_slot=LXX_MAX_SLOT, max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES, node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          print('JOSH_9_2_RANGE_PROVIDER', [
+              (label, span.node if span else None)
+              for label in 'abcdef'
+              for span in (provider.get_span('Josh', 9, 2, label),)
+          ])
+          # Encode the real-data observation as a fail-closed regression gate:
+          # all six CATSS subverse labels are ABSENT from this pinned parent.
+          assert verse_node == 661339, verse_node
+          assert len(words) == 191, len(words)
+          assert subverses == (630920,), subverses
+          assert all(api.F.subverse.v(word) == '' for word in words)
+          assert api.F.subverse.v(subverses[0]) == ''
+          assert all(tuple(api.L.u(word, otype='subverse')) == subverses for word in words)
+          assert all(provider.get_span('Josh', 9, 2, label) is None for label in 'abcdef')
+          PY
       - name: Assert complete notation coverage
         run: |
           set +e
@@ -241,7 +911,6 @@ jobs:
           grep -qx 'unknown_annotations=0' /tmp/catss-audit.txt
           # Parser diagnostics are reported above but are a separate quality layer;
           # this gate proves complete special-notation coverage without hiding them.
-
       - name: Materialize complete canonical corpus
         run: |
           python - <<'PY'

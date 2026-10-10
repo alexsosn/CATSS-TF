@@ -15,6 +15,7 @@ _SIRACH_DOUBLE_BRACE = re.compile(r"\{\{[^{}]*\}\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
 _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
+_GREEK_REFERENCE_RANGE_VALUE = re.compile(r"^(\d+)[.](\d+)([A-Za-z])-(\d+)([A-Za-z])$")
 _CONTEXTUAL_REFERENCE_VALUE = re.compile(
     r"^(?:[A-Za-z]{1,3}[.]?[ ]*)?[0-9]+(?:[.:][ ]*[0-9]+)?[A-Za-z]{0,2}"
     r"(?:[ ,]+[A-Za-z]{0,3}[.]?[0-9]+(?:[.:][ ]*[0-9]+)?[A-Za-z]{0,2})*[?]?$"
@@ -25,7 +26,7 @@ _MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
 _DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
-_KNOWN_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
+_KNOWN_MT_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
     ("01.Genesis.par", 6, 19, "--= '' =H/BHMH", "TW=N KTHNW=N"): "--+ '' =H/BHMH",
     (
         "01.Genesis.par",
@@ -55,6 +56,57 @@ _KNOWN_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
         "-- =B/P(M )XT",
         "E)N KAIRW=| E(NI/",
     ): "--+ =B/P(M )XT",
+}
+
+_KNOWN_LXX_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
+    ("01.Genesis.par", 34, 29, "KL", "--+"): "---",
+    ("18.Esther.par", 7, 4, "W/)LW", "--+"): "---",
+    ("23.Prov.par", 11, 31, ")P KY", "--+"): "---",
+    ("23.Prov.par", 24, 5, "GBR", "--+"): "---",
+    ("23.Prov.par", 30, 32, "L/PH", "--+ {x}"): "--- {x}",
+    ("41.Jer.par", 51, 57, "PXWT/YH", "--+ [28.57]"): "--- [28.57]",
+    ("13.1Kings.par", 22, 50, ")X)B", "[16.28g]"): "--- [16.28g]",
+    ("17.1Esdras.par", 6, 4, "L/KM", "[e5.3]"): "{..^U(MI=N} [e5.3]",
+}
+
+
+_KNOWN_SOURCE_LAYOUT_REPAIRS: dict[tuple[str, int, int, str], tuple[str, str]] = {
+    (
+        "06.JoshB.par",
+        3,
+        10,
+        "W/)T H/GRG$Y ^ =W/)T W/H/)MRY KAI\\ TO\\N AMORRAI=ON",
+    ): (
+        "W/)T H/GRG$Y ^ =W/)T W/H/)MRY",
+        "KAI\\ TO\\N AMORRAI=ON",
+    ),
+    (
+        "06.JoshB.par",
+        4,
+        11,
+        "W/H/KHNYM =W/H/)BNYM .m .kb # KAI\\ OI( LI/QOI",
+    ): (
+        "W/H/KHNYM =W/H/)BNYM .m .kb #",
+        "KAI\\ OI( LI/QOI",
+    ),
+    (
+        "06.JoshB.par",
+        9,
+        4,
+        "W/YC+YRW =;W/YC+YDW .rd <9.12 E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+    ): (
+        "W/YC+YRW =;W/YC+YDW .rd <9.12>",
+        "E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+    ),
+    (
+        "06.JoshB.par",
+        21,
+        42,
+        "--+ '' =;L/GBWLWT/YHM <19.49> E)N TOI=S O(RI/OIS AU)TW=N",
+    ): (
+        "--+ '' =;L/GBWLWT/YHM <19.49>",
+        "E)N TOI=S O(RI/OIS AU)TW=N",
+    ),
 }
 
 
@@ -91,6 +143,19 @@ class GreekReference:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class GreekReferenceRange:
+    """Structured inclusive CATSS Greek-side contextual reference range."""
+
+    start_chapter: int | None
+    start_verse: int
+    start_subverse: str
+    end_chapter: int | None
+    end_verse: int
+    end_subverse: str
+    raw: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class MtReading:
     """One MT word position with optional Ketiv/Qere alternatives."""
 
@@ -119,6 +184,7 @@ class AlignmentRecord:
     mt_qere_tokens: tuple[str, ...]
     lxx_tokens: tuple[str, ...]
     lxx_references: tuple[GreekReference, ...]
+    lxx_reference_ranges: tuple[GreekReferenceRange, ...]
     mt_count: int
     lxx_count: int
     is_lxx_plus: bool
@@ -157,8 +223,9 @@ class ParallelDocument:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class _SourceRepair:
-    original_mt: str
-    semantic_mt: str
+    side: typing.Literal["mt_a", "lxx"]
+    original: str
+    semantic: str
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -169,8 +236,8 @@ class _PhysicalRow:
     source_lxx: str
     mt: str
     lxx: str
-    repair: _SourceRepair | None
     column_split: bool
+    layout_dummy: bool = False
 
     @property
     def continues(self) -> bool:
@@ -289,6 +356,19 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             current.chapter,
             current.verse,
         )
+
+        if not physical.column_split:
+            if canonical_source == "20.Psalms.par":
+                if pending and not _pending_psalms_orphans(pending):
+                    flush_pending()
+                pending.append(physical)
+                continue
+            if pending and _append_export_orphan_to_previous_lxx(pending, physical):
+                continue
+        elif canonical_source == "20.Psalms.par" and _pending_psalms_orphans(pending):
+            pending = _attach_psalms_orphans_to_following_mt(pending, physical)
+            continue
+
         if pending:
             if pending[-1].continues or physical.starts_with_continuation:
                 pending.append(physical)
@@ -323,37 +403,96 @@ def _parse_physical_row(
     chapter: int,
     verse: int,
 ) -> _PhysicalRow:
-    if "\t" in raw:
-        mt, lxx = raw.split("\t", 1)
+    layout_repair = _KNOWN_SOURCE_LAYOUT_REPAIRS.get((source_name, chapter, verse, raw.strip()))
+    if layout_repair is not None:
+        mt, lxx = layout_repair
         column_split = True
     else:
-        parts = _COLUMN_SPACES.split(raw, maxsplit=1)
-        if len(parts) == 2:
-            mt, lxx = parts
-            column_split = True
-        else:
-            mt, lxx = raw, ""
-            column_split = False
+        mt, lxx, column_split = _split_raw_columns(raw)
 
     source_mt = mt.strip()
     source_lxx = lxx.strip()
-    semantic_mt, repair = _repair_source_row(
-        source_name,
-        chapter,
-        verse,
-        source_mt,
-        source_lxx,
-    )
     return _PhysicalRow(
         line_no=line_no,
         raw=raw,
         source_mt=source_mt,
         source_lxx=source_lxx,
-        mt=semantic_mt,
+        mt=source_mt,
         lxx=source_lxx,
-        repair=repair,
         column_split=column_split,
     )
+
+
+def _split_raw_columns(raw: str) -> tuple[str, str, bool]:
+    if "\t" in raw:
+        mt, lxx = raw.split("\t", 1)
+        return mt, lxx, True
+    match = _COLUMN_SPACES.search(raw)
+    if match is not None:
+        return raw[: match.start()], raw[match.end() :], True
+    return raw, "", False
+
+
+def _layout_dummy(row: _PhysicalRow) -> _PhysicalRow:
+    return dataclasses.replace(
+        row,
+        source_mt="",
+        source_lxx="",
+        mt="",
+        lxx="",
+        column_split=True,
+        layout_dummy=True,
+    )
+
+
+def _pending_psalms_orphans(pending: list[_PhysicalRow]) -> bool:
+    return bool(pending) and all(not row.column_split for row in pending)
+
+
+def _append_export_orphan_to_previous_lxx(
+    pending: list[_PhysicalRow],
+    orphan: _PhysicalRow,
+) -> bool:
+    target_index = None
+    for index in range(len(pending) - 1, -1, -1):
+        if not pending[index].layout_dummy:
+            target_index = index
+            break
+    if target_index is None or not pending[target_index].column_split:
+        return False
+
+    target = pending[target_index]
+    has_prior_orphan = any(row.layout_dummy for row in pending[target_index + 1 :])
+    if has_prior_orphan:
+        source_lxx = target.source_lxx
+    else:
+        _raw_mt, raw_lxx, raw_split = _split_raw_columns(target.raw)
+        source_lxx = raw_lxx if raw_split else target.source_lxx
+
+    repaired_lxx = source_lxx + orphan.raw
+    pending[target_index] = dataclasses.replace(
+        target,
+        source_lxx=repaired_lxx,
+        lxx=repaired_lxx,
+    )
+    pending.append(_layout_dummy(orphan))
+    return True
+
+
+def _attach_psalms_orphans_to_following_mt(
+    pending: list[_PhysicalRow],
+    target: _PhysicalRow,
+) -> list[_PhysicalRow]:
+    prefix = "".join(row.raw for row in pending)
+    raw_mt, _raw_lxx, raw_split = _split_raw_columns(target.raw)
+    source_mt = prefix + (raw_mt if raw_split else target.source_mt)
+    semantic_mt = prefix + target.mt
+    repaired_target = dataclasses.replace(
+        target,
+        source_mt=source_mt,
+        mt=semantic_mt,
+    )
+    return [*(_layout_dummy(row) for row in pending), repaired_target]
 
 
 def _repair_source_row(
@@ -362,11 +501,29 @@ def _repair_source_row(
     verse: int,
     mt: str,
     lxx: str,
-) -> tuple[str, _SourceRepair | None]:
-    semantic_mt = _KNOWN_SOURCE_ROW_REPAIRS.get((source_name, chapter, verse, mt, lxx))
-    if semantic_mt is None:
-        return mt, None
-    return semantic_mt, _SourceRepair(original_mt=mt, semantic_mt=semantic_mt)
+) -> tuple[str, str, tuple[_SourceRepair, ...]]:
+    identity = (source_name, chapter, verse, mt, lxx)
+    semantic_mt = _KNOWN_MT_SOURCE_ROW_REPAIRS.get(identity, mt)
+    semantic_lxx = _KNOWN_LXX_SOURCE_ROW_REPAIRS.get(identity, lxx)
+
+    repairs: list[_SourceRepair] = []
+    if semantic_mt != mt:
+        repairs.append(
+            _SourceRepair(
+                side="mt_a",
+                original=mt,
+                semantic=semantic_mt,
+            )
+        )
+    if semantic_lxx != lxx:
+        repairs.append(
+            _SourceRepair(
+                side="lxx",
+                original=lxx,
+                semantic=semantic_lxx,
+            )
+        )
+    return semantic_mt, semantic_lxx, tuple(repairs)
 
 
 def _build_alignment(
@@ -378,8 +535,13 @@ def _build_alignment(
     row_diagnostics: list[ParseDiagnostic] = []
     mt_raw = _join_continued_cells(row.source_mt for row in physical_rows)
     lxx_raw = _join_continued_cells(row.source_lxx for row in physical_rows)
-    semantic_mt = _join_continued_cells(row.mt for row in physical_rows)
-    semantic_lxx = _join_continued_cells(row.lxx for row in physical_rows)
+    semantic_mt, semantic_lxx, repairs = _repair_source_row(
+        source_name,
+        verse.chapter,
+        verse.verse,
+        mt_raw,
+        lxx_raw,
+    )
     column_split = all(row.column_split for row in physical_rows)
 
     if not column_split:
@@ -395,9 +557,9 @@ def _build_alignment(
 
     mt_col_a, mt_col_b = _split_mt_columns(semantic_mt)
     is_lxx_plus = _first_token(mt_col_a) in _LXX_PLUS_MARKERS
-    is_lxx_minus = _first_token(semantic_lxx) in _LXX_MINUS_MARKERS
+    is_lxx_minus = _is_lxx_minus_marker(_first_token(semantic_lxx))
 
-    lxx_references, reference_diagnostics = _extract_greek_references(
+    lxx_references, lxx_reference_ranges, reference_diagnostics = _extract_greek_references(
         semantic_lxx,
         line_no=physical_rows[0].line_no,
         raw_line=physical_rows[0].raw,
@@ -416,15 +578,14 @@ def _build_alignment(
             *_extract_annotations("lxx", semantic_lxx, book=verse.book),
             *(
                 Annotation(
-                    side="mt_a",
+                    side=repair.side,
                     kind="source_repair",
-                    raw=row.repair.original_mt,
+                    raw=repair.original,
                     family="provenance",
                     contextual=True,
-                    payload=row.repair.semantic_mt,
+                    payload=repair.semantic,
                 )
-                for row in physical_rows
-                if row.repair is not None
+                for repair in repairs
             ),
         ]
     )
@@ -479,6 +640,7 @@ def _build_alignment(
             mt_qere_tokens=mt_qere_tokens,
             lxx_tokens=lxx_tokens,
             lxx_references=lxx_references,
+            lxx_reference_ranges=lxx_reference_ranges,
             mt_count=len(mt_tokens),
             lxx_count=len(lxx_tokens),
             is_lxx_plus=is_lxx_plus,
@@ -753,14 +915,57 @@ def _extract_greek_references(
     *,
     line_no: int,
     raw_line: str,
-) -> tuple[tuple[GreekReference, ...], tuple[ParseDiagnostic, ...]]:
+) -> tuple[
+    tuple[GreekReference, ...],
+    tuple[GreekReferenceRange, ...],
+    tuple[ParseDiagnostic, ...],
+]:
     references: list[GreekReference] = []
+    ranges: list[GreekReferenceRange] = []
     diagnostics: list[ParseDiagnostic] = []
     for match in _SQUARE_GROUP.finditer(cell):
         raw = match.group(0)
         inner = raw.lstrip("[").rstrip("]")
         if not any(character.isdigit() for character in inner):
             continue
+
+        range_match = (
+            _GREEK_REFERENCE_RANGE_VALUE.fullmatch(inner)
+            if raw.startswith("[[") and raw.endswith("]]")
+            else None
+        )
+        if range_match is not None:
+            start_chapter = int(range_match.group(1))
+            start_verse = int(range_match.group(2))
+            start_subverse = range_match.group(3).lower()
+            end_verse = int(range_match.group(4))
+            end_subverse = range_match.group(5).lower()
+            if end_verse != start_verse or end_subverse <= start_subverse:
+                diagnostics.append(
+                    ParseDiagnostic(
+                        code="invalid_lxx_reference_range",
+                        line_no=line_no,
+                        raw_line=raw_line,
+                        message=(
+                            "CATSS Greek reference range must be an increasing "
+                            f"same-verse subverse range: {raw}"
+                        ),
+                    )
+                )
+                continue
+            ranges.append(
+                GreekReferenceRange(
+                    start_chapter=start_chapter,
+                    start_verse=start_verse,
+                    start_subverse=start_subverse,
+                    end_chapter=start_chapter,
+                    end_verse=end_verse,
+                    end_subverse=end_subverse,
+                    raw=raw,
+                )
+            )
+            continue
+
         parsed = _GREEK_REFERENCE_VALUE.fullmatch(inner)
         if parsed is None:
             if _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is None:
@@ -782,7 +987,7 @@ def _extract_greek_references(
                 raw=raw,
             )
         )
-    return tuple(references), tuple(diagnostics)
+    return tuple(references), tuple(ranges), tuple(diagnostics)
 
 
 def _retroversion_kind(mt_col_b: str | None) -> str | None:
@@ -1034,6 +1239,10 @@ def _square_payload(raw: str) -> str:
 def _first_token(cell: str) -> str:
     parts = cell.split(maxsplit=1)
     return parts[0] if parts else ""
+
+
+def _is_lxx_minus_marker(token: str) -> bool:
+    return token in _LXX_MINUS_MARKERS or token == "---?"
 
 
 def _is_alignment_marker(token: str) -> bool:

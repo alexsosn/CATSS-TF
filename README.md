@@ -4,7 +4,8 @@ CATSS-TF materializes the CATSS Hebrew–Greek parallel alignment as Text-Fabric
 
 The intended outputs are three locally generated artifacts:
 
-- `catss` — a standalone canonical CATSS corpus with alignment groups as first-class nodes;
+- `catss` — standalone canonical CATSS corpus with alignment groups as first-class nodes;
+
 - `catss-bhsa` — CATSS alignment annotations attached to nodes of ETCBC/BHSA;
 - `catss-lxx` — the same canonical CATSS alignments projected onto nodes of CenterBLC/LXX.
 
@@ -23,12 +24,16 @@ pip install \\
   https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
-Install with Text-Fabric integration:
+Install with Text-Fabric integration from current source (including the GitHub backend):
 
 ```sh
 pip install \\
-  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
+  "catss-tf[tf] @ git+https://github.com/alexsosn/CATSS-TF.git"
 ```
+
+The already-published v0.1.0 wheel retains its original dependency metadata.
+If using that wheel, additionally run `pip install "text-fabric[github]>=13.1,<14"`
+for BHSA/LXX downloads; a future release will include the fix automatically.
 
 Verify:
 
@@ -38,15 +43,15 @@ catss-tf --version
 
 Read:
 
-1. [docs/canonical-corpus.md](docs/canonical-corpus.md) — standalone CATSS corpus and node model
-2. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
-3. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
-4. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
-5. [CHANGELOG.md](CHANGELOG.md)
-6. [research.md](research.md)
-7. [design.md](design.md)
-8. [plan.md](plan.md)
-9. [AGENTS.md](AGENTS.md)
+1 [docs/canonical-corpus.md](docs/canonical-corpus.md) — standalone CATSS corpus and node model
+1 [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
+1 [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
+1 [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
+1 [CHANGELOG.md](CHANGELOG.md)
+1 [research.md](research.md)
+1 [design.md](design.md)
+1 [plan.md](plan.md)
+1 [AGENTS.md](AGENTS.md)
 
 ## Architectural boundary
 
