@@ -360,12 +360,8 @@ def _alignment_features(builder: _GraphBuilder, context: _AlignmentContext) -> N
         "catss_trans_remote": alignment.is_transposition_remote,
         "catss_trans_style": alignment.is_transposition_stylistic,
         "catss_column_split": alignment.column_split,
-        "catss_tt_addition_vs_mt": (
-            technique.addition_vs_mt if technique is not None else False
-        ),
-        "catss_tt_omission_vs_mt": (
-            technique.omission_vs_mt if technique is not None else False
-        ),
+        "catss_tt_addition_vs_mt": (technique.addition_vs_mt if technique is not None else False),
+        "catss_tt_omission_vs_mt": (technique.omission_vs_mt if technique is not None else False),
     }
     for name, value in flags.items():
         if value:
@@ -834,9 +830,10 @@ def _audit_graph(
                     "canonical preservation audit failed: guessed unclassified technique fact"
                 )
         elif status == "derived":
-            if reasons.get(slot) is not None or graph.node_features.get(
-                "catss_tt_cardinality_mt_lxx", {}
-            ).get(slot) is None:
+            if (
+                reasons.get(slot) is not None
+                or graph.node_features.get("catss_tt_cardinality_mt_lxx", {}).get(slot) is None
+            ):
                 raise CanonicalMaterializationError(
                     "canonical preservation audit failed: derived technique inconsistent"
                 )
