@@ -135,9 +135,7 @@ def test_lxx_projection_must_not_propagate_noninitial_sirach_lacuna(
     """A witness annotation alone cannot impersonate the MT-A lacuna class."""
     genuine = _alignment("[..]\tOU)AI\\")
     forged = dataclasses.replace(genuine, mt_col_a=mt_column_a)
-    assert "sirach_lacuna_or_illegible" not in _semantic_kinds(
-        forged, side="lxx", element_index=1
-    )
+    assert "sirach_lacuna_or_illegible" not in _semantic_kinds(forged, side="lxx", element_index=1)
     assert ("sirach_lacuna_or_illegible", "mt_a") not in _semantic_scopes(
         forged, side="lxx", element_index=1
     )
