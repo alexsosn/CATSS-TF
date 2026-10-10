@@ -1,5 +1,7 @@
 """Sirach manuscript lacunae are not Greek additions against MT."""
 
+from typing import Any
+
 import pytest
 
 from catss_tf.lxx_materializer import _semantic_kinds
@@ -38,7 +40,7 @@ def test_sirach_lacuna_is_not_allowed_on_wrong_source_or_annotation_scope() -> N
 
 
 def test_typed_witness_lacuna_has_no_plus_and_rejects_contradictions() -> None:
-    base = dict(
+    base: dict[str, Any] = dict(
         mt_n=0,
         lxx_n=1,
         is_lxx_plus=False,
