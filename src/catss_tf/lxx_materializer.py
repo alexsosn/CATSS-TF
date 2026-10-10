@@ -572,9 +572,7 @@ def _semantic_kinds(
         annotation.kind
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
-        and _semantic_annotation_in_scope(
-            annotation, side=side, element_index=element_index
-        )
+        and _semantic_annotation_in_scope(annotation, side=side, element_index=element_index)
     }
     return tuple(sorted(kinds))
 
@@ -586,9 +584,7 @@ def _semantic_scopes(
         (annotation.kind, annotation.side)
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
-        and _semantic_annotation_in_scope(
-            annotation, side=side, element_index=element_index
-        )
+        and _semantic_annotation_in_scope(annotation, side=side, element_index=element_index)
     }
     return tuple(sorted(scopes))
 
@@ -601,9 +597,7 @@ def _semantic_scoped_payloads(
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
         and annotation.payload is not None
-        and _semantic_annotation_in_scope(
-            annotation, side=side, element_index=element_index
-        )
+        and _semantic_annotation_in_scope(annotation, side=side, element_index=element_index)
     }
     return tuple(sorted(payloads))
 
@@ -616,9 +610,7 @@ def _semantic_payloads(
         if (
             annotation.kind == "unknown"
             or annotation.payload is None
-            or not _semantic_annotation_in_scope(
-                annotation, side=side, element_index=element_index
-            )
+            or not _semantic_annotation_in_scope(annotation, side=side, element_index=element_index)
         ):
             continue
         by_kind.setdefault(annotation.kind, set()).add(annotation.payload)

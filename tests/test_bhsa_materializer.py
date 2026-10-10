@@ -620,9 +620,7 @@ def test_scoped_jonah_minus_does_not_project_onto_bhsa_yhwh(
         "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
     )
     output = tmp_path / "catss-bhsa"
-    provider = FakeBhsaProvider(
-        (_verse(book="Jonah", chapter=4, verse=3, g_cons="יהוה"),)
-    )
+    provider = FakeBhsaProvider((_verse(book="Jonah", chapter=4, verse=3, g_cons="יהוה"),))
 
     result = materialize_bhsa(source, output, provider=provider, parent_probe=_probe())
 
@@ -651,10 +649,7 @@ def test_scoped_jonah_minus_is_absent_from_bhsa_semantic_helpers() -> None:
     )
     alignment = doc.verses[0].alignments[0]
 
-    assert "apparent_minus" not in bhsa_materializer._semantic_kinds(
-        alignment, side="mt"
-    )
+    assert "apparent_minus" not in bhsa_materializer._semantic_kinds(alignment, side="mt")
     assert ("apparent_minus", "mt_a") not in bhsa_materializer._semantic_scopes(
         alignment, side="mt"
     )
-

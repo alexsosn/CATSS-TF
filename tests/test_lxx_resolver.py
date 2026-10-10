@@ -98,7 +98,6 @@ def test_greek_normalization_matches_catss_beta_to_parent_surface() -> None:
     assert normalize_catss_greek("KAI\\") == normalize_lxx_greek("καὶ")
 
 
-
 def test_pinned_jonah_parent_greek_psili_elision_is_a_real_apostrophe() -> None:
     # U+1FBF is the final mark in actual CenterBLC/LXX Jonah 4:3 ἀπ᾿.
     assert normalize_lxx_greek("ἀπ᾿") == normalize_catss_greek("A)P'")
@@ -139,7 +138,6 @@ def test_unrelated_elided_parent_word_does_not_block_jonah_scoped_pair() -> None
         (0, 495520, "exact"),
         (1, 495521, "exact"),
     ]
-
 
 
 def test_simple_alignment_rows_map_to_exact_parent_words() -> None:

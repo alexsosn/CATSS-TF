@@ -607,9 +607,7 @@ def test_scoped_minus_is_attached_only_to_first_greek_element() -> None:
     alignment = doc.verses[0].alignments[0]
 
     assert "apparent_minus" in _semantic_kinds(alignment, side="lxx", element_index=1)
-    assert ("apparent_minus", "mt_a") in _semantic_scopes(
-        alignment, side="lxx", element_index=1
-    )
+    assert ("apparent_minus", "mt_a") in _semantic_scopes(alignment, side="lxx", element_index=1)
     assert "apparent_minus" not in _semantic_kinds(alignment, side="lxx", element_index=2)
     assert "apparent_minus" not in _semantic_kinds(alignment, side="mt", element_index=1)
 
