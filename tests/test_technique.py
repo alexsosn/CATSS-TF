@@ -446,7 +446,7 @@ def test_plus_minus_flags_require_material_on_the_named_side() -> None:
 
 def test_scoped_mixed_apparent_minus_derives_non_addition_technique() -> None:
     doc = parse_parallel_text(
-        "Jonah 4:3\\n--- YHWH\\tDE/SPOTA KU/RIE\\n",
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
         source_name="32.Jonah.par",
     )
     alignment = doc.verses[0].alignments[0]
