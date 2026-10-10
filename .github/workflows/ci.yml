@@ -773,7 +773,7 @@ jobs:
           assert all(api.F.subverse.v(node) == '' for node in parent_words)
 
           focused = parse_parallel_text(
-              'JoshB 9:2\\n{...} <8.30-35>\\t[[9.2a-2f]]\\n',
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
               source_name='06.JoshB.par',
           )
           report = resolve_lxx_document(focused, provider)
@@ -789,7 +789,7 @@ jobs:
           materialize_source = pathlib.Path('/tmp/catss-range-source')
           materialize_source.mkdir()
           (materialize_source / '06.JoshB.par').write_text(
-              'JoshB 9:2\\n{...} <8.30-35>\\t[[9.2a-2f]]\\n',
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
               encoding='utf-8',
           )
           try:
