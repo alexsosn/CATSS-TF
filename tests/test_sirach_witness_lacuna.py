@@ -17,8 +17,7 @@ def test_sirach_witness_lacuna_derives_without_translation_addition() -> None:
     alignment = _alignment("[..]\tOU)AI\\")
     assert (alignment.mt_count, alignment.lxx_count) == (0, 1)
     assert any(
-        a.side == "mt_a" and a.kind == "sirach_lacuna_or_illegible"
-        for a in alignment.annotations
+        a.side == "mt_a" and a.kind == "sirach_lacuna_or_illegible" for a in alignment.annotations
     )
     technique = derive_alignment_technique("27.Sirach.par", alignment)
     assert technique.cardinality_mt_lxx == "zero_one"
