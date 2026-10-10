@@ -726,7 +726,7 @@ jobs:
           python - <<'PY'
           import pathlib
           from tf.fabric import Fabric
-          from catss_tf.parser import parse_parallel_file
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
           from catss_tf.lxx_resolver import (
               TextFabricLxxProvider, normalize_catss_greek, normalize_lxx_greek,
               resolve_lxx_document,
@@ -771,7 +771,8 @@ jobs:
               ((left, api.F.word.v(left)), (right, api.F.word.v(right)))
               for left, right in matches
           ])
-          assert len(matches) == 1, matches
+          assert matches == [(495520, 495521)], matches
+          assert normalize_lxx_greek('ἀπ᾿') == normalize_catss_greek("A)P'")
 
           probe = LxxParentProbe(
               repository=LXX_REPOSITORY, version=LXX_VERSION,
@@ -781,24 +782,31 @@ jobs:
               node_counts=LXX_NODE_COUNTS, feature_names=LXX_REQUIRED_FEATURES,
           )
           provider = TextFabricLxxProvider(api, probe)
-          focused = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/32.Jonah.par'))
-          report = resolve_lxx_document(focused, provider)
-          print('JONAH_4_3_REPORT', report.summary)
-          print('JONAH_4_3_FOCUS_MAPPINGS', [
+          isolated = parse_parallel_text(
+              'Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n',
+              source_name='32.Jonah.par',
+          )
+          grounded = resolve_lxx_document(isolated, provider)
+          assert grounded.ok, grounded.findings
+          assert grounded.reference_anchors == ()
+          assert [
               (m.lxx_index, m.lxx_node, m.mapping_kind)
-              for m in report.word_mappings if m.alignment_id == alignment.alignment_id
+              for m in grounded.word_mappings
+          ] == [(0, 495520, 'exact'), (1, 495521, 'exact')]
+          print('JONAH_4_3_PINNED_PARENT_MAPPINGS', [
+              (m.lxx_index, m.lxx_node) for m in grounded.word_mappings
           ])
-          print('JONAH_4_3_FOCUS_FINDINGS', [
-              f for f in report.findings if f.alignment_id == alignment.alignment_id
-          ])
-          focus = [
-              m.lxx_node for m in report.word_mappings
+
+          # Full-document resolution remains independently strict: unrelated
+          # mismatched CATSS groups may prevent publishing a complete module.
+          full_report = resolve_lxx_document(source, provider)
+          print('JONAH_FULL_DOC_REPORT', full_report.summary)
+          print('JONAH_4_3_FULL_DOC_FOCUS', [
+              (m.lxx_index, m.lxx_node)
+              for m in full_report.word_mappings
               if m.alignment_id == alignment.alignment_id
-          ]
-          assert focus == [], focus  # documented RED: current resolver drops mixed-row mapping
-          assert report.summary.mismatched_reference_groups > 0
-          print('JONAH_4_3_PARENT_NODES', matches[0])
-          print('JONAH_4_3_MAPPING_GAP_CONFIRMED', len(focus) == 0)
+          ])
+          assert full_report.summary.mismatched_reference_groups > 0
           PY
       - name: Research pinned Josh 9:2 subverse node hierarchy
         run: |
