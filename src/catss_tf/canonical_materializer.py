@@ -486,11 +486,7 @@ def _add_detail_nodes(
     # =v, for example, is a vocalization marker rather than a word.
     for context in contexts:
         alignment = context.alignment
-        if (
-            alignment.mt_count != 0
-            or alignment.lxx_count == 0
-            or alignment.mt_col_b is None
-        ):
+        if alignment.mt_count != 0 or alignment.lxx_count == 0 or alignment.mt_col_b is None:
             continue
         node = builder.add_node("mt_b_carrier", (context.slot,))
         builder.feature("catss_mt_b_raw", node, alignment.mt_col_b)
