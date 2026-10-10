@@ -343,9 +343,7 @@ def test_canonical_technique_partiality_is_visible_per_alignment(
         assert api.F.catss_tt_addition_vs_mt.v(1) is None
     assert api.F.catss_tt_unclassified_reason.v(2) is None
 
-    with (tmp_path / "catss" / "catss-technique.tsv").open(
-        encoding="utf-8", newline=""
-    ) as handle:
+    with (tmp_path / "catss" / "catss-technique.tsv").open(encoding="utf-8", newline="") as handle:
         rows = tuple(csv.DictReader(handle, delimiter="\t"))
     assert len(rows) == 1
     assert rows[0]["alignment_id"] == api.F.catss_alignment_id.v(2)
@@ -376,13 +374,8 @@ def test_exodus_corrupt_header_blank_lines_survive_canonical_tf_round_trip(
     assert result.summary.source_lines == 7
 
     api = _load_corpus(tmp_path)
-    source_line_nodes = tuple(
-        sorted(api.L.u(1, otype="source_line"), key=api.F.catss_line_no.v)
-    )
+    source_line_nodes = tuple(sorted(api.L.u(1, otype="source_line"), key=api.F.catss_line_no.v))
     assert len(source_line_nodes) == 7
-    assert tuple(api.F.catss_line_no.v(node) for node in source_line_nodes) == tuple(
-        range(2, 9)
-    )
+    assert tuple(api.F.catss_line_no.v(node) for node in source_line_nodes) == tuple(range(2, 9))
     assert tuple(api.F.catss_raw.v(node) for node in source_line_nodes) == raw_lines
     assert tuple(api.F.otype.s("verse")) and len(tuple(api.F.otype.s("verse"))) == 1
-
