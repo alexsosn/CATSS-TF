@@ -12,6 +12,10 @@ from catss_tf.lxx_schema import classify_catss_source as classify_lxx_source
 from catss_tf.tf_schema import SIDECAR_COLUMNS
 
 _REQUIRED_SIDECARS = tuple(SIDECAR_COLUMNS)
+_CANONICAL_ROW_MISMATCH_MESSAGE = (
+    "canonical CATSS rows differ between standalone and projection bundle"
+)
+
 _CANONICAL_TABLES = {
     "catss-alignments.tsv": "canonical_alignment_mismatch",
     "catss-technique.tsv": "technique_mismatch",
@@ -66,6 +70,151 @@ class ConsistencyReport:
         """Whether no inconsistency was found."""
 
         return not self.findings
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class CanonicalProjectionConsistencySummary:
+    """Scalar consistency counters for canonical CATSS versus one projection."""
+
+    source_files: int
+    comparable_sources: int
+    canonical_alignments: int
+    fingerprint_mismatches: int
+    canonical_mismatches: int
+    orphan_projection_rows: int
+    finding_count: int
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class CanonicalProjectionConsistencyReport:
+    """Comparison of a standalone CATSS corpus bundle with one projection bundle."""
+
+    summary: CanonicalProjectionConsistencySummary
+    findings: tuple[ConsistencyFinding, ...]
+
+    @property
+    def ok(self) -> bool:
+        """Whether canonical and projection provenance agree."""
+
+        return not self.findings
+
+
+def compare_canonical_projection_bundle(
+    canonical_directory: str | pathlib.Path,
+    projection_directory: str | pathlib.Path,
+    *,
+    projection: str,
+) -> CanonicalProjectionConsistencyReport:
+    """Compare canonical CATSS sidecars with one BHSA or LXX projection bundle."""
+
+    if projection not in {"bhsa", "lxx"}:
+        raise ValueError(f"unknown CATSS projection: {projection!r}")
+
+    findings: list[ConsistencyFinding] = []
+    canonical = _load_canonical_bundle(pathlib.Path(canonical_directory), findings)
+    projected = _load_bundle(pathlib.Path(projection_directory), projection, findings)
+
+    canonical_sources = _source_map(canonical, findings)
+    projected_sources = _source_map(projected, findings)
+    all_sources = sorted(set(canonical_sources) | set(projected_sources))
+
+    fingerprint_mismatches = 0
+    comparable_sources: set[str] = set()
+    for source in all_sources:
+        canonical_fp = canonical_sources.get(source)
+        projected_fp = projected_sources.get(source)
+        if canonical_fp is None or projected_fp is None:
+            fingerprint_mismatches += 1
+            findings.append(
+                ConsistencyFinding(
+                    code="source_set_mismatch",
+                    source=source,
+                    alignment_id=None,
+                    table="catss-sources.tsv",
+                    message=(
+                        "source exists only in "
+                        + ("projection bundle" if canonical_fp is None else "canonical bundle")
+                    ),
+                )
+            )
+            continue
+        if canonical_fp != projected_fp:
+            fingerprint_mismatches += 1
+            findings.append(
+                ConsistencyFinding(
+                    code="source_fingerprint_mismatch",
+                    source=source,
+                    alignment_id=None,
+                    table="catss-sources.tsv",
+                    message="source size/SHA-256 differ between canonical and projection bundles",
+                )
+            )
+            continue
+        if _projection_supports_source(source, projection):
+            comparable_sources.add(source)
+
+    canonical_mismatches = 0
+    for source in sorted(comparable_sources):
+        for table, code in _CANONICAL_TABLES.items():
+            if table not in canonical.usable or table not in projected.usable:
+                continue
+            if _row_counter(canonical, table, source) != _row_counter(projected, table, source):
+                canonical_mismatches += 1
+                findings.append(
+                    ConsistencyFinding(
+                        code=code,
+                        source=source,
+                        alignment_id=None,
+                        table=table,
+                        message=_CANONICAL_ROW_MISMATCH_MESSAGE,
+                    )
+                )
+
+    canonical_alignments = _alignment_index(canonical, findings)
+    canonical_identities = set(canonical_alignments)
+    orphan_projection_rows = 0
+    for table in ("catss-mappings.tsv", "catss-anchors.tsv"):
+        for row in projected.tables.get(table, ()):
+            identity = (row.get("source", ""), row.get("alignment_id", ""))
+            if (
+                not all(identity)
+                or identity not in canonical_identities
+                or identity[0] not in comparable_sources
+            ):
+                orphan_projection_rows += 1
+                findings.append(
+                    _finding(
+                        "orphan_projection_row",
+                        identity,
+                        table,
+                        (
+                            f"{projection} projection row does not resolve to a comparable "
+                            "canonical CATSS alignment"
+                        ),
+                    )
+                )
+
+    findings.sort(
+        key=lambda finding: (
+            finding.source or "",
+            finding.alignment_id or "",
+            finding.table or "",
+            finding.code,
+            finding.message,
+        )
+    )
+    return CanonicalProjectionConsistencyReport(
+        summary=CanonicalProjectionConsistencySummary(
+            source_files=len(all_sources),
+            comparable_sources=len(comparable_sources),
+            canonical_alignments=len(canonical_alignments),
+            fingerprint_mismatches=fingerprint_mismatches,
+            canonical_mismatches=canonical_mismatches,
+            orphan_projection_rows=orphan_projection_rows,
+            finding_count=len(findings),
+        ),
+        findings=tuple(findings),
+    )
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -384,6 +533,56 @@ def compare_projection_bundles(
         ),
         findings=tuple(findings),
     )
+
+
+def _load_canonical_bundle(
+    root: pathlib.Path,
+    findings: list[ConsistencyFinding],
+) -> _Bundle:
+    tables: dict[str, tuple[dict[str, str], ...]] = {}
+    usable: set[str] = set()
+
+    for name in ("catss-sources.tsv", *_CANONICAL_TABLES):
+        path = root / name
+        expected = SIDECAR_COLUMNS[name]
+        if not path.is_file():
+            findings.append(
+                ConsistencyFinding(
+                    code="missing_sidecar",
+                    source=None,
+                    alignment_id=None,
+                    table=name,
+                    message="canonical bundle is missing required sidecar",
+                )
+            )
+            tables[name] = ()
+            continue
+
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle, delimiter="\t")
+            actual = tuple(reader.fieldnames or ())
+            if actual != expected:
+                findings.append(
+                    ConsistencyFinding(
+                        code="sidecar_header_mismatch",
+                        source=None,
+                        alignment_id=None,
+                        table=name,
+                        message=f"canonical header is {actual!r}; expected {expected!r}",
+                    )
+                )
+                tables[name] = ()
+                continue
+            tables[name] = tuple(dict(row) for row in reader)
+            usable.add(name)
+
+    return _Bundle(root=root, tables=tables, usable=frozenset(usable))
+
+
+def _projection_supports_source(source: str, projection: str) -> bool:
+    if projection == "bhsa":
+        return classify_bhsa_source(source).status is BhsaSourceStatus.SUPPORTED
+    return classify_lxx_source(source).status is LxxSourceStatus.SUPPORTED
 
 
 def _load_bundle(

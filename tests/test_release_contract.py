@@ -23,6 +23,7 @@ def test_package_and_distribution_versions_are_release_version() -> None:
 
 def test_release_public_api_is_importable_from_package_root() -> None:
     assert callable(catss_tf.materialize_bhsa)
+    assert callable(catss_tf.materialize_corpus)
     assert callable(catss_tf.materialize_lxx)
     assert callable(catss_tf.compare_projection_bundles)
     assert catss_tf.TextFabricBhsaProvider.__name__ == "TextFabricBhsaProvider"

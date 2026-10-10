@@ -26,7 +26,23 @@ jobs:
       - run: ruff format --check .
       - run: mypy
       - run: pytest -q
-
+      - name: Reproduce canonical Jonah RED on preimplementation head
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          git fetch -q --depth 1 origin b46a869a3d458da5a43b4145a51d88f844d890a1
+          git worktree add --detach /tmp/catss-canonical-red b46a869a3d458da5a43b4145a51d88f844d890a1
+          if PYTHONPATH=/tmp/catss-canonical-red/src python -m pytest -q \
+            /tmp/catss-canonical-red/tests/test_canonical_materializer.py \
+            -k test_jonah_mixed_apparent_minus_targets_first_greek_element_in_canonical_tf \
+            > /tmp/catss-canonical-red.log 2>&1; then
+            cat /tmp/catss-canonical-red.log
+            echo "Expected canonical Jonah scope RED passed unexpectedly"
+            exit 1
+          fi
+          grep -q "E.*catss_annotation_target" /tmp/catss-canonical-red.log
+          grep -q '1 failed' /tmp/catss-canonical-red.log
+          echo 'jonah_scoped_annotation_RED_reproduced=True'
 
   release-smoke:
     runs-on: ubuntu-latest
@@ -1090,3 +1106,100 @@ jobs:
           grep -qx 'unknown_annotations=0' /tmp/catss-audit.txt
           # Parser diagnostics are reported above but are a separate quality layer;
           # this gate proves complete special-notation coverage without hiding them.
+      - name: Materialize complete canonical corpus
+        run: |
+          python - <<'PY'
+          import csv
+          import pathlib
+          from catss_tf import materialize_corpus
+
+          output = pathlib.Path('/tmp/catss-canonical')
+          result = materialize_corpus(
+              '/tmp/catss-parallel',
+              output,
+              allowed_validation_codes={
+                  'invalid_lxx_reference',
+                  'malformed_continuation',
+                  'unsplit_row',
+              },
+          )
+          assert result.summary.source_files == 46
+          assert result.summary.alignments > 300_000
+          assert result.summary.reference_ranges == 1, result.summary.reference_ranges
+          # Preserve all CATSS alignments without guessing formal translation technique.
+          assert 1 <= result.summary.unclassified_techniques < result.summary.alignments
+          assert result.summary.alignment_slots == result.summary.alignments
+          assert result.summary.audit_ok
+          assert (output / 'otype.tf').is_file()
+          assert (output / 'catss_tt_unclassified_reason.tf').is_file()
+          assert (output / 'catss_tt_status.tf').is_file()
+          unclassified_rows = (output / 'catss_tt_unclassified_reason.tf').read_text(
+              encoding='utf-8'
+          )
+          assert 'Hebrew-empty Greek alignment' in unclassified_rows
+          assert (output / 'oslots.tf').is_file()
+          with (output / 'catss-diagnostics.tsv').open(
+              encoding='utf-8', newline=''
+          ) as handle:
+              diagnostic_rows = tuple(csv.DictReader(handle, delimiter='\t'))
+          assert len(diagnostic_rows) == result.summary.ignored_validation_findings
+          print(result.summary)
+          PY
+      - name: Reload complete canonical CATSS corpus with Text-Fabric
+        run: |
+          python - <<'PY'
+          from tf.fabric import Fabric
+
+          # Validate the complete 46-file TF warp from the researcher's API,
+          # not only in-memory compiler counters or tiny synthetic fixtures.
+          api = Fabric(
+              locations='/tmp',
+              modules=('catss-canonical',),
+              silent='deep',
+          ).load(
+              'catss_alignment_id catss_source catss_raw '
+              'catss_range_start_verse catss_range_end_subverse '
+              'catss_kind catss_target_side catss_target_index catss_text catss_index '
+              'catss_annotation_target',
+              silent='deep',
+          )
+          assert api is not None
+          assert len(api.F.otype.s('alignment')) == 349670
+          assert len(api.F.otype.s('mt_element')) == 350219
+          assert len(api.F.otype.s('lxx_element')) == 546020
+          assert len(api.F.otype.s('reference')) == 6218
+          # Numeric MT-header coincidence is never emitted as a Greek target.
+          from pathlib import Path
+          assert not Path('/tmp/catss-canonical/catss_reference_target.tf').exists()
+          assert 'catss_reference_target' not in api.Eall()
+          ranges = tuple(api.F.otype.s('reference_range'))
+          assert len(ranges) == 1, ranges
+          range_node = ranges[0]
+          assert api.F.catss_raw.v(range_node) == '[[9.2a-2f]]'
+          assert api.F.catss_range_start_verse.v(range_node) == 2
+          assert api.F.catss_range_end_subverse.v(range_node) == 'f'
+          slots = tuple(api.L.d(range_node, otype='alignment'))
+          assert len(slots) == 1, slots
+          assert api.F.catss_source.v(slots[0]) == '06.JoshB.par'
+          assert str(api.F.catss_alignment_id.v(slots[0])).startswith('catss:06.JoshB.par:')
+          # The exact Jonah mixed apparent-minus marker targets only Greek element 1.
+          assert 'catss_annotation_target' in api.Eall()
+          scoped = tuple(
+              n for n in api.F.otype.s('annotation')
+              if api.F.catss_target_side.v(n) == 'lxx'
+          )
+          assert len(scoped) == 1, scoped
+          scope = scoped[0]
+          assert api.F.catss_kind.v(scope) == 'apparent_minus'
+          assert api.F.catss_target_index.v(scope) == 1
+          jonah_target = tuple(api.E.catss_annotation_target.f(scope))
+          assert len(jonah_target) == 1, jonah_target
+          assert api.F.otype.v(jonah_target[0]) == 'lxx_element'
+          assert api.F.catss_index.v(jonah_target[0]) == 1
+          assert api.F.catss_text.v(jonah_target[0]) == 'DE/SPOTA'
+          jonah_slots = tuple(api.L.d(scope, otype='alignment'))
+          assert len(jonah_slots) == 1
+          assert api.F.catss_source.v(jonah_slots[0]) == '32.Jonah.par'
+          print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
+                'alignments, single JoshB contextual reference_range')
+          PY
