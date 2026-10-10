@@ -54,6 +54,7 @@ class CanonicalMaterializationSummary:
     references: int
     reference_ranges: int
     source_lines: int
+    unclassified_techniques: int
     tf_features: int
     edge_features: int
     sidecar_rows: int
@@ -178,6 +179,10 @@ def materialize_corpus(
             references=node_type_counts.get("reference", 0),
             reference_ranges=node_type_counts.get("reference_range", 0),
             source_lines=node_type_counts.get("source_line", 0),
+            unclassified_techniques=sum(
+                status == "unclassified"
+                for status in graph.node_features["catss_tt_status"].values()
+            ),
             tf_features=len(graph.node_features) + 3,
             edge_features=len(graph.edge_features),
             sidecar_rows=sidecar_rows,
@@ -293,12 +298,13 @@ def _alignment_features(builder: _GraphBuilder, context: _AlignmentContext) -> N
     try:
         technique = derive_alignment_technique(context.source, alignment)
     except TechniqueError as exc:
-        raise CanonicalMaterializationError(
-            "technique derivation failed for "
-            f"{context.source}:{min(alignment.source_lines)} "
-            f"{alignment.alignment_id} "
-            f"mt={alignment.mt_raw!r} lxx={alignment.lxx_raw!r}: {exc}"
-        ) from exc
+        # The standalone corpus stores source evidence even when the derived
+        # translation technique cannot be safely classified. Never guess.
+        technique = None
+        builder.feature("catss_tt_status", node, "unclassified")
+        builder.feature("catss_tt_unclassified_reason", node, str(exc))
+    else:
+        builder.feature("catss_tt_status", node, "derived")
 
     values: dict[str, CanonicalValue | None] = {
         "catss_alignment_id": alignment.alignment_id,
@@ -317,9 +323,15 @@ def _alignment_features(builder: _GraphBuilder, context: _AlignmentContext) -> N
         "catss_mt_n": alignment.mt_count,
         "catss_lxx_n": alignment.lxx_count,
         "catss_display": _alignment_display(alignment),
-        "catss_tt_cardinality_mt_lxx": technique.cardinality_mt_lxx,
-        "catss_tt_token_balance_mt_lxx": technique.token_balance_mt_lxx,
-        "catss_tt_transposition_mt_lxx": technique.transposition_mt_lxx,
+        "catss_tt_cardinality_mt_lxx": (
+            technique.cardinality_mt_lxx if technique is not None else None
+        ),
+        "catss_tt_token_balance_mt_lxx": (
+            technique.token_balance_mt_lxx if technique is not None else None
+        ),
+        "catss_tt_transposition_mt_lxx": (
+            technique.transposition_mt_lxx if technique is not None else None
+        ),
     }
     for name, value in values.items():
         builder.feature(name, node, value)
@@ -334,8 +346,12 @@ def _alignment_features(builder: _GraphBuilder, context: _AlignmentContext) -> N
         "catss_trans_remote": alignment.is_transposition_remote,
         "catss_trans_style": alignment.is_transposition_stylistic,
         "catss_column_split": alignment.column_split,
-        "catss_tt_addition_vs_mt": technique.addition_vs_mt,
-        "catss_tt_omission_vs_mt": technique.omission_vs_mt,
+        "catss_tt_addition_vs_mt": (
+            technique.addition_vs_mt if technique is not None else False
+        ),
+        "catss_tt_omission_vs_mt": (
+            technique.omission_vs_mt if technique is not None else False
+        ),
     }
     for name, value in flags.items():
         if value:
@@ -517,9 +533,14 @@ def _canonical_sidecars(
     for context in contexts:
         alignment = context.alignment
         alignment_rows.append(_alignment_sidecar_row(context))
-        technique_rows.append(
-            technique_sidecar_row(derive_alignment_technique(context.source, alignment))
-        )
+        # Technique-v1 is deliberately partial; the canonical alignment remains
+        # queryable with explicit catss_tt_status/reason when classification fails.
+        try:
+            technique = derive_alignment_technique(context.source, alignment)
+        except TechniqueError:
+            pass
+        else:
+            technique_rows.append(technique_sidecar_row(technique))
         annotation_rows.extend(
             (
                 context.source,
