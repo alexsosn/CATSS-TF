@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from catss_tf.lxx_materializer import _semantic_kinds
+from catss_tf.lxx_materializer import _semantic_kinds, _semantic_scopes
 from catss_tf.parser import AlignmentRecord, parse_parallel_text
 from catss_tf.technique import TechniqueError, derive_alignment_technique, derive_technique_state
 from catss_tf.tf_schema import TfMembership, TfSchemaError, compile_tf_features
@@ -122,3 +122,18 @@ def test_lxx_tf_membership_retains_witness_semantics_and_rejects_forgery() -> No
     ):
         with pytest.raises(TfSchemaError, match="Hebrew-empty|Sirach witness lacuna"):
             compile_tf_features(projection="lxx", max_node=10, memberships=(bad,), anchors=())
+
+
+@pytest.mark.parametrize("mt_column_a", ("3 [..]", "[BN] 3", ""))
+def test_lxx_projection_must_not_propagate_noninitial_sirach_lacuna(
+    mt_column_a: str,
+) -> None:
+    """A witness annotation alone cannot impersonate the MT-A lacuna class."""
+    genuine = _alignment("[..]\tOU)AI\\")
+    forged = dataclasses.replace(genuine, mt_col_a=mt_column_a)
+    assert "sirach_lacuna_or_illegible" not in _semantic_kinds(
+        forged, side="lxx", element_index=1
+    )
+    assert ("sirach_lacuna_or_illegible", "mt_a") not in _semantic_scopes(
+        forged, side="lxx", element_index=1
+    )
