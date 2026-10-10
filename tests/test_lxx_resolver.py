@@ -317,8 +317,7 @@ def test_contextual_reference_range_rejects_aliased_parent_subverse_nodes() -> N
     assert report.ok is False
     assert report.reference_range_memberships == ()
     assert any(
-        finding.code == "ambiguous_lxx_reference_range_member"
-        for finding in report.findings
+        finding.code == "ambiguous_lxx_reference_range_member" for finding in report.findings
     )
     assert report.summary.reference_groups == 1
     assert report.summary.ambiguous_reference_groups == 1
