@@ -61,6 +61,31 @@ Additional node types are:
 Every non-slot node is connected through `oslots` to the alignment slot or slots it
 describes. Repeated annotations and source lines remain separate nodes.
 
+## Scoped annotation targets
+
+For a CATSS annotation whose typed IR explicitly identifies a lexical target,
+the `annotation` node has `catss_target_side` and 1-based
+`catss_target_index` features. The canonical
+`catss_annotation_target` edge points to the exact lexical child node of
+the *same alignment slot*, without referring to foreign BHSA/LXX node IDs.
+
+The researched Jonah 4:3 row `--- YHWH` ↔ `DE/SPOTA KU/RIE` has
+one `apparent_minus` annotation written in MT column A but explicitly
+targeting Greek element 1 (`DE/SPOTA`). Greek element 2 (`KU/RIE`)
+remains unmarked and is the counterpart of MT `YHWH`. The canonical
+relation is emitted only for such explicit, validated scopes; neither the
+word-count ratio nor the source column implies a target. Unscoped plus/minus
+annotations retain their source provenance but have no target edge.
+
+In the TF API:
+
+```python
+annotation = ...  # a scoped `annotation` node
+target = api.E.catss_annotation_target.f(annotation)[0]
+api.F.catss_text.v(target)  # DE/SPOTA for Jonah 4:3
+```
+
+
 ## Structural sections
 
 The section hierarchy is:

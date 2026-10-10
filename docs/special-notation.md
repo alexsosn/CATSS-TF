@@ -30,7 +30,35 @@ When one parent node participates in two CATSS memberships, lane 2 uses the norm
 
 Cross-language Hebrew↔Greek relations cannot be TF edges because BHSA and LXX are separate warps with unrelated node spaces. Query both modules by `catss_alignment_id` to join them.
 
-Within a projection, CATSS-TF uses resolved parent nodes and the alignment membership features. A semantic annotation is attached only to the source side on which CATSS records it. Provenance sidecars retain exact one-to-many source records but are not the semantic query API.
+Within a projection, CATSS-TF uses resolved parent nodes and alignment membership
+features. Unscoped notation is projected according to the CATSS source column.
+A marker with an explicitly researched element target is projected only onto
+that target element, even when the printed marker is in the opposite column.
+The scoped suffix continues to identify the **source** column of the marker.
+Provenance sidecars retain exact one-to-many records but are not the semantic
+query API.
+
+## Mixed apparent-MT-minus at Jonah 4:3
+
+The CATSS source row `--- YHWH` → `DE/SPOTA KU/RIE` contains two
+separate correspondences. The apparent-minus marker printed in MT column A
+targets the *first* Greek element `DE/SPOTA` (δέσποτα), while lexical MT
+`YHWH` corresponds to the *second* Greek element `KU/RIE` (κύριε).
+The typed IR uses `target_side=lxx, target_index=1` for that marker,
+and the LXX projection exposes `catss_sem_apparent_minus` and
+`catss_sem_apparent_minus_mt_a` only on the first Greek parent word.
+It must not mark the second Greek word or smear onto BHSA's surviving
+`YHWH`. The alignment remains `one_many`; the extra Greek token is not
+silently classified as a generic LXX addition.
+
+This scope is grounded in the exact Jonah 4:3 CATSS cells and pinned
+CenterBLC/LXX words 495520–495521. It is *not* inferred automatically
+from any arbitrary one-Hebrew/two-Greek row. Full-document LXX resolution
+can still fail on unrelated Jonah verse-group ambiguities, in which case
+the materializer fails closed rather than publishing incomplete matches.
+The canonical standalone `catss` annotation-to-element relation is
+tracked separately in #40 / PR #47.
+
 
 ## Contextual Greek reference ranges
 
@@ -66,7 +94,7 @@ Sirach has a book-specific notation profile. In particular `*` means an uncertai
 
 ## Complete-snapshot audit\n\nRun `catss-tf validate --complete PATH` for the release gate. The command refuses a partial or extra-file snapshot before parsing, the issue-38 corpus gate requires `source_files=46`, `unaccounted_lines=0`, and `unknown_annotations=0`. General parser diagnostics (for example malformed physical continuations or legacy LXX-reference syntax) remain reported by `validate` and can still make its process exit non-zero, but they are not silently reclassified as notation. A partial directory is useful for exploration but cannot produce the project’s zero-unknown notation claim.\n\n## Empirical corpus gate
 
-CI audits the complete configured upstream CATSS snapshot without committing or publishing the source data. The current corpus gate covers 46 files and 349,908 alignment records, requires every source data line to be accounted for, and requires `unknown_annotations=0`. Corpus-discovered forms extend the documented glossary conservatively: bracketed `c...` readings are Greek corrections; `{**?}` is possible Greek agreement with Qere; `{=number}` and dotted bracket forms such as `[v.8]` are contextual references; uppercase Beta-Code brace payloads are contextual Greek readings; and `{!}na+` is represented as `inf_abs_accusative_without_mt_inf_abs`.
+CI audits the complete configured upstream CATSS snapshot without committing or publishing the source data. The complete corpus gate covers 46 files, requires every source data line to be accounted for, and requires `unknown_annotations=0`. Exact alignment counts are recorded by each pinned-source audit rather than treated as a timeless constant in this guide. Corpus-discovered forms extend the documented glossary conservatively: bracketed `c...` readings are Greek corrections; `{**?}` is possible Greek agreement with Qere; `{=number}` and dotted bracket forms such as `[v.8]` are contextual references; uppercase Beta-Code brace payloads are contextual Greek readings; and `{!}na+` is represented as `inf_abs_accusative_without_mt_inf_abs`.
 
 The complete notation gate is intentionally narrower than the general structural validation report. The upstream files also contain legacy line-layout anomalies (for example continuation and unsplit-row diagnostics) tracked by the parser; those remain visible and fail ordinary validation unless explicitly handled, but they cannot hide or waive unknown notation in the complete-snapshot gate.
 

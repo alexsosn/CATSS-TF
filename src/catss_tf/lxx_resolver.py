@@ -241,12 +241,13 @@ def normalize_lxx_greek(value: str) -> str:
     """Normalize one CenterBLC realized Greek word without lemmatizing it."""
 
     output: list[str] = []
-    for character in unicodedata.normalize("NFD", value):
+    normalized = unicodedata.normalize("NFD", value)
+    for index, character in enumerate(normalized):
         if unicodedata.combining(character):
             continue
         if character.isspace():
             continue
-        if character in _APOSTROPHES:
+        if character in _APOSTROPHES or (character == "᾿" and index == len(normalized) - 1):
             output.append("ʼ")
             continue
         if character == "-":

@@ -477,6 +477,8 @@ def _alignment_flags(alignment: AlignmentRecord, *, side: str = "both") -> froze
         flags.add("catss_doubt")
 
     for annotation in alignment.annotations:
+        if annotation.target_side is not None and annotation.target_side != side:
+            continue
         if side == "mt" and annotation.side == "lxx":
             continue
         if side == "lxx" and annotation.side != "lxx":
@@ -498,6 +500,8 @@ def _annotation_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tupl
     }
     result: list[tuple[str, str]] = []
     for annotation in alignment.annotations:
+        if annotation.target_side is not None and annotation.target_side != side:
+            continue
         if side == "mt" and annotation.side == "lxx":
             continue
         if side == "lxx" and annotation.side != "lxx":
@@ -513,7 +517,10 @@ def _semantic_annotation_applies(
     annotation_side: str,
     kind: str,
     projection_side: str,
+    target_side: str | None = None,
 ) -> bool:
+    if target_side is not None and target_side != projection_side:
+        return False
     if kind == "source_repair":
         return True
     if projection_side == "mt":
@@ -532,6 +539,7 @@ def _semantic_kinds(alignment: AlignmentRecord, *, side: str) -> tuple[str, ...]
             annotation_side=annotation.side,
             kind=annotation.kind,
             projection_side=side,
+            target_side=annotation.target_side,
         )
     }
     if side == "mt" and alignment.retroversion_kind not in {None, "plain"}:
@@ -548,6 +556,7 @@ def _semantic_scopes(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[st
             annotation_side=annotation.side,
             kind=annotation.kind,
             projection_side=side,
+            target_side=annotation.target_side,
         )
     }
     if side == "mt" and alignment.retroversion_kind not in {None, "plain"}:
@@ -567,6 +576,7 @@ def _semantic_scoped_payloads(
             annotation_side=annotation.side,
             kind=annotation.kind,
             projection_side=side,
+            target_side=annotation.target_side,
         )
     }
     return tuple(sorted(payloads))
@@ -582,6 +592,7 @@ def _semantic_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[
                 annotation_side=annotation.side,
                 kind=annotation.kind,
                 projection_side=side,
+                target_side=annotation.target_side,
             )
         ):
             continue

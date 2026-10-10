@@ -447,6 +447,26 @@ def _add_detail_nodes(
 ) -> None:
     """Allocate each Text-Fabric node type in one contiguous node-id block."""
 
+    # Store only targets explicitly supplied by the typed IR. Never guess a
+    # destination from lexical cardinality or the source annotation column.
+    scoped_lxx: set[tuple[int, int]] = set()
+    for context in contexts:
+        for annotation in context.alignment.annotations:
+            if annotation.target_side is None and annotation.target_index is None:
+                continue
+            if (
+                annotation.target_side != "lxx"
+                or annotation.target_index is None
+                or not 1 <= annotation.target_index <= len(context.alignment.lxx_tokens)
+            ):
+                raise CanonicalMaterializationError(
+                    "invalid canonical annotation target scope: "
+                    f"{context.alignment.alignment_id}"
+                )
+            scoped_lxx.add((context.slot, annotation.target_index))
+
+    target_lxx_nodes: dict[tuple[int, int], int] = {}
+
     for context in contexts:
         alignment = context.alignment
         slot = context.slot
@@ -466,6 +486,8 @@ def _add_detail_nodes(
             node = builder.add_node("lxx_element", (slot,))
             builder.feature("catss_index", node, index)
             builder.feature("catss_text", node, text)
+            if (slot, index) in scoped_lxx:
+                target_lxx_nodes[(slot, index)] = node
 
     for context in contexts:
         alignment = context.alignment
@@ -478,6 +500,17 @@ def _add_detail_nodes(
             builder.feature("catss_contextual", node, int(annotation.contextual))
             builder.feature("catss_payload", node, annotation.payload)
             builder.feature("catss_raw", node, annotation.raw)
+            if annotation.target_side == "lxx":
+                assert annotation.target_index is not None  # validated before node allocation
+                target = target_lxx_nodes.get((slot, annotation.target_index))
+                if target is None:
+                    raise CanonicalMaterializationError(
+                        "canonical annotation target cannot be resolved: "
+                        f"{alignment.alignment_id}"
+                    )
+                builder.feature("catss_target_side", node, annotation.target_side)
+                builder.feature("catss_target_index", node, annotation.target_index)
+                builder.edge("catss_annotation_target", node, target)
 
     for context in contexts:
         alignment = context.alignment
@@ -790,6 +823,44 @@ def _audit_graph(
             raise CanonicalMaterializationError(
                 "canonical preservation audit failed: "
                 f"alignment child mismatch for {alignment.alignment_id}"
+            )
+
+    # The scoped target is a single, typed relation *inside* the canonical
+    # warp, never a foreign BHSA/LXX node number. The audit rejects silent
+    # target loss, dangling edges and positional guessing across alignments.
+    scoped_edges = graph.edge_features.get("catss_annotation_target", {})
+    expected_targets = sum(
+        annotation.target_side is not None
+        for _source, _verse, alignment in expected_contexts
+        for annotation in alignment.annotations
+    )
+    scoped_sides = graph.node_features.get("catss_target_side", {})
+    scoped_indexes = graph.node_features.get("catss_target_index", {})
+    if (
+        len(scoped_edges) != expected_targets
+        or set(scoped_edges) != set(scoped_sides)
+        or set(scoped_edges) != set(scoped_indexes)
+    ):
+        raise CanonicalMaterializationError(
+            "canonical preservation audit failed: scoped annotation target count mismatch"
+        )
+    for annotation_node, targets in scoped_edges.items():
+        if (
+            graph.node_types.get(annotation_node) != "annotation"
+            or scoped_sides.get(annotation_node) != "lxx"
+            or len(targets) != 1
+        ):
+            raise CanonicalMaterializationError(
+                "canonical preservation audit failed: invalid scoped annotation edge"
+            )
+        target = targets[0]
+        if (
+            graph.node_types.get(target) != "lxx_element"
+            or graph.oslots.get(annotation_node) != graph.oslots.get(target)
+            or scoped_indexes[annotation_node] != graph.node_features["catss_index"][target]
+        ):
+            raise CanonicalMaterializationError(
+                "canonical preservation audit failed: scoped annotation target identity mismatch"
             )
 
     statuses = graph.node_features.get("catss_tt_status", {})

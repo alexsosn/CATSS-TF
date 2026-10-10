@@ -26,7 +26,23 @@ jobs:
       - run: ruff format --check .
       - run: mypy
       - run: pytest -q
-
+      - name: Reproduce canonical Jonah RED on preimplementation head
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          git fetch -q --depth 1 origin b46a869a3d458da5a43b4145a51d88f844d890a1
+          git worktree add --detach /tmp/catss-canonical-red b46a869a3d458da5a43b4145a51d88f844d890a1
+          if PYTHONPATH=/tmp/catss-canonical-red/src python -m pytest -q \
+            /tmp/catss-canonical-red/tests/test_canonical_materializer.py \
+            -k test_jonah_mixed_apparent_minus_targets_first_greek_element_in_canonical_tf \
+            > /tmp/catss-canonical-red.log 2>&1; then
+            cat /tmp/catss-canonical-red.log
+            echo "Expected canonical Jonah scope RED passed unexpectedly"
+            exit 1
+          fi
+          grep -q "E.*catss_annotation_target" /tmp/catss-canonical-red.log
+          grep -q '1 failed' /tmp/catss-canonical-red.log
+          echo 'jonah_scoped_annotation_RED_reproduced=True'
 
   release-smoke:
     runs-on: ubuntu-latest
@@ -318,6 +334,7 @@ jobs:
           marker_total = 0
           admissible = 0
           outlier_shapes = collections.Counter()
+          scoped_mixed = []
           for name in CATSS_PARALLEL_FILENAMES:
               document = parse_parallel_file(root / name)
               for verse in document.verses:
@@ -340,14 +357,41 @@ jobs:
                           assert technique.omission_vs_mt is False
                       else:
                           outlier_shapes[(alignment.mt_count, alignment.lxx_count)] += 1
-                          try:
-                              derive_alignment_technique(name, alignment)
-                          except TechniqueError:
-                              pass
+                          identity = (
+                              name, verse.chapter, verse.verse,
+                              alignment.mt_raw, alignment.lxx_raw,
+                          )
+                          if identity == (
+                              '32.Jonah.par', 4, 3, '--- YHWH', 'DE/SPOTA KU/RIE',
+                          ):
+                              assert alignment.mt_count == 1
+                              assert alignment.lxx_count == 2
+                              assert len(apparent) == 1
+                              assert apparent[0].target_side == 'lxx'
+                              assert apparent[0].target_index == 1
+                              technique = derive_alignment_technique(name, alignment)
+                              assert technique.cardinality_mt_lxx == 'one_many'
+                              assert technique.token_balance_mt_lxx == 'lxx_more'
+                              assert technique.addition_vs_mt is False
+                              assert technique.omission_vs_mt is False
+                              scoped_mixed.append(identity)
                           else:
-                              raise AssertionError(
-                                  'contradictory apparent-minus cardinality must fail closed'
-                              )
+                              # All other contradictory cardinalities remain errors.
+                              assert not any(
+                                  a.target_side == 'lxx' and a.target_index is not None
+                                  for a in apparent
+                              ), identity
+                              try:
+                                  derive_alignment_technique(name, alignment)
+                              except TechniqueError:
+                                  pass
+                              else:
+                                  raise AssertionError(
+                                      f'unscoped contradictory minus admitted: {identity}'
+                                  )
+          assert scoped_mixed == [
+              ('32.Jonah.par', 4, 3, '--- YHWH', 'DE/SPOTA KU/RIE'),
+          ], scoped_mixed
           assert marker_total == 63, marker_total
           assert admissible == 61, admissible
           assert outlier_shapes == {(0, 0): 1, (1, 2): 1}, outlier_shapes
@@ -881,6 +925,100 @@ jobs:
           assert not pathlib.Path('/tmp/catss-range-module').exists()
           print('joshb_9_2_reference_range_unresolved_parent=abcdef')
           PY
+      - name: Research pinned Jonah 4:3 Greek token scope
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/catss-jonah-parent
+          git init -q /tmp/catss-jonah-parent
+          git -C /tmp/catss-jonah-parent remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/catss-jonah-parent fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/catss-jonah-parent checkout -q FETCH_HEAD
+          test "$(git -C /tmp/catss-jonah-parent rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+          from tf.fabric import Fabric
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+          from catss_tf.lxx_resolver import (
+              TextFabricLxxProvider, normalize_catss_greek, normalize_lxx_greek,
+              resolve_lxx_document,
+          )
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE, LXX_MAX_SLOT, LXX_NODE_COUNTS, LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG, LXX_REPOSITORY, LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES, LXX_SLOT_TYPE, LXX_VERSION, LxxParentProbe,
+          )
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/32.Jonah.par'))
+          rows = [
+              a for v in source.verses if (v.chapter, v.verse) == (4, 3)
+              for a in v.alignments
+              if a.mt_raw == '--- YHWH' and a.lxx_raw == 'DE/SPOTA KU/RIE'
+          ]
+          assert len(rows) == 1, rows
+          alignment = rows[0]
+          assert alignment.mt_tokens == ('YHWH',)
+          assert alignment.lxx_tokens == ('DE/SPOTA', 'KU/RIE')
+          assert any(a.side == 'mt_a' and a.kind == 'apparent_minus' for a in alignment.annotations)
+
+          TF = Fabric(locations='/tmp/catss-jonah-parent/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          verse_node = api.T.nodeFromSection(('Jonah', 4, 3))
+          assert verse_node is not None
+          slots = tuple(api.L.d(verse_node, otype='word'))
+          normalized = []
+          for n in slots:
+              try:
+                  normalized.append(normalize_lxx_greek(api.F.word.v(n)))
+              except ValueError:
+                  normalized.append(None)  # unrelated parent token with unsupported punctuation
+          expected = tuple(map(normalize_catss_greek, alignment.lxx_tokens))
+          matches = [
+              (slots[i], slots[i+1])
+              for i in range(len(slots) - 1)
+              if tuple(normalized[i:i+2]) == expected
+          ]
+          print('JONAH_4_3_MATCHES', [
+              ((left, api.F.word.v(left)), (right, api.F.word.v(right)))
+              for left, right in matches
+          ])
+          assert matches == [(495520, 495521)], matches
+          assert normalize_lxx_greek('ἀπ᾿') == normalize_catss_greek("A)P'")
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY, version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG, release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE, max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE, section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS, feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          isolated = parse_parallel_text(
+              'Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n',
+              source_name='32.Jonah.par',
+          )
+          grounded = resolve_lxx_document(isolated, provider)
+          assert grounded.ok, grounded.findings
+          assert grounded.reference_anchors == ()
+          assert [
+              (m.lxx_index, m.lxx_node, m.mapping_kind)
+              for m in grounded.word_mappings
+          ] == [(0, 495520, 'exact'), (1, 495521, 'exact')]
+          print('JONAH_4_3_PINNED_PARENT_MAPPINGS', [
+              (m.lxx_index, m.lxx_node) for m in grounded.word_mappings
+          ])
+
+          # Full-document resolution remains independently strict: unrelated
+          # mismatched CATSS groups may prevent publishing a complete module.
+          full_report = resolve_lxx_document(source, provider)
+          print('JONAH_FULL_DOC_REPORT', full_report.summary)
+          print('JONAH_4_3_FULL_DOC_FOCUS', [
+              (m.lxx_index, m.lxx_node)
+              for m in full_report.word_mappings
+              if m.alignment_id == alignment.alignment_id
+          ])
+          assert full_report.summary.mismatched_reference_groups > 0
+          PY
       - name: Research pinned Josh 9:2 subverse node hierarchy
         run: |
           python -m pip install "text-fabric>=13.1,<14"
@@ -1020,7 +1158,8 @@ jobs:
               silent='deep',
           ).load(
               'catss_alignment_id catss_source catss_raw '
-              'catss_range_start_verse catss_range_end_subverse',
+              'catss_range_start_verse catss_range_end_subverse '
+              'catss_kind catss_target_side catss_target_index catss_text catss_index',
               silent='deep',
           )
           assert api is not None
@@ -1040,6 +1179,24 @@ jobs:
           assert len(slots) == 1, slots
           assert api.F.catss_source.v(slots[0]) == '06.JoshB.par'
           assert str(api.F.catss_alignment_id.v(slots[0])).startswith('catss:06.JoshB.par:')
+          # The exact Jonah mixed apparent-minus marker targets only Greek element 1.
+          assert 'catss_annotation_target' in api.Eall()
+          scoped = tuple(
+              n for n in api.F.otype.s('annotation')
+              if api.F.catss_target_side.v(n) == 'lxx'
+          )
+          assert len(scoped) == 1, scoped
+          scope = scoped[0]
+          assert api.F.catss_kind.v(scope) == 'apparent_minus'
+          assert api.F.catss_target_index.v(scope) == 1
+          jonah_target = tuple(api.E.catss_annotation_target.f(scope))
+          assert len(jonah_target) == 1, jonah_target
+          assert api.F.otype.v(jonah_target[0]) == 'lxx_element'
+          assert api.F.catss_index.v(jonah_target[0]) == 1
+          assert api.F.catss_text.v(jonah_target[0]) == 'DE/SPOTA'
+          jonah_slots = tuple(api.L.d(scope, otype='alignment'))
+          assert len(jonah_slots) == 1
+          assert api.F.catss_source.v(jonah_slots[0]) == '32.Jonah.par'
           print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
                 'alignments, single JoshB contextual reference_range')
           PY

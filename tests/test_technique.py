@@ -254,6 +254,31 @@ def test_generic_greek_empty_alignment_still_fails_closed() -> None:
         derive_alignment_technique("99.Test.par", alignment)
 
 
+def test_jonah_mixed_apparent_minus_has_one_many_technique_without_addition() -> None:
+    doc = parse_parallel_text(
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    state = derive_alignment_technique("32.Jonah.par", alignment)
+    assert state.cardinality_mt_lxx == "one_many"
+    assert state.token_balance_mt_lxx == "lxx_more"
+    assert state.addition_vs_mt is False
+    assert state.omission_vs_mt is False
+
+
+def test_unscoped_one_many_apparent_minus_remains_fail_closed() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\n--- HB\tLOGOS LOGON\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    with pytest.raises(TechniqueError, match="apparent MT minus"):
+        derive_alignment_technique("01.Genesis.par", alignment)
+
+
 def test_source_flags_cannot_contradict_nonempty_sides() -> None:
     with pytest.raises(TechniqueError, match="non-empty MT"):
         derive_technique_state(
@@ -413,6 +438,36 @@ def test_plus_minus_flags_require_material_on_the_named_side() -> None:
             lxx_n=0,
             is_lxx_plus=False,
             is_lxx_minus=True,
+            trans_local=False,
+            trans_remote=False,
+            trans_style=False,
+        )
+
+
+def test_scoped_mixed_apparent_minus_derives_non_addition_technique() -> None:
+    doc = parse_parallel_text(
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    technique = derive_alignment_technique("32.Jonah.par", alignment)
+
+    assert technique.cardinality_mt_lxx == "one_many"
+    assert technique.token_balance_mt_lxx == "lxx_more"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+
+def test_scoped_minus_gate_rejects_missing_annotation_evidence() -> None:
+    with pytest.raises(TechniqueError, match="scoped apparent MT minus"):
+        derive_technique_state(
+            mt_n=1,
+            lxx_n=2,
+            is_lxx_plus=False,
+            is_lxx_minus=False,
+            apparent_mt_minus=False,
+            scoped_apparent_mt_minus=True,
             trans_local=False,
             trans_remote=False,
             trans_style=False,

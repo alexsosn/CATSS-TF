@@ -52,6 +52,7 @@ class TfMembership:
     semantic_scopes: tuple[tuple[str, str], ...] = ()
     semantic_scoped_payloads: tuple[tuple[str, str, str], ...] = ()
     semantic_payloads: tuple[tuple[str, str], ...] = ()
+    scoped_apparent_mt_minus: bool = False
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -665,6 +666,7 @@ def _compile_membership(
             trans_remote="catss_trans_remote" in membership.flags,
             trans_style="catss_trans_style" in membership.flags,
             apparent_mt_minus="apparent_minus" in membership.semantic_kinds,
+            scoped_apparent_mt_minus=membership.scoped_apparent_mt_minus,
         )
     except TechniqueError as exc:
         raise TfSchemaError(f"technique derivation failed: {exc}") from exc
@@ -704,6 +706,16 @@ def _validate_membership(
             f"mapping kind {membership.mapping_kind!r} is invalid for {projection} projection"
         )
     _validate_alignment_source(membership.source, membership.alignment_id)
+
+    if membership.scoped_apparent_mt_minus and not (
+        projection == "lxx"
+        and membership.mt_n == 1
+        and membership.lxx_n == 2
+        and membership.lxx_i == 1
+        and "apparent_minus" in membership.semantic_kinds
+        and ("apparent_minus", "mt_a") in membership.semantic_scopes
+    ):
+        raise TfSchemaError("invalid scoped apparent MT-minus membership target or evidence")
 
     for name, value in (("mt_n", membership.mt_n), ("lxx_n", membership.lxx_n)):
         if value < 0:
