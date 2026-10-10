@@ -248,8 +248,7 @@ def test_joshb_contextual_range_is_first_class_canonical_node(
     assert tuple(api.L.u(slot, otype="lxx_element")) == ()
     assert tuple(api.L.u(slot, otype="source_line"))
     assert any(
-        api.F.catss_kind.v(a) == "contextual_reference"
-        and api.F.catss_raw.v(a) == "[[9.2a-2f]]"
+        api.F.catss_kind.v(a) == "contextual_reference" and api.F.catss_raw.v(a) == "[[9.2a-2f]]"
         for a in api.L.u(slot, otype="annotation")
     )
     # This isolated source may have no edge feature at all; a range does not
