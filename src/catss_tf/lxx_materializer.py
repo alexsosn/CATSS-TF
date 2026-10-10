@@ -546,6 +546,10 @@ def _semantic_annotation_applies(
         return True
     if kind == "apparent_minus":
         return annotation_side == "mt_a"
+    if kind == "sirach_lacuna_or_illegible":
+        # The missing Hebrew *witness* is evidence about mapped Greek text,
+        # not a claimed addition to the Greek translation.
+        return annotation_side == "mt_a"
     if projection_side == "mt":
         return annotation_side != "lxx"
     if projection_side == "lxx":

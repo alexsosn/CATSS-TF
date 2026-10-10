@@ -667,6 +667,11 @@ def _compile_membership(
             trans_style="catss_trans_style" in membership.flags,
             apparent_mt_minus="apparent_minus" in membership.semantic_kinds,
             scoped_apparent_mt_minus=membership.scoped_apparent_mt_minus,
+            sirach_witness_lacuna=(
+                membership.source == "27.Sirach.par"
+                and "sirach_lacuna_or_illegible" in membership.semantic_kinds
+                and ("sirach_lacuna_or_illegible", "mt_a") in membership.semantic_scopes
+            ),
         )
     except TechniqueError as exc:
         raise TfSchemaError(f"technique derivation failed: {exc}") from exc
