@@ -43,15 +43,15 @@ catss-tf --version
 
 Read:
 
-1 [docs/canonical-corpus.md](docs/canonical-corpus.md) — standalone CATSS corpus and node model
-1 [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
-1 [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
-1 [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
-1 [CHANGELOG.md](CHANGELOG.md)
-1 [research.md](research.md)
-1 [design.md](design.md)
-1 [plan.md](plan.md)
-1 [AGENTS.md](AGENTS.md)
+1. [docs/canonical-corpus.md](docs/canonical-corpus.md) — standalone CATSS corpus and node model
+2. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
+3. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
+4. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
+5. [CHANGELOG.md](CHANGELOG.md)
+6. [research.md](research.md)
+7. [design.md](design.md)
+8. [plan.md](plan.md)
+9. [AGENTS.md](AGENTS.md)
 
 ## Architectural boundary
 
