@@ -500,6 +500,156 @@ jobs:
           assert technique.addition_vs_mt is False
           print('one_kings_22_50_missing_minus_repairs=1')
           PY
+      - name: Assert parent-grounded 1 Esdras lexical repair
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-lxx
+          git init -q /tmp/centerblc-lxx
+          git -C /tmp/centerblc-lxx remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-lxx fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-lxx checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-lxx rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+
+          from tf.fabric import Fabric
+
+          from catss_tf.lxx_resolver import (
+              TextFabricLxxProvider,
+              normalize_catss_greek,
+              normalize_lxx_greek,
+              resolve_lxx_document,
+          )
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE,
+              LXX_MAX_SLOT,
+              LXX_NODE_COUNTS,
+              LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG,
+              LXX_REPOSITORY,
+              LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES,
+              LXX_SLOT_TYPE,
+              LXX_VERSION,
+              LxxParentProbe,
+          )
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+          from catss_tf.technique import derive_alignment_technique
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/17.1Esdras.par'))
+          targets = [
+              alignment
+              for verse in source.verses
+              if verse.chapter == 6 and verse.verse == 4
+              for alignment in verse.alignments
+              if alignment.mt_raw == 'L/KM' and alignment.lxx_raw == '[e5.3]'
+          ]
+          assert len(targets) == 1, targets
+          alignment = targets[0]
+          assert alignment.raw_lines == ('L/KM\t[e5.3]',)
+          assert alignment.mt_tokens == ('L/KM',)
+          assert alignment.lxx_tokens == ('U(MI=N',)
+          assert alignment.is_transposition_stylistic is True
+          assert any(
+              annotation.side == 'lxx'
+              and annotation.kind == 'transposition_stylistic'
+              and annotation.payload == 'U(MI=N'
+              for annotation in alignment.annotations
+          )
+          assert (alignment.mt_count, alignment.lxx_count) == (1, 1)
+          assert alignment.is_lxx_plus is False
+          assert alignment.is_lxx_minus is False
+          assert any(
+              annotation.side == 'lxx'
+              and annotation.kind == 'contextual_reference'
+              and annotation.raw == '[e5.3]'
+              and annotation.payload == 'e5.3'
+              for annotation in alignment.annotations
+          )
+          repairs = [
+              annotation
+              for annotation in alignment.annotations
+              if annotation.side == 'lxx' and annotation.kind == 'source_repair'
+          ]
+          assert [(repair.raw, repair.payload) for repair in repairs] == [
+              ('[e5.3]', '{..^U(MI=N} [e5.3]')
+          ]
+          carriers = [
+              candidate
+              for verse in source.verses
+              if verse.chapter == 6 and verse.verse == 4
+              for candidate in verse.alignments
+              if candidate.mt_raw == '{...}' and candidate.lxx_raw == 'U(MI=N [e5.3]'
+          ]
+          assert len(carriers) == 1, carriers
+          carrier = carriers[0]
+          assert carrier.lxx_tokens == ('U(MI=N',)
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.kind == 'transposition_remote'
+              and annotation.raw == '{...}'
+              for annotation in carrier.annotations
+          )
+          assert carrier.source_lines[0] < alignment.source_lines[0]
+          technique = derive_alignment_technique('17.1Esdras.par', alignment)
+          assert technique.cardinality_mt_lxx == 'one_one'
+          assert technique.transposition_mt_lxx == 'stylistic'
+          assert technique.addition_vs_mt is False
+          assert technique.omission_vs_mt is False
+
+          TF = Fabric(locations='/tmp/centerblc-lxx/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+
+          verse_node = api.T.nodeFromSection(('1Esdr', 6, 4))
+          assert verse_node is not None
+          word_nodes = tuple(api.L.d(verse_node, otype='word'))
+          target = normalize_catss_greek('U(MI=N')
+          matches = [
+              node
+              for node in word_nodes
+              if normalize_lxx_greek(api.F.word.v(node)) == target
+          ]
+          assert matches == [294471], [
+              (node, api.F.word.v(node), api.F.orig_order.v(node))
+              for node in matches
+          ]
+          assert api.F.word.v(294471) == 'ὑμῖν'
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          repaired = parse_parallel_text(
+              '1Esdr 6:4\n{...}\tU(MI=N [e5.3]\nL/KM\t[e5.3]\n',
+              source_name='17.1Esdras.par',
+          )
+          report = resolve_lxx_document(repaired, provider)
+          assert report.ok is True, report.findings
+          assert report.reference_anchors == ()
+          assert [
+              (mapping.lxx_node, mapping.mapping_kind)
+              for mapping in report.word_mappings
+          ] == [
+              (294471, 'transposition_carrier'),
+              (294471, 'transposition_alignment'),
+          ]
+          assert {
+              (mapping.reference_book, mapping.reference_chapter, mapping.reference_verse)
+              for mapping in report.word_mappings
+          } == {('1Esdr', 6, 4)}
+          print('1esdr_6_4_parent_node=294471')
+          print('1esdr_6_4_parent_word=ὑμῖν')
+          PY
       - name: Assert doubt-decorated Greek minus semantics
         run: |
           python - <<'PY'

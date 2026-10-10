@@ -262,6 +262,51 @@ def test_source_repair_is_query_native_on_available_lxx_words(
         assert f"{node}\t--+ '' =H/BHMH" in scoped_payload
 
 
+def test_1esdr_restored_greek_token_projects_to_real_parent_word(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "17.1Esdras.par",
+        "1Esdr 6:4\nL/KM\t[e5.3]\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        (
+            _span(
+                "τίνος",
+                "ὑμῖν",
+                "συντάξαντος",
+                book="1Esdr",
+                chapter=6,
+                verse=4,
+                node=900604,
+                start_node=294470,
+            ),
+        )
+    )
+
+    result = materialize_lxx(source, output, provider=provider)
+
+    assert result.summary.word_mappings == 1
+    assert result.summary.reference_anchors == 0
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert [(row["parent_node"], row["lxx_i"], row["mapping_kind"]) for row in mappings] == [
+        ("294471", "1", "transposition_alignment")
+    ]
+    assert _read_tsv(output / "catss-anchors.tsv") == []
+
+    repair = (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_source_repair_lxx.tf").read_text(encoding="utf-8")
+    payload = (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
+    scoped_payload = (output / "catss_sem_source_repair_lxx_payload.tf").read_text(encoding="utf-8")
+    assert "294471\t1" in repair
+    assert "294471\t1" in scoped
+    assert "294471\t{..^U(MI=N} [e5.3]" in payload
+    assert "294471\t{..^U(MI=N} [e5.3]" in scoped_payload
+
+
 def test_mt_apparent_minus_is_query_native_on_lxx_words(
     tmp_path: pathlib.Path,
 ) -> None:
