@@ -1077,6 +1077,29 @@ jobs:
               if m.alignment_id == alignment.alignment_id
           ])
           assert full_report.summary.mismatched_reference_groups > 0
+
+          # R96-5: read-only Greek-parent span existence for ALL 46 CATSS
+          # sources, distinct from MT-header numeric candidate counting
+          # and from proven CATSS/LXX lexical mappings.
+          from catss_tf.parent_reference_audit import audit_lxx_parent_span_availability
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          documents = (
+              parse_parallel_file(pathlib.Path('/tmp/catss-parallel') / filename)
+              for filename in CATSS_PARALLEL_FILENAMES
+          )
+          audit = audit_lxx_parent_span_availability(documents, provider)
+          assert audit.source_files == 46, audit
+          assert audit.scalar_references == 6218, audit
+          assert audit.subverse_suffixes == 424, audit
+          assert (
+              audit.parent_span_present + audit.parent_span_missing
+              + audit.unsupported_source + audit.unknown_source
+          ) == 6218, audit
+          assert (
+              audit.subverse_present + audit.subverse_missing
+              + audit.subverse_unprofiled
+          ) == 424, audit
+          print('PINNED_LXX_REFERENCE_SPAN_AUDIT', audit, flush=True)
           PY
       - name: Research pinned Josh 9:2 subverse node hierarchy
         run: |
