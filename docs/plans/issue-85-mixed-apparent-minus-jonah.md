@@ -89,3 +89,24 @@ because of unrelated ambiguous/mismatched CATSS reference groups. Do not
 claim a successful complete Jonah LXX materializer on synthetic-only
 evidence. Canonical annotation-to-lxx-element edge remains a separate
 blocking #47 dependency.
+
+## Adversarial RED — BHSA semantic spill (2026-10-10)
+
+The scoped Jonah annotation survives parser/resolver processing, but
+`bhsa_materializer._semantic_annotation_applies` currently consults
+only `annotation_side` and `kind`, ignoring `Annotation.target_side`.
+Therefore the `apparent_minus` explicitly scoped to Greek element 1
+can incorrectly mark the Hebrew `YHWH` lexical word (or make technique
+derivation fail because it sees an unscoped apparent minus at (1,2)).
+This contradicts the original BHSA projection requirement above.
+
+RED-first tests must cover actual one-Hebrew/two-Greek Jonah source
+`--- YHWH\tDE/SPOTA KU/RIE` with a parent-shaped BHSA
+`YHWH` word. Require an ordinary BHSA lexical membership and
+`one_many` technique with **no** `catss_sem_apparent_minus`,
+`catss_sem_apparent_minus_mt_a`, or apparent-minus anchor in BHSA.
+Also test the projection helper directly; ordinary unscoped MT-a
+annotations (including homogeneous apparent-minus anchors) must be
+unchanged. Implement by excluding Greek-targeted annotations from BHSA
+`_semantic_*` and any legacy flag/payload path, rather than weakening
+`derive_technique_state`.
