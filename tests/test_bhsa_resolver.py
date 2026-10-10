@@ -110,7 +110,7 @@ JoshB 9:2
 
     report = resolve_bhsa_document(doc, provider)
 
-    assert report.ok is True, report.findings
+    assert report.findings == ()
     assert report.summary.resolved_verses == 1
     assert report.summary.mismatched_verses == 0
     assert len(report.word_mappings) == 1
