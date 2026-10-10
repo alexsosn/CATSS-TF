@@ -620,7 +620,7 @@ def test_scoped_jonah_minus_does_not_project_onto_bhsa_yhwh(
         "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
     )
     output = tmp_path / "catss-bhsa"
-    provider = FakeBhsaProvider((_verse(book="Jonah", chapter=4, verse=3, g_cons="יהוה"),))
+    provider = FakeBhsaProvider((_verse(book="Jona", chapter=4, verse=3, g_cons="יהוה"),))
 
     result = materialize_bhsa(source, output, provider=provider, parent_probe=_probe())
 
