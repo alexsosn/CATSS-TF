@@ -152,3 +152,28 @@ def test_mt_a_crossing_preserves_existing_same_side_witness_annotations() -> Non
         kind="sirach_lacuna_or_illegible",
         projection_side="mt",
     )
+@pytest.mark.parametrize(
+    ("forgery", "label"),
+    [
+        ("other_source", "different CATSS source"),
+        ("contradictory_plus", "contradictory translation addition"),
+    ],
+)
+def test_lxx_witness_semantic_must_not_cross_untrusted_source_or_plus(
+    forgery: str, label: str
+) -> None:
+    """Reject a Greek-word semantic invented from a non-Sirach or plus row."""
+    genuine = _alignment("[..]\tOU)AI\\")
+    if forgery == "other_source":
+        alignment = dataclasses.replace(
+            genuine, alignment_id="catss:01.Genesis.par:forged"
+        )
+    else:
+        alignment = dataclasses.replace(genuine, is_lxx_plus=True)
+
+    assert "sirach_lacuna_or_illegible" not in _semantic_kinds(
+        alignment, side="lxx", element_index=1
+    ), label
+    assert ("sirach_lacuna_or_illegible", "mt_a") not in _semantic_scopes(
+        alignment, side="lxx", element_index=1
+    ), label
