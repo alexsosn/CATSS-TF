@@ -52,6 +52,7 @@ Add a parent fixture with six subverse spans a–f and require the structural ra
 - expose member ordinal/count and range endpoint metadata;
 - fail closed if one member is absent;
 - fail closed when distinct range labels alias the same parent `subverse` node, even if each provider lookup returns a span;
+- count the entire range as **one atomic reference group**, with exactly one resolved, missing, invalid/mismatched, or ambiguous outcome; count individual projected subverse nodes separately in `reference_range_memberships`;
 - leave ordinary scalar-reference and transposition-anchor tests unchanged.
 
 Add a BHSA regression proving the duplicate structural `JoshB 9:2` record is not fed
