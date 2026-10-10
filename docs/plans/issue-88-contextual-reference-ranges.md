@@ -2,6 +2,16 @@
 
 Research basis: [issue-88-contextual-reference-ranges.md](../research/issue-88-contextual-reference-ranges.md).
 
+## Pinned-parent discovery (issue #91)
+
+The exact LXX release has **no distinct Josh 9:2a–f subverse nodes**. Gate 5 below
+is intentionally fail-closed, and Gate 6 canonical TF preservation is mandatory.
+Do not treat six synthetically resolvable fake-provider spans as evidence that
+six real parent nodes exist. The module supports range membership conditionally
+for future verified parent editions but cannot export this specific JoshB range
+against the current pinned LXX.
+
+
 ## Gate 1 — RED parser/IR tests
 
 Before production changes, add focused tests for the exact source row:
@@ -76,7 +86,11 @@ Assert:
 
 - the exact JoshB range row occurs once;
 - it parses as one range 9:2a–9:2f;
-- all six parent subverse spans exist and resolve in order;
+- pinned-parent Josh 9:2 has exactly one unlabeled subverse node 630920 spanning 191 words;
+- all six requested labeled targets a–f are absent in this release;
+- the LXX resolver returns `missing_lxx_reference_range_member` and **zero** range memberships;
+- the LXX materializer fails closed, publishing no module for that unsupported range;
+- synthetic parent fixtures with explicit a–f nodes still produce six correct ordered memberships;
 - no fabricated parent node/word is used;
 - the complete parser snapshot has no `invalid_lxx_reference` caused by this range;
 - no new unresolved diagnostics are introduced;
