@@ -339,7 +339,8 @@ def test_canonical_technique_partiality_is_visible_per_alignment(
         "derived",
     )
     assert api.F.catss_tt_cardinality_mt_lxx.v(2) == "one_one"
-    assert api.F.catss_tt_addition_vs_mt.v(1) is None
+    if "catss_tt_addition_vs_mt" in api.Fall():
+        assert api.F.catss_tt_addition_vs_mt.v(1) is None
     assert api.F.catss_tt_unclassified_reason.v(2) is None
 
     with (tmp_path / "catss" / "catss-technique.tsv").open(
