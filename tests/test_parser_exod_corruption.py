@@ -11,7 +11,12 @@ TAIL = "--+\tE)N AU)TAI=S"
 CORRUPTION = (HEAD, "", "Exod 1:10", "    #", "", "Exod 35:19", TAIL)
 
 
-def _parse(lines: tuple[str, ...] = CORRUPTION, *, source: str = "02.Exodus.par", verse: str = "Exod 35:19"):
+def _parse(
+    lines: tuple[str, ...] = CORRUPTION,
+    *,
+    source: str = "02.Exodus.par",
+    verse: str = "Exod 35:19",
+):
     return parse_parallel_text(
         verse + "\n" + "\n".join(lines) + "\n",
         source_name=source,
