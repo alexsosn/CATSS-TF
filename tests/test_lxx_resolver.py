@@ -285,6 +285,37 @@ def test_contextual_reference_range_fails_closed_when_parent_member_is_missing()
     assert any(finding.code == "missing_lxx_reference_range_member" for finding in report.findings)
 
 
+def test_contextual_reference_range_rejects_aliased_parent_subverse_nodes() -> None:
+    """Six labels cannot all resolve to the same physical parent node."""
+    doc = parse_parallel_text(
+        "JoshB 9:2\\n{...} <8.30-35>\\t[[9.2a-2f]]\\n",
+        source_name="06.JoshB.par",
+    )
+    provider = FakeProvider(
+        tuple(
+            _span(
+                "καί",
+                book="Josh",
+                chapter=9,
+                verse=2,
+                subverse=subverse,
+                node=630920,
+                start_node=128883,
+            )
+            for subverse in "abcdef"
+        )
+    )
+
+    report = resolve_lxx_document(doc, provider)
+
+    assert report.ok is False
+    assert report.reference_range_memberships == ()
+    assert any(
+        finding.code == "ambiguous_lxx_reference_range_member"
+        for finding in report.findings
+    )
+
+
 def test_psalm_151_default_reference_transform_is_applied() -> None:
     doc = parse_parallel_text(
         """Ps151 1
