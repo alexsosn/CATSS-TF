@@ -546,6 +546,14 @@ def _semantic_annotation_applies(
         return True
     if kind == "apparent_minus":
         return annotation_side == "mt_a"
+    if (
+        kind == "sirach_lacuna_or_illegible"
+        and annotation_side == "mt_a"
+        and projection_side == "lxx"
+    ):
+        # The missing Hebrew witness can be relevant to Greek lexical words,
+        # without reclassifying Greek-side or MT-B annotations.
+        return True
     if projection_side == "mt":
         return annotation_side != "lxx"
     if projection_side == "lxx":
@@ -554,8 +562,30 @@ def _semantic_annotation_applies(
 
 
 def _semantic_annotation_in_scope(
-    annotation: Annotation, *, side: str, element_index: int | None
+    annotation: Annotation,
+    *,
+    alignment: AlignmentRecord,
+    side: str,
+    element_index: int | None,
 ) -> bool:
+    # Cross from MT-A onto a Greek word only for an actual Sirach
+    # *witness* lacuna, never for a forged source or an LXX-plus event.
+    # The canonical alignment identity embeds its source filename, and
+    # the caller independently checks it against document.source_name.
+    if (
+        side == "lxx"
+        and annotation.side == "mt_a"
+        and annotation.kind == "sirach_lacuna_or_illegible"
+        and (
+            not alignment.alignment_id.startswith("catss:27.Sirach.par:")
+            or alignment.mt_col_a.split()[:1] != ["[..]"]
+            or alignment.mt_count != 0
+            or alignment.lxx_count == 0
+            or alignment.is_lxx_plus
+            or alignment.is_lxx_minus
+        )
+    ):
+        return False
     if annotation.target_side is not None:
         return annotation.target_side == side and annotation.target_index == element_index
     return _semantic_annotation_applies(
@@ -572,7 +602,9 @@ def _semantic_kinds(
         annotation.kind
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
-        and _semantic_annotation_in_scope(annotation, side=side, element_index=element_index)
+        and _semantic_annotation_in_scope(
+            annotation, alignment=alignment, side=side, element_index=element_index
+        )
     }
     return tuple(sorted(kinds))
 
@@ -584,7 +616,9 @@ def _semantic_scopes(
         (annotation.kind, annotation.side)
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
-        and _semantic_annotation_in_scope(annotation, side=side, element_index=element_index)
+        and _semantic_annotation_in_scope(
+            annotation, alignment=alignment, side=side, element_index=element_index
+        )
     }
     return tuple(sorted(scopes))
 
@@ -597,7 +631,9 @@ def _semantic_scoped_payloads(
         for annotation in alignment.annotations
         if annotation.kind != "unknown"
         and annotation.payload is not None
-        and _semantic_annotation_in_scope(annotation, side=side, element_index=element_index)
+        and _semantic_annotation_in_scope(
+            annotation, alignment=alignment, side=side, element_index=element_index
+        )
     }
     return tuple(sorted(payloads))
 
@@ -610,7 +646,9 @@ def _semantic_payloads(
         if (
             annotation.kind == "unknown"
             or annotation.payload is None
-            or not _semantic_annotation_in_scope(annotation, side=side, element_index=element_index)
+            or not _semantic_annotation_in_scope(
+                annotation, alignment=alignment, side=side, element_index=element_index
+            )
         ):
             continue
         by_kind.setdefault(annotation.kind, set()).add(annotation.payload)

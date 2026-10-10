@@ -151,6 +151,31 @@ Alignment slots expose group-level facts including:
 Detailed lexical elements and annotations are nodes rather than delimiter-packed
 strings.
 
+## Sirach manuscript lacunae are not Greek additions
+
+The Hebrew column-A `[..]` marker in `27.Sirach.par` denotes
+illegible/missing Hebrew-*witness* text, not the CATSS `--+` LXX-plus
+judgment. A row is eligible for derived zero-Hebrew/nonempty-Greek
+technique only when the **first MT-A marker** is exactly `[..]`
+and an MT-A `sirach_lacuna_or_illegible` annotation is present.
+The complete CATSS source scan identifies 4,278 such alignments.
+They retain `zero_one`/`zero_many` cardinality and
+`token_balance_mt_lxx=not_applicable`, with
+`catss_tt_addition_vs_mt` and `catss_tt_omission_vs_mt` both
+**not asserted**. An unknown zero-Hebrew row still fails closed.
+
+The standalone canonical corpus keeps a first-class `annotation`
+node with `catss_kind=sirach_lacuna_or_illegible`,
+`catss_side=mt_a` and raw provenance. Where matching Greek word
+memberships exist in the CenterBLC/LXX projection, the associated
+Greek word exposes
+`catss_sem_sirach_lacuna_or_illegible_mt_a=1`. This annotation
+describes the Hebrew witness's state, *not* a translation expansion.
+There is no BHSA Sirach parent: no fictitious Hebrew Bible word or
+verse anchor is introduced. Reconstructed letters `[]`, mere
+physical empty cells, and Greek-side witness annotations are not
+silently treated as the `[..]` class.
+
 ## Auditing scalar Greek reference candidates
 
 For source-level research without guessing LXX destination nodes, inspect
