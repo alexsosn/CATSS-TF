@@ -540,3 +540,22 @@ def test_mt_b_exceptional_carriers_exclude_explicit_lxx_plus_with_reconstruction
     assert tuple(api.F.otype.s("mt_element")) == ()
     assert tuple(api.F.otype.s("lxx_element"))
     assert tuple(api.F.otype.s("mt_b_carrier")) == ()
+
+
+def test_mt_b_exceptional_carriers_exclude_marked_nonlexical_column_a(
+    tmp_path: pathlib.Path,
+) -> None:
+    """A marker-only MT column A is not physically empty despite mt_count=0."""
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        "Gen 1:1\n^^^ ^ =W/KL\tLOGOS\n",
+    )
+    result = materialize_corpus(source, tmp_path / "catss")
+    assert result.summary.mt_elements == 0
+    api = _load_corpus(tmp_path)
+    assert api.F.catss_mt_col_a.v(1) == "^^^ ^"
+    assert api.F.catss_mt_col_b.v(1) == "W/KL"
+    assert tuple(api.F.otype.s("lxx_element"))
+    assert tuple(api.F.otype.s("mt_b_carrier")) == ()
