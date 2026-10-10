@@ -1,5 +1,6 @@
 """Sirach manuscript lacunae are not Greek additions against MT."""
 
+import dataclasses
 from typing import Any
 
 import pytest
@@ -29,12 +30,23 @@ def test_sirach_witness_lacuna_derives_without_translation_addition() -> None:
 
 
 def test_sirach_lacuna_is_not_allowed_on_wrong_source_or_annotation_scope() -> None:
+    base = _alignment("[..]\tOU)AI\\")
+    wrong_source = dataclasses.replace(
+        base,
+        alignment_id=base.alignment_id.replace("27.Sirach.par", "01.Genesis.par"),
+    )
+    wrong_side = dataclasses.replace(
+        base,
+        annotations=tuple(dataclasses.replace(a, side="lxx") for a in base.annotations),
+    )
     for alignment, source in (
-        (_alignment("[..]\tOU)AI\\", source="01.Genesis.par"), "01.Genesis.par"),
+        (wrong_source, "01.Genesis.par"),
+        (wrong_side, "27.Sirach.par"),
+        (dataclasses.replace(base, mt_col_a="[BN] 3"), "27.Sirach.par"),
+        (dataclasses.replace(base, mt_col_a="3 [..]"), "27.Sirach.par"),
         (_alignment("\t[..] OU)AI\\"), "27.Sirach.par"),
-        (_alignment("[BN] 3\tOU)AI\\"), "27.Sirach.par"),
-        (_alignment("3 [..]\tOU)AI\\"), "27.Sirach.par"),
     ):
+        assert (alignment.mt_count, alignment.lxx_count) == (0, 1)
         with pytest.raises(TechniqueError, match="Hebrew-empty"):
             derive_alignment_technique(source, alignment)
 
