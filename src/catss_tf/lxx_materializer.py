@@ -568,14 +568,22 @@ def _semantic_annotation_in_scope(
     side: str,
     element_index: int | None,
 ) -> bool:
-    # A witness lacuna can cross from MT-A to the LXX projection ONLY
-    # when [..] is the *first* MT-A marker. Otherwise the Greek
-    # membership would forge a technique class absent from canonical TF.
+    # Cross from MT-A onto a Greek word only for an actual Sirach
+    # *witness* lacuna, never for a forged source or an LXX-plus event.
+    # The canonical alignment identity embeds its source filename, and
+    # the caller independently checks it against document.source_name.
     if (
         side == "lxx"
         and annotation.side == "mt_a"
         and annotation.kind == "sirach_lacuna_or_illegible"
-        and alignment.mt_col_a.split()[:1] != ["[..]"]
+        and (
+            not alignment.alignment_id.startswith("catss:27.Sirach.par:")
+            or alignment.mt_col_a.split()[:1] != ["[..]"]
+            or alignment.mt_count != 0
+            or alignment.lxx_count == 0
+            or alignment.is_lxx_plus
+            or alignment.is_lxx_minus
+        )
     ):
         return False
     if annotation.target_side is not None:
