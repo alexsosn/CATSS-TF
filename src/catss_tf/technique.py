@@ -68,6 +68,7 @@ def derive_technique_state(
     trans_remote: bool,
     trans_style: bool,
     apparent_mt_minus: bool = False,
+    scoped_apparent_mt_minus: bool = False,
     greek_preverb_carrier: bool = False,
 ) -> TechniqueState:
     """Derive conservative MT↔LXX technique facts from canonical scalar state."""
@@ -83,7 +84,13 @@ def derive_technique_state(
         raise TechniqueError("CATSS LXX-minus contradicts a non-empty Greek side")
     if is_lxx_minus and mt_n == 0:
         raise TechniqueError("CATSS LXX-minus requires MT lexical material")
-    if apparent_mt_minus and mt_n != 0:
+    if scoped_apparent_mt_minus and not apparent_mt_minus:
+        raise TechniqueError("scoped apparent MT minus requires explicit marker evidence")
+    if scoped_apparent_mt_minus and (mt_n != 1 or lxx_n != 2):
+        raise TechniqueError(
+            "scoped apparent MT minus requires exactly one MT and two Greek elements"
+        )
+    if apparent_mt_minus and mt_n != 0 and not scoped_apparent_mt_minus:
         raise TechniqueError("CATSS apparent MT minus contradicts a non-empty MT side")
     if apparent_mt_minus and lxx_n == 0:
         raise TechniqueError("CATSS apparent MT minus requires Greek lexical material")
@@ -172,6 +179,13 @@ def derive_alignment_technique(source: str, alignment: AlignmentRecord) -> Techn
         trans_style=alignment.is_transposition_stylistic,
         apparent_mt_minus=any(
             annotation.side == "mt_a" and annotation.kind == "apparent_minus"
+            for annotation in alignment.annotations
+        ),
+        scoped_apparent_mt_minus=any(
+            annotation.side == "mt_a"
+            and annotation.kind == "apparent_minus"
+            and annotation.target_side == "lxx"
+            and annotation.target_index == 1
             for annotation in alignment.annotations
         ),
         greek_preverb_carrier=any(

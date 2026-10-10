@@ -868,6 +868,50 @@ def test_distinct_mt_a_mt_b_payloads_coexist_query_natively() -> None:
     assert compiled["catss_sem_distributive_mt_b_payload"] == {1: "B"}
 
 
+def test_scoped_apparent_minus_compiles_only_on_targeted_lxx_word() -> None:
+    first = dataclasses.replace(
+        _membership(node=8, mt_i=None, mt_segment=None, lxx_i=1),
+        semantic_kinds=("apparent_minus",),
+        semantic_scopes=(("apparent_minus", "mt_a"),),
+        scoped_apparent_mt_minus=True,
+    )
+    second = dataclasses.replace(
+        _membership(node=9, mt_i=None, mt_segment=None, lxx_i=2),
+        alignment_id="catss:01.Genesis.par:bbb",
+    )
+    features = compile_tf_features(
+        projection="lxx", max_node=10, memberships=(first, second), anchors=()
+    )
+    assert features["catss_sem_apparent_minus"] == {8: 1}
+    assert features["catss_sem_apparent_minus_mt_a"] == {8: 1}
+    assert features["catss_tt_cardinality_mt_lxx"] == {8: "one_many", 9: "one_many"}
+    assert features["catss_tt_token_balance_mt_lxx"] == {
+        8: "lxx_more",
+        9: "lxx_more",
+    }
+
+
+def test_scoped_apparent_minus_rejects_wrong_target_or_projection() -> None:
+    valid = dataclasses.replace(
+        _membership(node=8, mt_i=None, mt_segment=None, lxx_i=1),
+        semantic_kinds=("apparent_minus",),
+        semantic_scopes=(("apparent_minus", "mt_a"),),
+        scoped_apparent_mt_minus=True,
+    )
+    for projection, event in (
+        ("lxx", dataclasses.replace(valid, lxx_i=2)),
+        ("bhsa", dataclasses.replace(valid, mt_i=1, mt_segment=1, lxx_i=None)),
+        ("lxx", dataclasses.replace(valid, semantic_kinds=())),
+    ):
+        with pytest.raises(TfSchemaError, match="scoped apparent"):
+            compile_tf_features(
+                projection=projection,  # type: ignore[arg-type]
+                max_node=10,
+                memberships=(event,),
+                anchors=(),
+            )
+
+
 def _range_member(
     *,
     node: int = 8,

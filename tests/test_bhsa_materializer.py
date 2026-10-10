@@ -606,3 +606,50 @@ def test_bhsa_projects_column_b_retroversion_kind_into_complete_semantic_api(
     assert "1\tactive_to_passive" in (output / "catss_retro_kind.tf").read_text(encoding="utf-8")
     assert "1\t1" in (output / "catss_sem_active_to_passive.tf").read_text(encoding="utf-8")
     assert "1\t1" in (output / "catss_sem_active_to_passive_mt_b.tf").read_text(encoding="utf-8")
+
+
+def test_scoped_jonah_minus_does_not_project_onto_bhsa_yhwh(
+    tmp_path: pathlib.Path,
+) -> None:
+    # CATSS Greek element 1 is apparently missing MT, but YHWH is real MT
+    # lexical material aligned to Greek element 2. No BHSA semantic spill.
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "32.Jonah.par",
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+    )
+    output = tmp_path / "catss-bhsa"
+    provider = FakeBhsaProvider((_verse(book="Jona", chapter=4, verse=3, g_cons="יהוה"),))
+
+    result = materialize_bhsa(source, output, provider=provider, parent_probe=_probe())
+
+    assert result.summary.word_mappings == 1
+    assert result.summary.verse_anchors == 0
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert [(row["parent_node"], row["mt_i"], row["mapping_kind"]) for row in mappings] == [
+        ("1", "1", "exact")
+    ]
+    for feature in (
+        "catss_sem_apparent_minus.tf",
+        "catss_sem_apparent_minus_mt_a.tf",
+        "catss_apparent_mt_minus_n.tf",
+    ):
+        assert not (output / feature).exists(), feature
+    cardinality = (output / "catss_tt_cardinality_mt_lxx.tf").read_text(encoding="utf-8")
+    assert "1\tone_many" in cardinality
+
+
+def test_scoped_jonah_minus_is_absent_from_bhsa_semantic_helpers() -> None:
+    from catss_tf.parser import parse_parallel_text
+
+    doc = parse_parallel_text(
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert "apparent_minus" not in bhsa_materializer._semantic_kinds(alignment, side="mt")
+    assert ("apparent_minus", "mt_a") not in bhsa_materializer._semantic_scopes(
+        alignment, side="mt"
+    )
