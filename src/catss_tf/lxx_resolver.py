@@ -224,9 +224,7 @@ def normalize_lxx_greek(value: str) -> str:
             continue
         if character.isspace():
             continue
-        if character in _APOSTROPHES or (
-            character == "᾿" and index == len(normalized) - 1
-        ):
+        if character in _APOSTROPHES or (character == "᾿" and index == len(normalized) - 1):
             output.append("ʼ")
             continue
         if character == "-":
