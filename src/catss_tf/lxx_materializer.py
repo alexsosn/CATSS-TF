@@ -346,6 +346,13 @@ def _projection_facts(
                 semantic_payloads=_semantic_payloads(
                     alignment, side="lxx", element_index=mapping.lxx_index + 1
                 ),
+                scoped_apparent_mt_minus=any(
+                    annotation.side == "mt_a"
+                    and annotation.kind == "apparent_minus"
+                    and annotation.target_side == "lxx"
+                    and annotation.target_index == mapping.lxx_index + 1
+                    for annotation in alignment.annotations
+                ),
             )
             memberships.append(membership)
             mapping_memberships.append(membership)
