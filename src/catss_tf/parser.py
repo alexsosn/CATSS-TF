@@ -15,6 +15,7 @@ _SIRACH_DOUBLE_BRACE = re.compile(r"\{\{[^{}]*\}\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
 _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
+_GREEK_REFERENCE_RANGE_VALUE = re.compile(r"^(\d+)[.](\d+)([A-Za-z])-(\d+)([A-Za-z])$")
 _CONTEXTUAL_REFERENCE_VALUE = re.compile(
     r"^(?:[A-Za-z]{1,3}[.]?[ ]*)?[0-9]+(?:[.:][ ]*[0-9]+)?[A-Za-z]{0,2}"
     r"(?:[ ,]+[A-Za-z]{0,3}[.]?[0-9]+(?:[.:][ ]*[0-9]+)?[A-Za-z]{0,2})*[?]?$"
@@ -109,6 +110,30 @@ _KNOWN_SOURCE_LAYOUT_REPAIRS: dict[tuple[str, int, int, str], tuple[str, str]] =
 }
 
 
+def _exact_exodus_35_19_corruption(lines: list[str], start: int) -> bool:
+    """Recognize only the known seven-line Exod 35:19 source-layout corruption."""
+
+    if start + 7 > len(lines):
+        return False
+    window = lines[start : start + 7]
+    head, blank1, false_header, hash_row, blank2, duplicate_header, tail = window
+    head_mt, head_lxx, head_split = _split_raw_columns(head)
+    tail_mt, tail_lxx, tail_split = _split_raw_columns(tail)
+    return (
+        head_split
+        and tail_split
+        and " ".join(head_mt.split()) == "^ ^^^ =L/$RT {...?H/&RD} #"
+        and " ".join(head_lxx.split()) == "{+} E)N AI(=S LEITOURGH/SOUSIN"
+        and not blank1.strip()
+        and false_header == "Exod 1:10"
+        and hash_row.strip() == "#"
+        and not blank2.strip()
+        and duplicate_header == "Exod 35:19"
+        and tail_mt.strip() == "--+"
+        and " ".join(tail_lxx.split()) == "E)N AU)TAI=S"
+    )
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class Annotation:
     """One source annotation preserved from a CATSS alignment cell."""
@@ -144,6 +169,19 @@ class GreekReference:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class GreekReferenceRange:
+    """Structured inclusive CATSS Greek-side contextual reference range."""
+
+    start_chapter: int | None
+    start_verse: int
+    start_subverse: str
+    end_chapter: int | None
+    end_verse: int
+    end_subverse: str
+    raw: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class MtReading:
     """One MT word position with optional Ketiv/Qere alternatives."""
 
@@ -172,6 +210,7 @@ class AlignmentRecord:
     mt_qere_tokens: tuple[str, ...]
     lxx_tokens: tuple[str, ...]
     lxx_references: tuple[GreekReference, ...]
+    lxx_reference_ranges: tuple[GreekReferenceRange, ...]
     mt_count: int
     lxx_count: int
     is_lxx_plus: bool
@@ -264,6 +303,11 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
     verses: list[VerseRecord] = []
     current: _VerseBuilder | None = None
     pending: list[_PhysicalRow] = []
+    # Only the exact seven-line Exodus corruption may cross its false headers.
+    # Dummy lines are retained verbatim on the resulting alignment for provenance.
+    corrupt_dummies: set[int] = set()
+    corrupt_tail: int | None = None
+    physical_lines = [line.rstrip("\r") for line in text.splitlines()]
 
     def flush_pending() -> None:
         nonlocal pending
@@ -305,8 +349,21 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
         )
         current = None
 
-    for line_no, raw_with_end in enumerate(text.splitlines(), start=1):
-        raw = raw_with_end.rstrip("\r")
+    for line_no, raw in enumerate(physical_lines, start=1):
+        if line_no in corrupt_dummies:
+            # Preserve blank lines and both false/redundant headers exactly as
+            # alignment evidence; never interpret these as lexical material.
+            assert current is not None and pending
+            data_line_numbers.append(line_no)
+            pending.append(
+                _layout_dummy(
+                    _parse_physical_row(
+                        raw, line_no, canonical_source, current.chapter, current.verse
+                    )
+                )
+            )
+            continue
+
         if not raw.strip():
             continue
 
@@ -344,6 +401,14 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             current.verse,
         )
 
+        if (
+            canonical_source == "02.Exodus.par"
+            and (current.book, current.chapter, current.verse) == ("Exod", 35, 19)
+            and _exact_exodus_35_19_corruption(physical_lines, line_no - 1)
+        ):
+            corrupt_dummies.update(range(line_no + 1, line_no + 6))
+            corrupt_tail = line_no + 6
+
         if not physical.column_split:
             if canonical_source == "20.Psalms.par":
                 if pending and not _pending_psalms_orphans(pending):
@@ -357,7 +422,11 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             continue
 
         if pending:
-            if pending[-1].continues or physical.starts_with_continuation:
+            if (
+                pending[-1].continues
+                or physical.starts_with_continuation
+                or line_no == corrupt_tail
+            ):
                 pending.append(physical)
                 continue
             flush_pending()
@@ -546,7 +615,7 @@ def _build_alignment(
     is_lxx_plus = _first_token(mt_col_a) in _LXX_PLUS_MARKERS
     is_lxx_minus = _is_lxx_minus_marker(_first_token(semantic_lxx))
 
-    lxx_references, reference_diagnostics = _extract_greek_references(
+    lxx_references, lxx_reference_ranges, reference_diagnostics = _extract_greek_references(
         semantic_lxx,
         line_no=physical_rows[0].line_no,
         raw_line=physical_rows[0].raw,
@@ -644,6 +713,7 @@ def _build_alignment(
             mt_qere_tokens=mt_qere_tokens,
             lxx_tokens=lxx_tokens,
             lxx_references=lxx_references,
+            lxx_reference_ranges=lxx_reference_ranges,
             mt_count=len(mt_tokens),
             lxx_count=len(lxx_tokens),
             is_lxx_plus=is_lxx_plus,
@@ -918,14 +988,57 @@ def _extract_greek_references(
     *,
     line_no: int,
     raw_line: str,
-) -> tuple[tuple[GreekReference, ...], tuple[ParseDiagnostic, ...]]:
+) -> tuple[
+    tuple[GreekReference, ...],
+    tuple[GreekReferenceRange, ...],
+    tuple[ParseDiagnostic, ...],
+]:
     references: list[GreekReference] = []
+    ranges: list[GreekReferenceRange] = []
     diagnostics: list[ParseDiagnostic] = []
     for match in _SQUARE_GROUP.finditer(cell):
         raw = match.group(0)
         inner = raw.lstrip("[").rstrip("]")
         if not any(character.isdigit() for character in inner):
             continue
+
+        range_match = (
+            _GREEK_REFERENCE_RANGE_VALUE.fullmatch(inner)
+            if raw.startswith("[[") and raw.endswith("]]")
+            else None
+        )
+        if range_match is not None:
+            start_chapter = int(range_match.group(1))
+            start_verse = int(range_match.group(2))
+            start_subverse = range_match.group(3).lower()
+            end_verse = int(range_match.group(4))
+            end_subverse = range_match.group(5).lower()
+            if end_verse != start_verse or end_subverse <= start_subverse:
+                diagnostics.append(
+                    ParseDiagnostic(
+                        code="invalid_lxx_reference_range",
+                        line_no=line_no,
+                        raw_line=raw_line,
+                        message=(
+                            "CATSS Greek reference range must be an increasing "
+                            f"same-verse subverse range: {raw}"
+                        ),
+                    )
+                )
+                continue
+            ranges.append(
+                GreekReferenceRange(
+                    start_chapter=start_chapter,
+                    start_verse=start_verse,
+                    start_subverse=start_subverse,
+                    end_chapter=start_chapter,
+                    end_verse=end_verse,
+                    end_subverse=end_subverse,
+                    raw=raw,
+                )
+            )
+            continue
+
         parsed = _GREEK_REFERENCE_VALUE.fullmatch(inner)
         if parsed is None:
             if _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is None:
@@ -947,7 +1060,7 @@ def _extract_greek_references(
                 raw=raw,
             )
         )
-    return tuple(references), tuple(diagnostics)
+    return tuple(references), tuple(ranges), tuple(diagnostics)
 
 
 def _retroversion_kind(mt_col_b: str | None) -> str | None:

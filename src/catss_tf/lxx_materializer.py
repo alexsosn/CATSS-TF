@@ -41,6 +41,7 @@ from catss_tf.tf_schema import (
     TfAnchorEvent,
     TfMembership,
     TfModuleMetadata,
+    TfReferenceRangeEvent,
     compile_tf_features,
     write_tf_module,
 )
@@ -62,6 +63,7 @@ class LxxMaterializationSummary:
     alignments: int
     word_mappings: int
     reference_anchors: int
+    reference_range_memberships: int
     tf_features: int
     sidecar_rows: int
     ignored_validation_findings: int
@@ -151,6 +153,7 @@ def materialize_lxx(
         (
             memberships,
             anchors,
+            reference_ranges,
             alignment_rows,
             technique_rows,
             annotation_rows,
@@ -167,6 +170,7 @@ def materialize_lxx(
         max_node=LXX_MAX_NODE,
         memberships=tuple(memberships),
         anchors=tuple(anchors),
+        reference_ranges=tuple(reference_ranges),
     )
     mapping_rows = _mapping_rows(mapping_memberships, features)
     source_rows: list[tuple[object, ...]] = [
@@ -220,6 +224,7 @@ def materialize_lxx(
             ),
             word_mappings=len(memberships),
             reference_anchors=len(anchors),
+            reference_range_memberships=len(reference_ranges),
             tf_features=len(features),
             sidecar_rows=sidecar_rows,
             ignored_validation_findings=ignored_validation_findings,
@@ -264,6 +269,7 @@ def _projection_facts(
 ) -> tuple[
     list[TfMembership],
     list[TfAnchorEvent],
+    list[TfReferenceRangeEvent],
     list[tuple[object, ...]],
     list[tuple[object, ...]],
     list[tuple[object, ...]],
@@ -274,6 +280,7 @@ def _projection_facts(
 ]:
     memberships: list[TfMembership] = []
     anchors: list[TfAnchorEvent] = []
+    reference_ranges: list[TfReferenceRangeEvent] = []
     alignment_rows: list[tuple[object, ...]] = []
     technique_rows: list[tuple[object, ...]] = []
     annotation_rows: list[tuple[object, ...]] = []
@@ -384,6 +391,25 @@ def _projection_facts(
                 )
             )
 
+        for member in report.reference_range_memberships:
+            _require_context(contexts, member.alignment_id)
+            reference_ranges.append(
+                TfReferenceRangeEvent(
+                    node=member.lxx_reference_node,
+                    source=document.source_name,
+                    alignment_id=member.alignment_id,
+                    raw=member.raw,
+                    member_i=member.member_index,
+                    member_n=member.member_count,
+                    start_chapter=member.start_chapter,
+                    start_verse=member.start_verse,
+                    start_subverse=member.start_subverse,
+                    end_chapter=member.end_chapter,
+                    end_verse=member.end_verse,
+                    end_subverse=member.end_subverse,
+                )
+            )
+
         diagnostic_rows.extend(
             _validation_diagnostic_row(finding)
             for finding in report.validation_findings
@@ -413,11 +439,15 @@ def _projection_facts(
     )
     memberships.sort(key=_membership_sort_key)
     anchors.sort(key=lambda anchor: (anchor.source, anchor.alignment_id, anchor.node))
+    reference_ranges.sort(
+        key=lambda event: (event.source, event.alignment_id, event.member_i, event.node)
+    )
     mapping_memberships.sort(key=_membership_sort_key)
 
     return (
         memberships,
         anchors,
+        reference_ranges,
         alignment_rows,
         technique_rows,
         annotation_rows,

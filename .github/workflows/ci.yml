@@ -143,13 +143,70 @@ jobs:
                   set(covered) - set(document.data_line_numbers),
               )
 
-          assert len(no_tab_physical) == 208, len(no_tab_physical)
+          # Exodus preserves four formerly ignored blank/header lines.
+          assert len(no_tab_physical) == 212, len(no_tab_physical)
           assert all(row[4] for row in no_tab_physical), no_tab_physical[:20]
           assert unsplit_alignments == [], unsplit_alignments[:20]
           assert unsplit_diagnostics == [], unsplit_diagnostics[:20]
           print(f'export_orphan_physical_lines={len(no_tab_physical)}')
           print('unsplit_alignments=0')
           print('unsplit_diagnostics=0')
+          PY
+      - name: Assert exact Exodus 35:19 corrupted-header repair
+        run: |
+          python - <<'PY'
+          import pathlib
+          from catss_tf.parser import alignment_id_for, parse_parallel_file
+          from catss_tf.validation import validate_document
+
+          path = pathlib.Path('/tmp/catss-parallel/02.Exodus.par')
+          original = path.read_text(encoding='utf-8').splitlines()
+          doc = parse_parallel_file(path)
+
+          matches = [
+              (verse, alignment)
+              for verse in doc.verses
+              for alignment in verse.alignments
+              if alignment.raw_lines
+              and '^ ^^^ =L/$RT {...?H/&RD} #' in alignment.raw_lines[0]
+              and 'LEITOURGH/SOUSIN' in alignment.raw_lines[0]
+          ]
+          assert len(matches) == 1, matches
+          verse, alignment = matches[0]
+          assert (verse.book, verse.chapter, verse.verse) == ('Exod', 35, 19)
+          assert len(alignment.raw_lines) == 7, alignment.raw_lines
+          assert alignment.source_lines == tuple(range(
+              alignment.source_lines[0], alignment.source_lines[0] + 7
+          ))
+          assert alignment.raw_lines == tuple(
+              original[i - 1] for i in alignment.source_lines
+          )
+          assert [s.strip() for s in alignment.raw_lines[1:6]] == [
+              '', 'Exod 1:10', '#', '', 'Exod 35:19'
+          ]
+          assert alignment.mt_raw.endswith(' {...?H/&RD} --+'), alignment.mt_raw
+          assert alignment.lxx_raw.endswith('E)N AU)TAI=S'), alignment.lxx_raw
+          assert all(i in doc.data_line_numbers for i in alignment.source_lines)
+          assert not any(
+              v.header_raw == 'Exod 1:10'
+              and alignment.source_lines[0] <= v.header_line_no <= alignment.source_lines[-1]
+              for v in doc.verses
+          )
+          assert not any(
+              d.code == 'malformed_continuation'
+              and alignment.source_lines[0] <= d.line_no <= alignment.source_lines[-1]
+              for d in doc.diagnostics
+          )
+          assert alignment.alignment_id == alignment_id_for(
+              source_name='02.Exodus.par',
+              header_raw=verse.header_raw,
+              source_lines=alignment.source_lines,
+              raw_lines=alignment.raw_lines,
+          )
+          audit = validate_document(doc)
+          assert audit.summary.unaccounted_lines == 0
+          assert audit.summary.invalid_alignment_ids == 0
+          print('exodus_35_19_physical_lines_preserved=7')
           PY
       - name: Assert zero-token Greek-preverb carriers
         run: |
@@ -713,6 +770,144 @@ jobs:
           )
           assert len(observed) == 7, observed
           print(f'doubt_decorated_lxx_minus={len(observed)}')
+          PY
+      - name: Assert parent-grounded JoshB contextual-reference range
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-lxx-range /tmp/catss-range-source /tmp/catss-range-module
+          git init -q /tmp/centerblc-lxx-range
+          git -C /tmp/centerblc-lxx-range remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-lxx-range fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-lxx-range checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-lxx-range rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+
+          from tf.fabric import Fabric
+
+          from catss_tf.lxx_materializer import materialize_lxx
+          from catss_tf.lxx_resolver import TextFabricLxxProvider, resolve_lxx_document
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE,
+              LXX_MAX_SLOT,
+              LXX_NODE_COUNTS,
+              LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG,
+              LXX_REPOSITORY,
+              LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES,
+              LXX_SLOT_TYPE,
+              LXX_VERSION,
+              LxxParentProbe,
+          )
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/06.JoshB.par'))
+          targets = [
+              alignment
+              for verse in source.verses
+              if verse.chapter == 9 and verse.verse == 2
+              for alignment in verse.alignments
+              if alignment.mt_raw == '{...} <8.30-35>'
+              and alignment.lxx_raw == '[[9.2a-2f]]'
+          ]
+          assert len(targets) == 1, targets
+          alignment = targets[0]
+          original_lines = pathlib.Path('/tmp/catss-parallel/06.JoshB.par').read_text(encoding='utf-8').splitlines()
+          assert alignment.raw_lines == tuple(original_lines[line - 1] for line in alignment.source_lines)
+          assert len(alignment.source_lines) == 1
+          assert (alignment.mt_count, alignment.lxx_count) == (0, 0)
+          assert alignment.lxx_references == ()
+          assert len(alignment.lxx_reference_ranges) == 1
+          range_ref = alignment.lxx_reference_ranges[0]
+          assert (
+              range_ref.start_chapter,
+              range_ref.start_verse,
+              range_ref.start_subverse,
+              range_ref.end_chapter,
+              range_ref.end_verse,
+              range_ref.end_subverse,
+              range_ref.raw,
+          ) == (9, 2, 'a', 9, 2, 'f', '[[9.2a-2f]]')
+          assert not any(
+              diagnostic.code == 'invalid_lxx_reference'
+              and diagnostic.raw_line == alignment.raw_lines[0]
+              for diagnostic in source.diagnostics
+          )
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.kind == 'transposition_remote'
+              and annotation.raw == '{...}'
+              for annotation in alignment.annotations
+          )
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.raw == '<8.30-35>'
+              and annotation.payload == '8.30-35'
+              for annotation in alignment.annotations
+          )
+
+          TF = Fabric(locations='/tmp/centerblc-lxx-range/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          # Exact pinned CenterBLC/LXX evidence: one unlabeled subverse node,
+          # not six labeled subverse targets. Never fabricate a-f TF nodes.
+          spans = [provider.get_span('Josh', 9, 2, subverse) for subverse in 'abcdef']
+          assert spans == [None] * 6, spans
+          parent_verse = api.T.nodeFromSection(('Josh', 9, 2))
+          assert parent_verse == 661339, parent_verse
+          parent_subverses = tuple(api.L.d(parent_verse, otype='subverse'))
+          assert parent_subverses == (630920,), parent_subverses
+          assert api.F.subverse.v(630920) == ''
+          parent_words = tuple(api.L.d(parent_verse, otype='word'))
+          assert len(parent_words) == 191
+          assert all(api.F.subverse.v(node) == '' for node in parent_words)
+
+          focused = parse_parallel_text(
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
+              source_name='06.JoshB.par',
+          )
+          report = resolve_lxx_document(focused, provider)
+          assert report.ok is False
+          assert report.word_mappings == ()
+          assert report.reference_anchors == ()
+          assert report.reference_range_memberships == ()
+          missing = [f for f in report.findings if f.code == 'missing_lxx_reference_range_member']
+          assert len(missing) == 1, report.findings
+          assert missing[0].alignment_id == focused.verses[0].alignments[0].alignment_id
+          # Do not demand a successful projection against an absent parent range.
+          from catss_tf.lxx_materializer import LxxMaterializationError
+          materialize_source = pathlib.Path('/tmp/catss-range-source')
+          materialize_source.mkdir()
+          (materialize_source / '06.JoshB.par').write_text(
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
+              encoding='utf-8',
+          )
+          try:
+              materialize_lxx(
+                  materialize_source,
+                  pathlib.Path('/tmp/catss-range-module'),
+                  provider=provider,
+              )
+          except LxxMaterializationError as exc:
+              assert 'missing_lxx_reference_range_member' in str(exc), exc
+          else:
+              raise AssertionError('LXX module must fail closed without parent subverses')
+          assert not pathlib.Path('/tmp/catss-range-module').exists()
+          print('joshb_9_2_reference_range_unresolved_parent=abcdef')
           PY
       - name: Research pinned Jonah 4:3 Greek token scope
         run: |
