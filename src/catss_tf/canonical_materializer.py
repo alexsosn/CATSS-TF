@@ -16,7 +16,12 @@ from catss_tf.source import (
     SourceFileFingerprint,
     inspect_parallel_source,
 )
-from catss_tf.technique import TechniqueError, derive_alignment_technique, technique_sidecar_row
+from catss_tf.technique import (
+    TechniqueError,
+    TechniqueRecord,
+    derive_alignment_technique,
+    technique_sidecar_row,
+)
 from catss_tf.tf_schema import SIDECAR_COLUMNS
 from catss_tf.validation import ValidationFinding, validate_documents
 
@@ -303,6 +308,7 @@ def _compile_graph(
 def _alignment_features(builder: _GraphBuilder, context: _AlignmentContext) -> None:
     alignment = context.alignment
     node = context.slot
+    technique: TechniqueRecord | None
     try:
         technique = derive_alignment_technique(context.source, alignment)
     except TechniqueError as exc:
