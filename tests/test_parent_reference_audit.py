@@ -119,7 +119,9 @@ def test_parent_fingerprint_mismatch_fails_before_any_lookup() -> None:
         "Gen 1:1\nHB\tLOGOS [2]\n",
         source_name="01.Genesis.par",
     )
-    provider = Provider((_span("Gen", 1, 2),), dataclasses.replace(_probe(), release_commit="wrong"))
+    provider = Provider(
+        (_span("Gen", 1, 2),), dataclasses.replace(_probe(), release_commit="wrong")
+    )
     with pytest.raises(ValueError, match="parent"):
         audit_lxx_parent_span_availability((doc,), provider)
     assert provider.requests == []
