@@ -383,8 +383,13 @@ def resolve_lxx_documents(
             default = default_lxx_reference(document.source_name, verse.chapter, verse.verse)
             for alignment in verse.alignments:
                 if alignment.lxx_reference_ranges:
-                    range_reference_groups, range_resolved_groups, range_missing_groups = (
-                        _resolve_reference_ranges(
+                    (
+                        range_reference_groups,
+                        range_resolved_groups,
+                        range_missing_groups,
+                        range_mismatched_groups,
+                        range_ambiguous_groups,
+                    ) = _resolve_reference_ranges(
                             document.source_name,
                             verse.chapter,
                             verse.verse,
@@ -394,11 +399,12 @@ def resolve_lxx_documents(
                             provider,
                             range_memberships,
                             findings,
-                        )
                     )
                     reference_groups += range_reference_groups
                     resolved_reference_groups += range_resolved_groups
                     missing_reference_groups += range_missing_groups
+                    mismatched_reference_groups += range_mismatched_groups
+                    ambiguous_reference_groups += range_ambiguous_groups
                     reference_overrides += 1
                     continue
 
@@ -643,7 +649,7 @@ def _resolve_reference_ranges(
     provider: LxxVerseProvider,
     memberships: list[LxxReferenceRangeMembership],
     findings: list[LxxMappingFinding],
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int, int]:
     """Resolve one typed same-verse subverse range atomically."""
 
     if len(alignment.lxx_reference_ranges) != 1 or alignment.lxx_references or alignment.lxx_tokens:
@@ -659,7 +665,7 @@ def _resolve_reference_ranges(
                 message="typed Greek reference range must be the alignment's only Greek reference",
             )
         )
-        return 1, 0, 0
+        return 1, 0, 0, 1, 0
 
     reference = alignment.lxx_reference_ranges[0]
     chapter = default_chapter if reference.start_chapter is None else reference.start_chapter
@@ -682,7 +688,7 @@ def _resolve_reference_ranges(
                 message="only same-verse alphabetic CATSS subverse ranges are supported",
             )
         )
-        return 1, 0, 0
+        return 1, 0, 0, 1, 0
 
     subverses = tuple(
         chr(code) for code in range(ord(reference.start_subverse), ord(reference.end_subverse) + 1)
@@ -709,7 +715,7 @@ def _resolve_reference_ranges(
                     message="CenterBLC parent has no matching subverse in CATSS reference range",
                 )
             )
-            return len(subverses), 0, 1
+            return 1, 0, 1, 0, 0
         if span.node in seen_nodes:
             findings.append(
                 LxxMappingFinding(
@@ -723,7 +729,7 @@ def _resolve_reference_ranges(
                     message="distinct CATSS range labels resolve to the same parent subverse node",
                 )
             )
-            return len(subverses), 0, 1
+            return 1, 0, 0, 0, 1
         seen_nodes.add(span.node)
         pending.append(
             LxxReferenceRangeMembership(
@@ -746,7 +752,7 @@ def _resolve_reference_ranges(
         )
 
     memberships.extend(pending)
-    return len(subverses), len(subverses), 0
+    return 1, 1, 0, 0, 0
 
 
 def _alignment_reference(
