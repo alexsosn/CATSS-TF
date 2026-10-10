@@ -1168,7 +1168,9 @@ jobs:
           assert len(api.F.otype.s('mt_element')) == 350219
           assert len(api.F.otype.s('lxx_element')) == 546020
           assert len(api.F.otype.s('reference')) == 6218
-          # A numeric MT-header match cannot establish a Greek target.
+          # Numeric MT-header coincidence is never emitted as a Greek target.
+          from pathlib import Path
+          assert not Path('/tmp/catss-canonical/catss_reference_target.tf').exists()
           assert 'catss_reference_target' not in api.Eall()
           ranges = tuple(api.F.otype.s('reference_range'))
           assert len(ranges) == 1, ranges
