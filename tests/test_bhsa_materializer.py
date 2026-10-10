@@ -617,7 +617,7 @@ def test_scoped_jonah_minus_does_not_project_onto_bhsa_yhwh(
     _write_source(
         source,
         "32.Jonah.par",
-        "Jonah 4:3\\n--- YHWH\\tDE/SPOTA KU/RIE\\n",
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
     )
     output = tmp_path / "catss-bhsa"
     provider = FakeBhsaProvider(
@@ -639,14 +639,14 @@ def test_scoped_jonah_minus_does_not_project_onto_bhsa_yhwh(
     ):
         assert not (output / feature).exists(), feature
     cardinality = (output / "catss_tt_cardinality_mt_lxx.tf").read_text(encoding="utf-8")
-    assert "1\\tone_many" in cardinality
+    assert "1\tone_many" in cardinality
 
 
 def test_scoped_jonah_minus_is_absent_from_bhsa_semantic_helpers() -> None:
     from catss_tf.parser import parse_parallel_text
 
     doc = parse_parallel_text(
-        "Jonah 4:3\\n--- YHWH\\tDE/SPOTA KU/RIE\\n",
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
         source_name="32.Jonah.par",
     )
     alignment = doc.verses[0].alignments[0]
