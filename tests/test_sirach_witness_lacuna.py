@@ -152,6 +152,8 @@ def test_mt_a_crossing_preserves_existing_same_side_witness_annotations() -> Non
         kind="sirach_lacuna_or_illegible",
         projection_side="mt",
     )
+
+
 @pytest.mark.parametrize(
     ("forgery", "label"),
     [
@@ -165,9 +167,7 @@ def test_lxx_witness_semantic_must_not_cross_untrusted_source_or_plus(
     """Reject a Greek-word semantic invented from a non-Sirach or plus row."""
     genuine = _alignment("[..]\tOU)AI\\")
     if forgery == "other_source":
-        alignment = dataclasses.replace(
-            genuine, alignment_id="catss:01.Genesis.par:forged"
-        )
+        alignment = dataclasses.replace(genuine, alignment_id="catss:01.Genesis.par:forged")
     else:
         alignment = dataclasses.replace(genuine, is_lxx_plus=True)
 
