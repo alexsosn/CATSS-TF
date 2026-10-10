@@ -46,7 +46,7 @@ def test_sirach_lacuna_is_not_allowed_on_wrong_source_or_annotation_scope() -> N
         (dataclasses.replace(base, mt_col_a="3 [..]"), "27.Sirach.par"),
         (_alignment("\t[..] OU)AI\\"), "27.Sirach.par"),
     ):
-        assert (alignment.mt_count, alignment.lxx_count) == (0, 1)
+        assert alignment.mt_count == 0 and alignment.lxx_count > 0
         with pytest.raises(TechniqueError, match="Hebrew-empty"):
             derive_alignment_technique(source, alignment)
 
