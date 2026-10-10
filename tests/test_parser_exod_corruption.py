@@ -28,9 +28,7 @@ def test_exod_35_19_corrupt_header_rejoins_one_row_with_all_physical_provenance(
     doc = _parse()
 
     assert len(doc.verses) == 1
-    assert (doc.verses[0].book, doc.verses[0].chapter, doc.verses[0].verse) == (
-        "Exod", 35, 19
-    )
+    assert (doc.verses[0].book, doc.verses[0].chapter, doc.verses[0].verse) == ("Exod", 35, 19)
     assert len(doc.verses[0].alignments) == 1
     alignment = doc.verses[0].alignments[0]
 
