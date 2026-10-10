@@ -87,7 +87,9 @@ def derive_technique_state(
     if scoped_apparent_mt_minus and not apparent_mt_minus:
         raise TechniqueError("scoped apparent MT minus requires explicit marker evidence")
     if scoped_apparent_mt_minus and (mt_n != 1 or lxx_n != 2):
-        raise TechniqueError("scoped apparent MT minus requires exactly one MT and two Greek elements")
+        raise TechniqueError(
+            "scoped apparent MT minus requires exactly one MT and two Greek elements"
+        )
     if apparent_mt_minus and mt_n != 0 and not scoped_apparent_mt_minus:
         raise TechniqueError("CATSS apparent MT minus contradicts a non-empty MT side")
     if apparent_mt_minus and lxx_n == 0:
