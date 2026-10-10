@@ -283,3 +283,68 @@ def test_canonical_scalar_references_and_ranges_keep_separate_node_types(
     assert api.F.catss_ref_verse.v(scalar[0]) == 2
     assert api.F.catss_range_end_subverse.v(ranges[0]) == "f"
 
+
+
+
+def test_canonical_preserves_real_shape_retroversion_only_mt_with_unclassified_technique(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The complete CCAT snapshot has this exact shape at 2 Samuel line 7070."""
+    source = tmp_path / "source"
+    raw = "=;W/KL\tKAI\\\\ PA=S"
+    path = _write_source(source, "12.2Sam.par", "2Sam 7:19\n" + raw + "\n")
+
+    result = materialize_corpus(source, tmp_path / "catss")
+    assert result.summary.alignments == 1
+    assert result.summary.unclassified_techniques == 1
+    assert result.summary.mt_elements == 0
+    assert result.summary.lxx_elements == 2
+
+    api = _load_corpus(tmp_path)
+    assert api.F.catss_tt_status.v(1) == "unclassified"
+    assert "Hebrew-empty Greek alignment" in api.F.catss_tt_unclassified_reason.v(1)
+    assert tuple(api.L.u(1, otype="mt_element")) == ()
+    assert tuple(api.L.u(1, otype="lxx_element"))
+    assert api.F.catss_mt_raw.v(1) == "=;W/KL"
+    assert api.F.catss_mt_col_b.v(1) == ";W/KL"
+    assert api.F.catss_lxx_raw.v(1) == "KAI\\\\ PA=S"
+    assert api.F.catss_tt_addition_vs_mt.v(1) is None
+    assert api.F.catss_tt_omission_vs_mt.v(1) is None
+    assert api.F.catss_tt_cardinality_mt_lxx.v(1) is None
+
+    original = parse_parallel_file(path).verses[0].alignments[0]
+    assert api.F.catss_alignment_id.v(1) == original.alignment_id
+    assert api.F.catss_raw.v(tuple(api.L.u(1, otype="source_line"))[0]) == raw
+    assert (tmp_path / "catss" / "catss-technique.tsv").is_file()
+
+
+def test_canonical_technique_partiality_is_visible_per_alignment(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "12.2Sam.par",
+        "2Sam 7:19\n=;W/KL\tKAI\\\\ PA=S\nHB\tLOGOS\n",
+    )
+    result = materialize_corpus(source, tmp_path / "catss")
+    assert result.summary.alignments == 2
+    assert result.summary.unclassified_techniques == 1
+
+    api = _load_corpus(tmp_path)
+    assert tuple(api.F.catss_tt_status.v(slot) for slot in (1, 2)) == (
+        "unclassified",
+        "derived",
+    )
+    assert api.F.catss_tt_cardinality_mt_lxx.v(2) == "one_one"
+    assert api.F.catss_tt_addition_vs_mt.v(1) is None
+    assert api.F.catss_tt_unclassified_reason.v(2) is None
+
+    import csv
+
+    with (tmp_path / "catss" / "catss-technique.tsv").open(
+        encoding="utf-8", newline=""
+    ) as handle:
+        rows = tuple(csv.DictReader(handle, delimiter="\t"))
+    assert len(rows) == 1
+    assert rows[0]["alignment_id"] == api.F.catss_alignment_id.v(2)
