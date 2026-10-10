@@ -442,3 +442,33 @@ def test_plus_minus_flags_require_material_on_the_named_side() -> None:
             trans_remote=False,
             trans_style=False,
         )
+
+
+def test_scoped_mixed_apparent_minus_derives_non_addition_technique() -> None:
+    doc = parse_parallel_text(
+        "Jonah 4:3\\n--- YHWH\\tDE/SPOTA KU/RIE\\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    technique = derive_alignment_technique("32.Jonah.par", alignment)
+
+    assert technique.cardinality_mt_lxx == "one_many"
+    assert technique.token_balance_mt_lxx == "lxx_more"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+
+def test_scoped_minus_gate_rejects_missing_annotation_evidence() -> None:
+    with pytest.raises(TechniqueError, match="scoped apparent MT minus"):
+        derive_technique_state(
+            mt_n=1,
+            lxx_n=2,
+            is_lxx_plus=False,
+            is_lxx_minus=False,
+            apparent_mt_minus=False,
+            scoped_apparent_mt_minus=True,
+            trans_local=False,
+            trans_remote=False,
+            trans_style=False,
+        )
