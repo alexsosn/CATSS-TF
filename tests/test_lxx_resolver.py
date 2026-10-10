@@ -1,6 +1,8 @@
 import dataclasses
 import types
 
+import pytest
+
 from catss_tf.lxx_resolver import (
     LxxSpan,
     LxxWord,
@@ -100,6 +102,13 @@ def test_greek_normalization_matches_catss_beta_to_parent_surface() -> None:
 def test_pinned_jonah_parent_greek_psili_elision_is_a_real_apostrophe() -> None:
     # U+1FBF is the final mark in actual CenterBLC/LXX Jonah 4:3 ἀπ᾿.
     assert normalize_lxx_greek("ἀπ᾿") == normalize_catss_greek("A)P'")
+
+
+@pytest.mark.parametrize("raw", ("᾿ἀπ", "ἀ᾿π"))
+def test_greek_psili_does_not_become_a_fabricated_nonfinal_apostrophe(raw: str) -> None:
+    # U+1FBF has the documented elision function only at the end of a word.
+    with pytest.raises(ValueError, match="unsupported CenterBLC Greek character"):
+        normalize_lxx_greek(raw)
 
 
 def test_unrelated_elided_parent_word_does_not_block_jonah_scoped_pair() -> None:
