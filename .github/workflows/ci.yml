@@ -110,6 +110,43 @@ jobs:
               with urllib.request.urlopen(url, context=context, timeout=60) as response:
                   (root / name).write_bytes(response.read())
           PY
+      - name: Research actual column-A marker classes for MT-B-only carriers
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          seen = []
+          for source in CATSS_PARALLEL_FILENAMES:
+              for verse in parse_parallel_file(Path('/tmp/catss-parallel') / source).verses:
+                  for alignment in verse.alignments:
+                      if (
+                          alignment.mt_count == 0
+                          and alignment.lxx_count > 0
+                          and alignment.mt_col_b is not None
+                          and not alignment.is_lxx_plus
+                      ):
+                          seen.append((
+                              source,
+                              verse.chapter,
+                              verse.verse,
+                              alignment.mt_col_a,
+                              alignment.mt_col_b,
+                              alignment.retroversion_kind,
+                          ))
+          by_a = Counter(row[3] for row in seen)
+          empty = [row for row in seen if not row[3]]
+          print('R59 candidate total:', len(seen), flush=True)
+          print('R59 MT column-A classes (top 20):', by_a.most_common(20), flush=True)
+          print('R59 actually empty column-A source counts:',
+                Counter(row[0] for row in empty), flush=True)
+          print('R59 empty column-A witnesses:', empty[:12], flush=True)
+          print('R59 nonempty examples:',
+                [(r[0], r[1], r[2], r[3][:45], r[5]) for r in seen if r[3]][:12],
+                flush=True)
+          PY
       - name: Assert export-orphan layout repair
         run: |
           python - <<'PY'
@@ -1126,6 +1163,7 @@ jobs:
           assert result.summary.source_files == 46
           assert result.summary.alignments > 300_000
           assert result.summary.reference_ranges == 1, result.summary.reference_ranges
+          assert result.summary.mt_b_carriers == 6, result.summary.mt_b_carriers
           # Preserve all CATSS alignments without guessing formal translation technique.
           assert 1 <= result.summary.unclassified_techniques < result.summary.alignments
           assert result.summary.alignment_slots == result.summary.alignments
@@ -1157,15 +1195,32 @@ jobs:
               modules=('catss-canonical',),
               silent='deep',
           ).load(
-              'catss_alignment_id catss_source catss_raw '
+              'catss_alignment_id catss_source catss_raw catss_mt_col_b '
               'catss_range_start_verse catss_range_end_subverse '
               'catss_kind catss_target_side catss_target_index catss_text catss_index '
-              'catss_annotation_target',
+              'catss_annotation_target catss_mt_b_raw catss_retro_kind',
               silent='deep',
           )
           assert api is not None
           assert len(api.F.otype.s('alignment')) == 349670
           assert len(api.F.otype.s('mt_element')) == 350219
+          carriers = tuple(api.F.otype.s('mt_b_carrier'))
+          assert len(carriers) == 6, carriers
+          from collections import Counter
+          carrier_sources = Counter()
+          for node in carriers:
+              slots = tuple(api.L.d(node, otype='alignment'))
+              assert len(slots) == 1
+              slot = slots[0]
+              assert tuple(api.L.u(slot, otype='mt_element')) == ()
+              assert api.F.catss_mt_b_raw.v(node) == api.F.catss_mt_col_b.v(slot)
+              carrier_sources[api.F.catss_source.v(slot)] += 1
+          assert dict(carrier_sources) == {
+              '12.2Sam.par': 4, '17.1Esdras.par': 1, '44.Ezekiel.par': 1
+          }, carrier_sources
+          assert len([
+              n for n in carriers if api.F.catss_retro_kind.v(n) == 'vocalization'
+          ]) == 1
           assert len(api.F.otype.s('lxx_element')) == 546020
           assert len(api.F.otype.s('reference')) == 6218
           # Numeric MT-header coincidence is never emitted as a Greek target.
