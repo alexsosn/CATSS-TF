@@ -303,7 +303,7 @@ def test_contextual_reference_range_is_query_native_on_parent_subverse_nodes(
                 chapter=9,
                 verse=2,
                 subverse=subverse,
-                node=930200 + index,
+                node=640000 + index,
                 start_node=302000 + index,
             )
             for index, subverse in enumerate("abcdef", start=1)
@@ -332,11 +332,11 @@ def test_contextual_reference_range_is_query_native_on_parent_subverse_nodes(
     }
     for filename, value in expected.items():
         payload = (output / filename).read_text(encoding="utf-8")
-        for node in range(930201, 930207):
+        for node in range(640001, 640007):
             assert f"{node}\t{value}" in payload
 
     member_i = (output / "catss_lxx_reference_range_member_i.tf").read_text(encoding="utf-8")
-    for index, node in enumerate(range(930201, 930207), start=1):
+    for index, node in enumerate(range(640001, 640007), start=1):
         assert f"{node}\t{index}" in member_i
 
 
