@@ -48,9 +48,7 @@ def audit_greek_references(
                         explicit += 1
                     if reference.subverse is not None:
                         suffix += 1
-                    by_source[document.source_name] = (
-                        by_source.get(document.source_name, 0) + 1
-                    )
+                    by_source[document.source_name] = by_source.get(document.source_name, 0) + 1
                     key = (
                         reference.chapter if reference.chapter is not None else verse.chapter,
                         reference.verse,

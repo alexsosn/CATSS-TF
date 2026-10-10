@@ -167,8 +167,11 @@ report = audit_greek_references(
     parse_parallel_file(root / name) for name in CATSS_PARALLEL_FILENAMES
 )
 print(report.scalar_references, report.subverse_suffixes)
-print(report.numeric_candidates_zero, report.numeric_candidates_one,
-      report.numeric_candidates_multiple)
+print(
+    report.numeric_candidates_zero,
+    report.numeric_candidates_one,
+    report.numeric_candidates_multiple,
+)
 ```
 
 This counts **numeric matches to CATSS MT-based source headers** only, not
