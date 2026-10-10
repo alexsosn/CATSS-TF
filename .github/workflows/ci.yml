@@ -143,13 +143,70 @@ jobs:
                   set(covered) - set(document.data_line_numbers),
               )
 
-          assert len(no_tab_physical) == 208, len(no_tab_physical)
+          # Exodus preserves four formerly ignored blank/header lines.
+          assert len(no_tab_physical) == 212, len(no_tab_physical)
           assert all(row[4] for row in no_tab_physical), no_tab_physical[:20]
           assert unsplit_alignments == [], unsplit_alignments[:20]
           assert unsplit_diagnostics == [], unsplit_diagnostics[:20]
           print(f'export_orphan_physical_lines={len(no_tab_physical)}')
           print('unsplit_alignments=0')
           print('unsplit_diagnostics=0')
+          PY
+      - name: Assert exact Exodus 35:19 corrupted-header repair
+        run: |
+          python - <<'PY'
+          import pathlib
+          from catss_tf.parser import alignment_id_for, parse_parallel_file
+          from catss_tf.validation import validate_document
+
+          path = pathlib.Path('/tmp/catss-parallel/02.Exodus.par')
+          original = path.read_text(encoding='utf-8').splitlines()
+          doc = parse_parallel_file(path)
+
+          matches = [
+              (verse, alignment)
+              for verse in doc.verses
+              for alignment in verse.alignments
+              if alignment.raw_lines
+              and '^ ^^^ =L/$RT {...?H/&RD} #' in alignment.raw_lines[0]
+              and 'LEITOURGH/SOUSIN' in alignment.raw_lines[0]
+          ]
+          assert len(matches) == 1, matches
+          verse, alignment = matches[0]
+          assert (verse.book, verse.chapter, verse.verse) == ('Exod', 35, 19)
+          assert len(alignment.raw_lines) == 7, alignment.raw_lines
+          assert alignment.source_lines == tuple(range(
+              alignment.source_lines[0], alignment.source_lines[0] + 7
+          ))
+          assert alignment.raw_lines == tuple(
+              original[i - 1] for i in alignment.source_lines
+          )
+          assert [s.strip() for s in alignment.raw_lines[1:6]] == [
+              '', 'Exod 1:10', '#', '', 'Exod 35:19'
+          ]
+          assert alignment.mt_raw.endswith(' {...?H/&RD} --+'), alignment.mt_raw
+          assert alignment.lxx_raw.endswith('E)N AU)TAI=S'), alignment.lxx_raw
+          assert all(i in doc.data_line_numbers for i in alignment.source_lines)
+          assert not any(
+              v.header_raw == 'Exod 1:10'
+              and alignment.source_lines[0] <= v.header_line_no <= alignment.source_lines[-1]
+              for v in doc.verses
+          )
+          assert not any(
+              d.code == 'malformed_continuation'
+              and alignment.source_lines[0] <= d.line_no <= alignment.source_lines[-1]
+              for d in doc.diagnostics
+          )
+          assert alignment.alignment_id == alignment_id_for(
+              source_name='02.Exodus.par',
+              header_raw=verse.header_raw,
+              source_lines=alignment.source_lines,
+              raw_lines=alignment.raw_lines,
+          )
+          audit = validate_document(doc)
+          assert audit.summary.unaccounted_lines == 0
+          assert audit.summary.invalid_alignment_ids == 0
+          print('exodus_35_19_physical_lines_preserved=7')
           PY
       - name: Assert zero-token Greek-preverb carriers
         run: |
