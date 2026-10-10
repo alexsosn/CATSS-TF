@@ -256,6 +256,9 @@ def test_contextual_reference_range_resolves_all_subverse_members_in_order() -> 
     assert {member.alignment_id for member in report.reference_range_memberships} == {
         doc.verses[0].alignments[0].alignment_id
     }
+    assert report.summary.reference_groups == 1
+    assert report.summary.resolved_reference_groups == 1
+    assert report.summary.reference_range_memberships == 6
 
 
 def test_contextual_reference_range_fails_closed_when_parent_member_is_missing() -> None:
@@ -283,6 +286,9 @@ def test_contextual_reference_range_fails_closed_when_parent_member_is_missing()
     assert report.ok is False
     assert report.reference_range_memberships == ()
     assert any(finding.code == "missing_lxx_reference_range_member" for finding in report.findings)
+    assert report.summary.reference_groups == 1
+    assert report.summary.missing_reference_groups == 1
+    assert report.summary.ambiguous_reference_groups == 0
 
 
 def test_contextual_reference_range_rejects_aliased_parent_subverse_nodes() -> None:
@@ -314,6 +320,9 @@ def test_contextual_reference_range_rejects_aliased_parent_subverse_nodes() -> N
         finding.code == "ambiguous_lxx_reference_range_member"
         for finding in report.findings
     )
+    assert report.summary.reference_groups == 1
+    assert report.summary.ambiguous_reference_groups == 1
+    assert report.summary.missing_reference_groups == 0
 
 
 def test_psalm_151_default_reference_transform_is_applied() -> None:
