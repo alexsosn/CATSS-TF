@@ -114,9 +114,8 @@ def _exact_exodus_35_19_corruption(lines: list[str], start: int) -> bool:
 
     if start + 7 > len(lines):
         return False
-    head, blank1, false_header, hash_row, blank2, duplicate_header, tail = (
-        lines[start : start + 7]
-    )
+    window = lines[start : start + 7]
+    head, blank1, false_header, hash_row, blank2, duplicate_header, tail = window
     head_mt, head_lxx, head_split = _split_raw_columns(head)
     tail_mt, tail_lxx, tail_split = _split_raw_columns(tail)
     return (
