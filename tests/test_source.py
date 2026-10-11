@@ -219,7 +219,7 @@ def test_interleaved_downloads_do_not_share_temporary_name(
     staged: list[Path] = []
 
     def interleaved_replace(src: object, dst: object) -> None:
-        source_path = Path(src)  # type: ignore[arg-type]
+        source_path = Path(str(src))
         staged.append(source_path)
         if len(staged) == 1:
             source.download_parallel_source(
@@ -229,7 +229,7 @@ def test_interleaved_downloads_do_not_share_temporary_name(
                 overwrite=True,
             )
             assert source_path.read_bytes() == b"outer payload"
-        real_replace(src, dst)
+        real_replace(str(src), str(dst))
 
     monkeypatch.setattr(source.os, "replace", interleaved_replace)
     source.download_parallel_source(
