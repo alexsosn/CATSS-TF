@@ -54,9 +54,7 @@ def test_source_header_relative_greek_reference_classes_do_not_forge_targets() -
     assert audit.different_verse_same_chapter == 1  # [6] under Gen 23:5
     assert audit.different_chapter == 2  # both [2:1] and [2:2]
     assert (
-        audit.same_header_numeric
-        + audit.different_verse_same_chapter
-        + audit.different_chapter
+        audit.same_header_numeric + audit.different_verse_same_chapter + audit.different_chapter
     ) == audit.scalar_references
 
 
