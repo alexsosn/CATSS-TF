@@ -93,7 +93,17 @@ The initial release consumes a local directory of CATSS parallel `.par` files. U
 
 ```sh
 catss-tf fetch ./data/catss-parallel
+
+# Optional: independently verified HTTPS mirror / trusted PEM chain
+catss-tf fetch ./data/catss-parallel --base-url https://validated.example.org/parallel
+catss-tf fetch ./data/catss-parallel --ca-bundle ./verified-upstream-ca.pem
 ```
+
+The upstream CCAT HTTPS server has exhibited an incomplete certificate chain
+on clean Ubuntu. The downloader never falls back to insecure HTTP or disables
+verification; use only an independently authenticated CA chain or HTTPS mirror,
+or work from a locally acquired source directory. See
+[docs/integration.md](docs/integration.md) and [issue #44](https://github.com/alexsosn/CATSS-TF/issues/44).
 
 CATSS morphology files are not required.
 

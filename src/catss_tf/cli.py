@@ -9,6 +9,7 @@ from catss_tf.browser import BrowserLaunchError, launch_browser
 from catss_tf.parser import parse_parallel_file
 from catss_tf.source import (
     CATSS_PARALLEL_FILENAMES,
+    CCAT_PARALLEL_BASE_URL,
     CCAT_USER_DECLARATION_URL,
     download_parallel_source,
     inspect_parallel_source,
@@ -30,6 +31,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="download CATSS parallel files directly from the upstream CCAT host",
     )
     fetch.add_argument("destination", help="local directory for CATSS parallel .par files")
+    fetch.add_argument(
+        "--base-url",
+        help="explicit verified HTTPS CATSS parallel source or mirror (never plain HTTP)",
+    )
+    fetch.add_argument(
+        "--ca-bundle",
+        help="local PEM bundle from a separately verified trust source; keeps TLS validation on",
+    )
 
     validate = subparsers.add_parser(
         "validate",
@@ -68,7 +77,14 @@ def main(argv: collections.abc.Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     if args.command == "fetch":
-        manifest = download_parallel_source(args.destination)
+        if args.base_url is None and args.ca_bundle is None:
+            manifest = download_parallel_source(args.destination)
+        else:
+            manifest = download_parallel_source(
+                args.destination,
+                base_url=args.base_url or CCAT_PARALLEL_BASE_URL,
+                ca_bundle=args.ca_bundle,
+            )
         print(f"CATSS parallel source ready: {len(manifest.files)} files")
         print(f"Upstream terms: {CCAT_USER_DECLARATION_URL}")
         return 0

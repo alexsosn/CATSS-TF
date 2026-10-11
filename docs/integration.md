@@ -31,10 +31,24 @@ upstream CCAT distribution host:
 
 ```sh
 catss-tf fetch ./data/catss-parallel
+# Only for an independently authenticated CA chain / HTTPS origin:
+catss-tf fetch ./data/catss-parallel --ca-bundle ./trusted-upstream-ca.pem
+catss-tf fetch ./data/catss-parallel --base-url https://validated.example.org/parallel
 catss-tf validate ./data/catss-parallel
 ```
 
 The user is responsible for the upstream CATSS/CCAT terms.
+
+**Verified TLS:** Some clean Ubuntu/OpenSSL clients currently reject the CCAT
+server's incomplete certificate chain. The downloader does not weaken TLS or
+fall back to HTTP. `--ca-bundle` uses a PEM file obtained and verified via
+an **independent trustworthy channel**, not a certificate scraped from an
+unverified CCAT session. `--base-url` must be an HTTPS endpoint whose
+identity and upstream data/license provenance you have independently checked;
+redirects cannot downgrade to HTTP or switch hostname. Without either,
+use an already acquired local directory. Neither option guarantees that the
+broken default upstream chain is fixed; see issue #44 for live verification.
+
 
 ## 3. Materialize BHSA
 
