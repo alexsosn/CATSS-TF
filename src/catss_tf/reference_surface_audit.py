@@ -89,7 +89,7 @@ def audit_lxx_reference_surface_candidates(
                             if (span.book, span.chapter, span.verse, span.subverse) != key:
                                 raise ValueError(f"LXX parent span identity mismatch for {key}")
                             if any(word.subverse != (key[3] or "") for word in span.words):
-                                raise ValueError(f"LXX parent span word subverse mismatch for {key}")
+                                raise ValueError(f"LXX span word subverse mismatch for {key}")
                         span_cache[key] = span
                     span = span_cache[key]
                     if span is None or not span.words:
