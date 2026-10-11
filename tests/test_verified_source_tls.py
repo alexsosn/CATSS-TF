@@ -53,6 +53,8 @@ def test_downloader_accepts_explicit_ca_bundle_with_verified_tls(
         "https://someone:password@example.invalid/catss",
         "https://example.invalid/catss?redirect=http://bad.invalid",
         "https://example.invalid/catss#fragment",
+        "https://example.invalid/catss\nmisleading",
+        "https://example.invalid:99999/catss",
     ],
 )
 def test_downloader_rejects_unverified_or_ambiguous_origin_before_network(
