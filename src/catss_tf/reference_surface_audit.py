@@ -149,9 +149,7 @@ def audit_lxx_reference_surface_candidates(
     for scope, alignment_id, (start, stop) in single_candidates:
         competitors = candidate_intervals[scope]
         if any(
-            competing_id != alignment_id
-            and other_start < stop
-            and start < other_stop
+            competing_id != alignment_id and other_start < stop and start < other_stop
             for competing_id, intervals in competitors.items()
             for other_start, other_stop in intervals
         ):
