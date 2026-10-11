@@ -303,6 +303,14 @@ non-normalizable, or unmatched implicit contender makes the corresponding
 context incomplete; Greek-empty placeholders and typed contextual ranges
 do not become lexical tasks.
 
+The pinned 46-source CenterBLC/LXX audit finds **279 of 671**
+explicit groups with eligible implicit lexical contenders. Original
+explicit-only classes are 326 unique, 70 multiple, 19 impossible, 256
+incomplete, 0 indeterminate; conditional default-context classes are
+**252 unique, 75 multiple, 49 impossible, 295 incomplete, 0
+indeterminate**. All counts refer to the same 671 groups and do not
+establish a verified semantic Greek target.
+
 The two views are deliberately kept separate. A group classed as unique
 by the explicit-only view may become impossible or incomplete when
 the hypothesized implicit contenders are included, **but the default
