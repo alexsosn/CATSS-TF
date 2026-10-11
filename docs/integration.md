@@ -207,6 +207,14 @@ validation errors and partial hard-link publication, and removes private
 staging files on failure. The host retains responsibility for the final
 sandboxed transaction and parent-independent Text-Fabric load.
 
+For the reviewed full 46-file CATSS source, the manifest explicitly passes
+`--allow invalid_lxx_reference --allow malformed_continuation --allow
+unsplit_row`. These are the same exact diagnostic exceptions already
+documented in the existing opt-in native canonical audit. A direct adapter
+invocation without any `--allow` is strict; other parser problems
+(including unknown annotation/sigla) still block publication. All acknowledged
+diagnostics remain visible in the generated TSV audit.
+
 The adapter never fetches CATSS or installs a parent corpus. Registration is
 not implied by the manifest: Agora must pin an immutable reviewed CATSS-TF
 commit, obtain explicit code execution approval and verify the user-local
