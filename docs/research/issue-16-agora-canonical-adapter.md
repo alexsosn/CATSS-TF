@@ -31,3 +31,21 @@ Agora issue #135 and #221 are still OPEN for managed parent-dependent feature-mo
 - https://github.com/alexsosn/Agora/issues/135
 - https://github.com/alexsosn/Agora/issues/221
 - CATSS-TF `src/catss_tf/canonical_materializer.py`, `tests/test_canonical_materializer.py`, `LICENSE_SCOPE.md`.
+
+## Review finding — full real CATSS requires explicit diagnostic allowance
+
+After implementing the first adapter, an independent cross-check of `.github/workflows/ci.yml`, step **Materialize complete canonical corpus**, found that the *actual pinned 46-file source* is only accepted with the explicit reviewed native option:
+
+```python
+allowed_validation_codes={
+    "invalid_lxx_reference",
+    "malformed_continuation",
+    "unsplit_row",
+}
+```
+
+Native `materialize_corpus` defaults to allowing **none**. A v1 Agora manifest with no such flags therefore could only materialize diagnostic-clean subsets, and would **fail on the full real snapshot**, despite claiming general CATSS corpus materialization. This was not documented in the initial plan and is a blocking user-facing defect discovered before merge.
+
+Decision: preserve the **strict default** for direct `python -m catss_tf.agora_adapter ...`; expose explicit repeatable `--allow CODE`, forward exactly the selected code strings into native `materialize_corpus(..., allowed_validation_codes=...)`. Agora's immutable reviewed root manifest must list each of these three known source diagnostics **literally in its `execution.args`**; describe them as explicit acknowledged source anomalies, not trust bypasses, and never allow `unknown_annotation`, `unknown_mt_strategy_siglum` or mapping/parent drift by default. The native materializer retains per-finding ignored-diagnostic provenance in `catss-diagnostics.tsv` and continues to validate all source rows. The wildcard `*.par` still accepts user-local subsets; no exact source hash is asserted beyond native manifest SHA-256 fingerprints.
+
+Add a **real pinned 46-file adapter invocation** to existing opt-in complete-catss-audit after canonical reload: precreate an empty stage, execute `agora_adapter.main([... --allow CODE ...])`, then reload as a standalone Text-Fabric corpus with exactly 349,670 alignment slots, 6,218 reference nodes, intact `catss-diagnostics.tsv` and absence of the private child. Preserve the existing full native audit; this is deliberate additional coverage of the public Agora path. Never publish/upload generated corpus artifacts.
