@@ -179,3 +179,65 @@ def test_download_preserves_unrelated_stale_partial_file(
 
     assert old_partial.read_bytes() == b"stale file owned by a different operation"
     assert (destination / "01.First.par").read_bytes() == b"new verified payload"
+
+
+def test_download_failed_replace_cleans_only_owned_temporary_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "parallel"
+    destination.mkdir()
+    original = destination / "01.First.par"
+    original.write_bytes(b"verified earlier payload")
+    stale = destination / "01.First.par.part"
+    stale.write_bytes(b"untouched stale partial")
+    monkeypatch.setattr(source, "_fetch_bytes", lambda url: b"new payload")
+
+    def reject_replace(_src: object, _dst: object) -> None:
+        raise OSError("synthetic rename failure")
+
+    monkeypatch.setattr(source.os, "replace", reject_replace)
+    with pytest.raises(OSError, match="synthetic rename failure"):
+        source.download_parallel_source(
+            destination,
+            base_url="https://example.invalid/parallel",
+            filenames=("01.First.par",),
+            overwrite=True,
+        )
+
+    assert original.read_bytes() == b"verified earlier payload"
+    assert stale.read_bytes() == b"untouched stale partial"
+    assert not list(destination.glob(".01.First.par.*.tmp"))
+
+
+def test_interleaved_downloads_do_not_share_temporary_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "parallel"
+    calls = iter((b"outer payload", b"inner payload"))
+    monkeypatch.setattr(source, "_fetch_bytes", lambda url: next(calls))
+    real_replace = source.os.replace
+    staged: list[Path] = []
+
+    def interleaved_replace(src: object, dst: object) -> None:
+        source_path = Path(src)  # type: ignore[arg-type]
+        staged.append(source_path)
+        if len(staged) == 1:
+            source.download_parallel_source(
+                destination,
+                base_url="https://example.invalid/parallel",
+                filenames=("01.First.par",),
+                overwrite=True,
+            )
+            assert source_path.read_bytes() == b"outer payload"
+        real_replace(src, dst)
+
+    monkeypatch.setattr(source.os, "replace", interleaved_replace)
+    source.download_parallel_source(
+        destination,
+        base_url="https://example.invalid/parallel",
+        filenames=("01.First.par",),
+        overwrite=True,
+    )
+    assert len(staged) == 2 and staged[0] != staged[1]
+    assert (destination / "01.First.par").read_bytes() == b"outer payload"
+    assert not list(destination.glob(".01.First.par.*.tmp"))
