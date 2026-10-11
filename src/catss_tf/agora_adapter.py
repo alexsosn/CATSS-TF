@@ -69,6 +69,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=pathlib.Path)
     parser.add_argument("--output", type=pathlib.Path, required=True)
+    parser.add_argument(
+        "--allow",
+        action="append",
+        default=[],
+        metavar="CODE",
+        help="explicitly acknowledge a known CATSS parser diagnostic code; repeatable",
+    )
     args = parser.parse_args(argv)
 
     source: pathlib.Path = args.source
@@ -79,7 +86,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # Native writer must see a missing destination, and will atomically
         # promote to its own private child of Agora's writable staging dir.
-        materialize_corpus(source, native)
+        if args.allow:
+            materialize_corpus(source, native, allowed_validation_codes=set(args.allow))
+        else:
+            # Keep native's strict default for direct invocations.
+            materialize_corpus(source, native)
         entries = _validate_native(native)
         for entry in entries:
             target = output / entry.name
