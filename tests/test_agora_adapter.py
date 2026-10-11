@@ -53,7 +53,12 @@ def test_agora_manifest_is_standalone_user_local_network_denied() -> None:
     assert item["execution"] == {
         "type": "python-module",
         "module": "catss_tf.agora_adapter",
-        "args": ["{source}", "--output", "{output}"],
+        "args": [
+            "{source}", "--output", "{output}",
+            "--allow", "invalid_lxx_reference",
+            "--allow", "malformed_continuation",
+            "--allow", "unsplit_row",
+        ],
         "network": "deny",
     }
     assert item["output"]["format"] == "text-fabric"
@@ -266,3 +271,43 @@ def test_agora_no_replace_if_other_writer_claims_destination(
     assert claimed is not None
     assert claimed.read_text() == "FOREIGN"
     assert sorted(output.iterdir()) == [claimed]
+
+
+def test_agora_diagnostics_are_strict_by_default_and_explicitly_opt_in(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = _source(tmp_path / "source")
+    (source / "01.Genesis.par").write_text(
+        "Gen 1:1\nHB\tLOGOS [6x7]\n", encoding="utf-8"
+    )
+    output = tmp_path / "staging"
+    output.mkdir()
+    with pytest.raises(CanonicalMaterializationError, match="invalid_lxx_reference"):
+        _run(source, output)
+    assert list(output.iterdir()) == []
+
+    assert agora_adapter.main([
+        str(source), "--output", str(output),
+        "--allow", "invalid_lxx_reference",
+    ]) == 0
+    diagnostics = (output / "catss-diagnostics.tsv").read_text(encoding="utf-8")
+    assert "invalid_lxx_reference" in diagnostics
+
+
+def test_agora_known_diagnostic_allowance_does_not_mask_unknown_annotations(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = _source(tmp_path / "source")
+    (source / "01.Genesis.par").write_text(
+        "Gen 1:1\nHB\tLOGOS {zzUNKNOWN}\n", encoding="utf-8"
+    )
+    output = tmp_path / "staging"
+    output.mkdir()
+    with pytest.raises(CanonicalMaterializationError, match="validation failed"):
+        agora_adapter.main([
+            str(source), "--output", str(output),
+            "--allow", "invalid_lxx_reference",
+            "--allow", "malformed_continuation",
+            "--allow", "unsplit_row",
+        ])
+    assert list(output.iterdir()) == []
