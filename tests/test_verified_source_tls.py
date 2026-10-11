@@ -61,9 +61,7 @@ def test_downloader_rejects_unverified_or_ambiguous_origin_before_network(
 
     monkeypatch.setattr(source, "_fetch_bytes", forbidden_fetch)
     with pytest.raises(source.SourceDownloadError, match="HTTPS"):
-        source.download_parallel_source(
-            tmp_path, base_url=url, filenames=("01.Genesis.par",)
-        )
+        source.download_parallel_source(tmp_path, base_url=url, filenames=("01.Genesis.par",))
 
 
 def test_https_to_http_redirect_is_rejected() -> None:
@@ -103,13 +101,14 @@ def test_fetch_cli_passes_explicit_verified_options(
     assert (
         cli.main(
             [
-                "fetch", str(target),
-                "--base-url", "https://approved.example.invalid/parallel",
-                "--ca-bundle", str(cert),
+                "fetch",
+                str(target),
+                "--base-url",
+                "https://approved.example.invalid/parallel",
+                "--ca-bundle",
+                str(cert),
             ]
         )
         == 0
     )
-    assert recorded == [
-        (str(target), "https://approved.example.invalid/parallel", cert)
-    ]
+    assert recorded == [(str(target), "https://approved.example.invalid/parallel", cert)]
