@@ -327,6 +327,15 @@ the parsed CATSS row (not raw Greek string equality). The five
 both roles, and `role_context_changed_groups` counts groups whose
 outcome differs from the strict default-context view.
 
+In the exact pinned 46-file corpus, **96** of the 671 groups contain
+both transposition roles and **17** conditional group outcomes change:
+the strict-context 252 unique / 75 multiple / 49 impossible /
+295 incomplete / 0 indeterminate become **260 unique / 84 multiple /
+32 impossible / 295 incomplete / 0 indeterminate** under the role-aware
+rule. All 17 newly feasible groups were previously conditionally
+impossible: eight now have one assignment, nine have multiple.
+This does not establish Greek reference target semantics.
+
 This is a **third conditional hypothesis**, not a revision of previous
 scalar, `joint_*` or `context_*` results. The default Greek location
 itself is not a verified reference destination; cross-key interactions,
