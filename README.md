@@ -151,6 +151,13 @@ python -m catss_tf.agora_adapter ./data/catss-parallel \
   --allow unsplit_row
 ```
 
+The three `--allow` flags above explicitly acknowledge **documented parser
+diagnostics** on the pinned full 46-file source. They are present verbatim
+in the reviewed Agora manifest; they do not excuse unknown sigla, drop
+source lines, or remove `catss-diagnostics.tsv`. Calling the adapter
+without flags preserves the strict native default. If source diagnostics
+differ, materialization fails rather than guessing.
+
 This is **upstream executability metadata**, not a claim that Agora has already
 registered or installed it. Agora must use an explicitly approved installation,
 user-local licensed input and its normal network-denied sandbox. The manifest
