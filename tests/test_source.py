@@ -279,7 +279,11 @@ def test_download_rejects_existing_final_par_symlink_without_touching_referent(
     link = root / "01.Genesis.par"
     link.symlink_to(outside)
     fetched: list[str] = []
-    monkeypatch.setattr(source, "_fetch_bytes", lambda url: fetched.append(url) or b"new bytes")
+    def fake_fetch(url: str) -> bytes:
+        fetched.append(url)
+        return b"new bytes"
+
+    monkeypatch.setattr(source, "_fetch_bytes", fake_fetch)
 
     with pytest.raises(source.SourceDownloadError, match="symlink"):
         source.download_parallel_source(
@@ -301,7 +305,11 @@ def test_download_preflights_later_symlink_before_fetching_earlier_file(
     root.mkdir()
     (root / "02.Exodus.par").symlink_to(tmp_path / "missing.par")
     fetched: list[str] = []
-    monkeypatch.setattr(source, "_fetch_bytes", lambda url: fetched.append(url) or b"first")
+    def fake_fetch(url: str) -> bytes:
+        fetched.append(url)
+        return b"first"
+
+    monkeypatch.setattr(source, "_fetch_bytes", fake_fetch)
 
     with pytest.raises(source.SourceDownloadError, match="symlink"):
         source.download_parallel_source(
