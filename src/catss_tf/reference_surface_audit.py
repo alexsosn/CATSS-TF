@@ -31,6 +31,12 @@ class LxxReferenceSurfaceCandidates:
     exact_single_with_unavoidable_overlap: int
     exact_single_with_avoidable_overlap_only: int
     exact_single_without_overlap: int
+    reference_groups: int
+    joint_unique_groups: int
+    joint_multiple_groups: int
+    joint_impossible_groups: int
+    joint_incomplete_groups: int
+    joint_indeterminate_groups: int
     exact_multiple: int
     no_surface_match: int
     no_greek_tokens: int
@@ -185,6 +191,12 @@ def audit_lxx_reference_surface_candidates(
         exact_single_with_unavoidable_overlap=unavoidable_overlap,
         exact_single_with_avoidable_overlap_only=avoidable_overlap_only,
         exact_single_without_overlap=without_overlap,
+        reference_groups=0,  # RED placeholders
+        joint_unique_groups=0,
+        joint_multiple_groups=0,
+        joint_impossible_groups=0,
+        joint_incomplete_groups=0,
+        joint_indeterminate_groups=0,
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
         no_greek_tokens=counts["no_greek_tokens"],
@@ -194,3 +206,13 @@ def audit_lxx_reference_surface_candidates(
         unsupported_source=counts["unsupported_source"],
         unknown_source=counts["unknown_source"],
     )
+
+
+
+def _classify_joint_intervals(
+    tasks: dict[str, set[tuple[int, int]]], *, max_states: int = 10000
+) -> typing.Literal["unique", "multiple", "impossible", "indeterminate"]:
+    """RED stub: bounded assignment feasibility remains unimplemented."""
+    if not tasks or any(not spans for spans in tasks.values()) or max_states < 1:
+        raise ValueError("joint candidate tasks must be nonempty and budget positive")
+    return "indeterminate"
