@@ -236,6 +236,34 @@ created. The previous MT-header numeric candidate audit is independent
 of this Greek-parent availability study. See issue #96 for genuine
 textually verified reference destinations.
 
+## Greek-reference textual surface candidates
+
+For a stricter **diagnostic** than the exact LXX parent-span inventory,
+compare each explicitly referenced Greek verse with the CATSS alignment's
+own Greek tokens using the existing accent-insensitive, non-lemma
+normalization functions:
+
+```python
+from catss_tf.reference_surface_audit import audit_lxx_reference_surface_candidates
+
+surface = audit_lxx_reference_surface_candidates(
+    (parse_parallel_file(source_root / n) for n in CATSS_PARALLEL_FILENAMES),
+    provider,  # exact pinned CenterBLC/LXX TextFabricLxxProvider
+)
+print(surface)
+```
+
+The aggregate distinguishes one exact contiguous candidate, multiple
+occurrences, no matching sequence, Greek-token-free references,
+normalization obstacles, missing parent spans and unsupported sources.
+The report includes **no raw source text, Greek parent word IDs, or
+canonical target edges**. Even `exact_single` is **not a verified
+reference destination**: contextual references and other competing
+alignments can prevent an unambiguous joint placement. Follow the
+existing LXX resolver's stricter full-document validation before
+proposing any canonical `catss_reference_target` relation. See
+`docs/research/issue-96-reference-surface-candidates.md` and issue #96.
+
 ## Reference edges
 
 A `reference` node records the exact scalar Greek-side chapter, verse, subverse
