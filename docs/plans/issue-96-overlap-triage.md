@@ -1,0 +1,8 @@
+# R96-8 plan — surface candidate overlap triage
+
+1. Confirm current `main`, review issue #96 and R96-7 audited counts; document the strict boundary between candidate surface overlap and verified semantic destination.
+2. Commit deterministic unit tests for competing unique/unique intervals, unique/ambiguous alternatives, disjoint placements, repeated scalar refs within one alignment, and cross-source isolation. Add explicitly unimplemented zero fields so mypy/ruff remain green; obtain observed RED on GitHub Actions for the intended failing count assertions.
+3. Implement sparse same-source/same-exact-parent-key interval collection in `audit_lxx_reference_surface_candidates` and a deterministic overlap partition of *exact-single* refs. Exclude self-competition by `alignment_id`; include ambiguous alternatives; maintain original counters and no target edge.
+4. Update researcher docs with limitations. Run focused tests and exact-head CI: ruff, format, mypy, Python 3.11/3.12/3.13, release-smoke and existing 46-file source/TF readback with pinned LXX; record real `with_overlap` and `without_overlap` from job logs.
+5. Conduct a separate, adversarial exact-head review of code, tests and real-data distribution. Check aggregation invariants, off-by-one interval boundaries, duplicate refs, source/version segregation, memory/performance, empty/invalid normalization, and conservative non-mapping semantics. Review findings get new RED tests, changes, full GREEN and re-review.
+6. Merge only if all gates succeed. Keep #96 OPEN for genuine source-independent verified reference destination research.

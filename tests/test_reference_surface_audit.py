@@ -122,3 +122,76 @@ def test_forged_subverse_parent_span_cannot_be_counted_as_surface_match() -> Non
 
     with pytest.raises(ValueError, match="span"):
         audit_lxx_reference_surface_candidates((document,), AliasProvider(()))
+
+
+def test_unique_candidates_compete_when_distinct_alignments_claim_same_word() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\nHB\tLOGOS [2]\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (doc,), Provider((_span("Gen", 1, 2, "λόγος"),))
+    )
+    assert result.exact_single == 2
+    assert result.exact_single_with_overlap == 2
+    assert result.exact_single_without_overlap == 0
+
+
+def test_unique_candidate_competes_with_another_alignments_ambiguous_alternatives() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS KAI LOGOS [2]\nHB\tLOGOS [2]\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (doc,), Provider((_span("Gen", 1, 2, "λόγος", "καί", "λόγος"),))
+    )
+    assert result.exact_single == 1
+    assert result.exact_multiple == 1
+    assert result.exact_single_with_overlap == 1
+    assert result.exact_single_without_overlap == 0
+
+
+def test_adjacent_word_intervals_do_not_count_as_competing() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\nHB\tKAI [2]\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (doc,), Provider((_span("Gen", 1, 2, "λόγος", "καί"),))
+    )
+    assert result.exact_single == 2
+    assert result.exact_single_with_overlap == 0
+    assert result.exact_single_without_overlap == 2
+
+
+def test_repeated_scalar_refs_in_one_alignment_do_not_compete_with_themselves() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2] [2]\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (doc,), Provider((_span("Gen", 1, 2, "λόγος"),))
+    )
+    assert result.scalar_references == 2
+    assert result.exact_single == 2
+    assert result.exact_single_with_overlap == 0
+    assert result.exact_single_without_overlap == 2
+
+
+def test_distinct_catss_source_traditions_do_not_compete_even_for_same_parent_key() -> None:
+    docs = (
+        parse_parallel_text(
+            "Ezra 1:1\nHB\tLOGOS [11:2]\n",
+            source_name="18.Ezra.par",
+        ),
+        parse_parallel_text(
+            "Neh 1:1\nHB\tLOGOS [2]\n",
+            source_name="19.Neh.par",
+        ),
+    )
+    result = audit_lxx_reference_surface_candidates(
+        docs, Provider((_span("2Esdr", 11, 2, "λόγος"),))
+    )
+    assert result.exact_single == 2
+    assert result.exact_single_with_overlap == 0
+    assert result.exact_single_without_overlap == 2

@@ -17,6 +17,8 @@ from catss_tf.lxx_schema import (
 )
 from catss_tf.parser import ParallelDocument
 
+_CandidateScope: typing.TypeAlias = tuple[str, str, int, int, str | None]
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class LxxReferenceSurfaceCandidates:
@@ -25,6 +27,8 @@ class LxxReferenceSurfaceCandidates:
     source_files: int
     scalar_references: int
     exact_single: int
+    exact_single_with_overlap: int
+    exact_single_without_overlap: int
     exact_multiple: int
     no_surface_match: int
     no_greek_tokens: int
@@ -59,6 +63,11 @@ def audit_lxx_reference_surface_candidates(
     }
     span_cache: dict[tuple[str, int, int, str | None], LxxSpan | None] = {}
     token_cache: dict[tuple[str, int, int, str | None], tuple[str, ...] | None] = {}
+    # Only offsets, not Greek text or parent node IDs, are retained. A candidate
+    # with one local occurrence may still overlap a different alignment's
+    # candidate (including ambiguous alternative occurrences).
+    candidate_intervals: dict[_CandidateScope, dict[str, set[tuple[int, int]]]] = {}
+    single_candidates: list[tuple[_CandidateScope, str, tuple[int, int]]] = []
 
     for document in documents:
         counts["source_files"] += 1
@@ -118,15 +127,35 @@ def audit_lxx_reference_surface_candidates(
                         counts["parent_normalization_error"] += 1
                         continue
                     n = len(needle)
-                    matches = sum(
-                        haystack[i : i + n] == needle for i in range(len(haystack) - n + 1)
+                    matches = tuple(
+                        (i, i + n)
+                        for i in range(len(haystack) - n + 1)
+                        if haystack[i : i + n] == needle
                     )
-                    if matches == 0:
+                    if not matches:
                         counts["no_surface_match"] += 1
-                    elif matches == 1:
+                        continue
+                    scope = (document.source_name, *key)
+                    candidate_intervals.setdefault(scope, {}).setdefault(
+                        alignment.alignment_id, set()
+                    ).update(matches)
+                    if len(matches) == 1:
                         counts["exact_single"] += 1
+                        single_candidates.append((scope, alignment.alignment_id, matches[0]))
                     else:
                         counts["exact_multiple"] += 1
+
+    with_overlap = 0
+    for scope, alignment_id, (start, stop) in single_candidates:
+        competitors = candidate_intervals[scope]
+        if any(
+            competing_id != alignment_id and other_start < stop and start < other_stop
+            for competing_id, intervals in competitors.items()
+            for other_start, other_stop in intervals
+        ):
+            with_overlap += 1
+    without_overlap = len(single_candidates) - with_overlap
+    assert counts["exact_single"] == with_overlap + without_overlap
 
     assert counts["scalar_references"] == sum(
         value for name, value in counts.items() if name not in {"source_files", "scalar_references"}
@@ -135,6 +164,8 @@ def audit_lxx_reference_surface_candidates(
         source_files=counts["source_files"],
         scalar_references=counts["scalar_references"],
         exact_single=counts["exact_single"],
+        exact_single_with_overlap=with_overlap,
+        exact_single_without_overlap=without_overlap,
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
         no_greek_tokens=counts["no_greek_tokens"],
