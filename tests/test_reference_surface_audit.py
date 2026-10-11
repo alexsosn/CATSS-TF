@@ -195,3 +195,72 @@ def test_distinct_catss_source_traditions_do_not_compete_even_for_same_parent_ke
     assert result.exact_single == 2
     assert result.exact_single_with_overlap == 0
     assert result.exact_single_without_overlap == 2
+
+
+def test_pairwise_overlap_is_unavoidable_when_two_unique_candidates_collide() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\nHB\tLOGOS [2]\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος"),))
+    )
+    assert report.exact_single_with_overlap == 2
+    assert report.exact_single_with_unavoidable_overlap == 2
+    assert report.exact_single_with_avoidable_overlap_only == 0
+
+
+def test_pairwise_overlap_can_be_avoided_by_ambiguous_competitors_alternative() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS KAI [2]\nHB\tLOGOS [2]\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος", "καί", "λόγος"),))
+    )
+    assert report.exact_single == 1
+    assert report.exact_multiple == 1
+    assert report.exact_single_with_overlap == 1
+    assert report.exact_single_with_unavoidable_overlap == 0
+    assert report.exact_single_with_avoidable_overlap_only == 1
+
+
+def test_all_ambiguous_competitor_alternatives_can_intersect_one_unique_span() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS KAI LOGOS [2]\nHB\tLOGOS [2]\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος", "καί", "λόγος"),))
+    )
+    assert report.exact_single_with_overlap == 1
+    assert report.exact_single_with_unavoidable_overlap == 1
+    assert report.exact_single_with_avoidable_overlap_only == 0
+
+
+def test_an_unavoidable_competitor_wins_over_other_avoidable_overlap() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS KAI [2]\nHB\tLOGOS [2]\nHB\tKAI [2]\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος", "καί", "λόγος"),))
+    )
+    assert report.exact_single == 2
+    assert report.exact_single_with_overlap == 2
+    assert report.exact_single_with_unavoidable_overlap == 2
+    assert report.exact_single_with_avoidable_overlap_only == 0
+
+
+def test_repeated_scalar_references_are_counted_without_self_collision() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2] [2]\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος"),))
+    )
+    assert report.exact_single == 2
+    assert report.exact_single_with_overlap == 0
+    assert report.exact_single_with_unavoidable_overlap == 0
+    assert report.exact_single_with_avoidable_overlap_only == 0

@@ -261,8 +261,16 @@ whose candidate **word-offset interval** intersects at least one
 candidate interval from a *different* alignment in the same source and
 exact Greek parent key (including another alignment's ambiguous matches).
 `exact_single_without_overlap` is the complementary count, and they sum
-to `exact_single`. Multiple scalar references on the same alignment do
-not compete with themselves; separate CATSS source traditions are counted
+to `exact_single`. The overlapping class is divided further:
+`exact_single_with_unavoidable_overlap` means at least one competing
+alignment has **no disjoint alternative candidate interval**, whereas
+`exact_single_with_avoidable_overlap_only` means every competitor has
+at least one disjoint alternative despite an overlapping possibility.
+These two classes sum to `exact_single_with_overlap`. This is only
+**pairwise candidate necessity conditional on placing both alignments**:
+multiple competitors can still conflict globally, and the notation itself
+may not demand placement. Multiple scalar references on the same alignment
+do not compete with themselves; separate CATSS source traditions are counted
 independently even where parent book/verse keys coincide.
 
 The report includes **no raw source text, Greek parent word IDs, or
@@ -273,7 +281,8 @@ joint-placement constraints may still prevent any one-to-one mapping.
 Follow the existing LXX resolver's stricter full-document validation
 before proposing any canonical `catss_reference_target` relation. See
 `docs/research/issue-96-reference-surface-candidates.md`,
-`docs/research/issue-96-overlap-triage.md` and issue #96.
+`docs/research/issue-96-overlap-triage.md`,
+`docs/research/issue-96-pairwise-necessity.md` and issue #96.
 
 ## Reference edges
 
