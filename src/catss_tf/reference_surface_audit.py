@@ -258,8 +258,7 @@ def _classify_joint_intervals(
             continue
         for start, stop in reversed(ordered[index][1]):
             is_disjoint = all(
-                stop <= other_start or other_stop <= start
-                for other_start, other_stop in selected
+                stop <= other_start or other_stop <= start for other_start, other_stop in selected
             )
             if is_disjoint:
                 pending.append((index + 1, (*selected, (start, stop))))
