@@ -154,7 +154,9 @@ def test_agora_native_validation_failure_does_not_publish_partial_bundle(
 
 @pytest.mark.parametrize("forged", ["oslots-only", "symlink", "nested", "extra"])
 def test_agora_rejects_forged_native_outputs_and_cleans_up(
-    forged: str, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch,
+    forged: str,
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source = _source(tmp_path / "source")
     output = tmp_path / "staging"
@@ -184,7 +186,8 @@ def test_agora_rejects_forged_native_outputs_and_cleans_up(
 
 
 def test_agora_partial_hardlink_failure_rolls_back_without_touching_source(
-    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source = _source(tmp_path / "source")
     original = (source / "01.Genesis.par").read_bytes()
@@ -238,7 +241,8 @@ def test_agora_python_module_subprocess_entrypoint(
 
 
 def test_agora_no_replace_if_other_writer_claims_destination(
-    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source = _source(tmp_path / "source")
     output = tmp_path / "staging"
