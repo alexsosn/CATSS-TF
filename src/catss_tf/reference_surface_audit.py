@@ -297,11 +297,14 @@ def audit_lxx_reference_surface_candidates(
         )
         if eligible_pair:
             role_context_groups_with_eligible_pair += 1
-        role_outcome = (
-            _classify_joint_intervals(tasks, roles=roles)
-            if eligible_pair and context_outcome != "incomplete"
-            else context_outcome
-        )
+        if context_outcome == "multiple":
+            # Relaxing a conflict cannot erase two already-proven assignments.
+            # Do not downgrade that proof when extra branches exhaust the budget.
+            role_outcome = "multiple"
+        elif eligible_pair and context_outcome != "incomplete":
+            role_outcome = _classify_joint_intervals(tasks, roles=roles)
+        else:
+            role_outcome = context_outcome
         role_context_counts[role_outcome] += 1
         if role_outcome != context_outcome:
             role_context_changed_groups += 1
