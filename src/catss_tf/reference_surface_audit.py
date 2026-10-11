@@ -233,9 +233,7 @@ def audit_lxx_reference_surface_candidates(
             for alignment_id in sorted(alignment_ids)
             if candidates.get(alignment_id)
         }
-        explicit_outcome = (
-            "incomplete" if missing_explicit else _classify_joint_intervals(tasks)
-        )
+        explicit_outcome = "incomplete" if missing_explicit else _classify_joint_intervals(tasks)
         joint_counts[explicit_outcome] += 1
 
         implicit = implicit_alignments.get(scope, {})
