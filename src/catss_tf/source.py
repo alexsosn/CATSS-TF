@@ -120,8 +120,16 @@ def download_parallel_source(
     upstream = _verified_https_base_url(base_url)
     if ca_bundle is not None and not pathlib.Path(ca_bundle).is_file():
         raise SourceDownloadError(f"verified CA bundle must be an existing PEM file: {ca_bundle}")
+
+    # Validate the entire requested snapshot before downloading any file.
+    # is_file() follows symlinks, so a nonempty link must not pass as acquired CATSS data.
     for name in names:
         _validate_filename(name)
+        target = root / name
+        if target.is_symlink():
+            raise SourceDownloadError(f"CATSS parallel destination is a symlink: {target}")
+
+    for name in names:
         target = root / name
         if target.is_file() and target.stat().st_size > 0 and not overwrite:
             continue
@@ -183,10 +191,14 @@ def inspect_parallel_source(directory: str | os.PathLike[str]) -> ParallelSource
     if not root.is_dir():
         raise SourceInspectionError(f"CATSS parallel source is not a directory: {root}")
 
-    paths = sorted(
-        (path for path in root.iterdir() if path.is_file() and path.suffix == ".par"),
+    candidates = sorted(
+        (path for path in root.iterdir() if path.suffix == ".par"),
         key=lambda path: path.name,
     )
+    for path in candidates:
+        if path.is_symlink():
+            raise SourceInspectionError(f"CATSS parallel source entry is a symlink: {path}")
+    paths = [path for path in candidates if path.is_file()]
     if not paths:
         raise SourceInspectionError(
             f"CATSS parallel source contains no direct-child .par files: {root}"
