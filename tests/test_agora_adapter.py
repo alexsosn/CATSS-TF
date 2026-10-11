@@ -3,6 +3,8 @@
 import json
 import os
 import pathlib
+import subprocess
+import sys
 
 import pytest
 from tf.fabric import Fabric  # type: ignore[import-untyped]
@@ -212,3 +214,51 @@ def test_agora_partial_hardlink_failure_rolls_back_without_touching_source(
 
 def test_agora_module_executable_entrypoint_exists() -> None:
     assert callable(agora_adapter.main)
+
+
+def test_agora_python_module_subprocess_entrypoint(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = _source(tmp_path / "source")
+    output = tmp_path / "staging"
+    output.mkdir()
+    run = subprocess.run(
+        [
+            sys.executable, "-m", "catss_tf.agora_adapter",
+            str(source), "--output", str(output),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert run.returncode == 0, run.stderr
+    assert (output / "otype.tf").is_file()
+    assert (output / "catss_alignment_id.tf").is_file()
+    assert not (output / ".catss-agora-native-artifact").exists()
+
+
+def test_agora_no_replace_if_other_writer_claims_destination(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = _source(tmp_path / "source")
+    output = tmp_path / "staging"
+    output.mkdir()
+    claimed: pathlib.Path | None = None
+
+    def concurrent_claim(
+        source_file: os.PathLike[str] | str,
+        target_file: os.PathLike[str] | str,
+        *,
+        follow_symlinks: bool = True,
+    ) -> None:
+        nonlocal claimed
+        claimed = pathlib.Path(target_file)
+        claimed.write_text("FOREIGN")
+        raise FileExistsError("concurrent claim")
+
+    monkeypatch.setattr(agora_adapter.os, "link", concurrent_claim)
+    with pytest.raises(FileExistsError, match="concurrent claim"):
+        _run(source, output)
+    assert claimed is not None
+    assert claimed.read_text() == "FOREIGN"
+    assert sorted(output.iterdir()) == [claimed]
