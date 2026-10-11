@@ -596,3 +596,20 @@ def test_role_context_does_not_infer_transposition_from_identical_plain_words() 
     assert report.role_context_impossible_groups == 1
     assert report.role_context_groups_with_eligible_pair == 0
     assert report.role_context_changed_groups == 0
+
+
+def test_role_relaxation_never_loses_proven_strict_multiple_under_budget() -> None:
+    # A role relaxation may explore extra branches first, but cannot erase
+    # two assignments already proven by the stricter solver.
+    tasks = {
+        "a": {(0, 2), (2, 3)},
+        "b": {(0, 1), (0, 2), (1, 2)},
+        "c": {(0, 1), (0, 2), (1, 2)},
+    }
+    roles = {
+        "a": "transposition_alignment",
+        "b": "transposition_carrier",
+        "c": "exact",
+    }
+    assert _classify_joint_intervals(tasks, max_states=8) == "multiple"
+    assert _classify_joint_intervals(tasks, roles=roles, max_states=8) == "multiple"
