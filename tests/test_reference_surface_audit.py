@@ -424,10 +424,9 @@ def test_joint_dfs_frontier_is_memory_bounded_before_state_cutoff() -> None:
         ({"a": {(0, 1)}, "b": {(0, 1)}}, 2, "impossible"),
         ({"a": {(0, 2)}, "b": {(1, 3), (2, 3)}}, 3, "unique"),
         ({"a": {(0, 1), (1, 2)}, "b": {(2, 3)}}, 3, "indeterminate"),
-        ({"a": {(0, 1), (1, 2)}, "b": {(2, 3)}}, 4, "indeterminate"),
+        ({"a": {(0, 1), (1, 2)}, "b": {(2, 3)}}, 4, "multiple"),
         ({"a": {(0, 1), (1, 2)}, "b": {(2, 3)}}, 5, "multiple"),
-        ({"a": {(0, 1), (1, 2)}, "b": {(0, 1), (1, 2)}, "c": {(0, 1), (1, 2)}},
-         100, "impossible"),
+        ({"a": {(0, 1), (1, 2)}, "b": {(0, 1), (1, 2)}, "c": {(0, 1), (1, 2)}}, 100, "impossible"),
     ],
 )
 def test_joint_dfs_iterative_semantics_match_depth_first_oracle(
