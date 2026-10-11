@@ -138,6 +138,7 @@ def test_download_parallel_source_manifest_excludes_unrequested_par_files(
     assert [item.relative_path for item in manifest.files] == ["01.First.par"]
     assert (destination / "99.Unrelated.par").exists()
 
+
 def test_download_ignores_preexisting_partial_symlink_without_clobbering_target(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
