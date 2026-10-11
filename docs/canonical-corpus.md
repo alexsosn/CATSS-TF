@@ -311,24 +311,39 @@ incomplete, 0 indeterminate; conditional default-context classes are
 indeterminate**. All counts refer to the same 671 groups and do not
 establish a verified semantic Greek target.
 
-The two views are deliberately kept separate. A group classed as unique
-by the explicit-only view may become impossible or incomplete when
-the hypothesized implicit contenders are included, **but the default
-Greek location itself is not a verified reference destination**.
-Transposition carrier overlap exceptions, cross-key interactions and
-source-notation interpretation are still not modeled. No new
-Text-Fabric mappings or `catss_reference_target` edges are created.
+The three views are deliberately kept separate. A group classed as
+unique by the explicit-only view may become impossible or incomplete
+when the hypothesized implicit contenders are included. A third
+`role_context_*` partition adds the production LXX resolver's *narrow*
+typed transposition exception: two different lexical alignments may
+share **identical** Greek word intervals only when one has the
+`transposition_alignment` annotation role and the other has the
+`transposition_carrier` annotation role. Partially overlapping spans,
+ordinary rows, two carriers, two transposition alignments and a third
+ordinary contender still conflict. Both annotation roles come from
+the parsed CATSS row (not raw Greek string equality). The five
+`role_context_*` classes partition the **same 671** explicit groups;
+`role_context_groups_with_eligible_pair` counts groups containing
+both roles, and `role_context_changed_groups` counts groups whose
+outcome differs from the strict default-context view.
+
+This is a **third conditional hypothesis**, not a revision of previous
+scalar, `joint_*` or `context_*` results. The default Greek location
+itself is not a verified reference destination; cross-key interactions,
+implicit empty placeholders and source-notation interpretation remain
+unmodeled. No new Text-Fabric mappings or
+`catss_reference_target` edges are created.
 
 Every input document must have a **distinct CATSS source filename**: the audit rejects repeated
 `source_name` values with `ValueError`, including identical or empty
 documents, because its candidate scopes rely on unique file provenance.
 It does not automatically combine or rename source fragments. None of
 these counts proves translation reference semantics:
-**transposition-carrier exceptions and full cross-reference
-constraints are not included**; unreferenced lexical rows are included
-only in the separate conditional context view, not in the original
-explicit-only counts. A unique candidate assignment is not a verified
-Text-Fabric target.
+**full cross-reference constraints are not included**; implicit
+lexical rows and typed transposition exceptions are included only in
+their separate conditional views, not in the original explicit-only
+counts. A unique candidate assignment is not a verified Text-Fabric
+target.
 
 The report includes **no raw source text, Greek parent word IDs, or
 canonical target edges**. Neither a local `exact_single` match nor an
@@ -343,7 +358,8 @@ before proposing any canonical `catss_reference_target` relation. See
 `docs/research/issue-96-joint-candidate-feasibility.md`,
 `docs/research/issue-96-duplicate-source-provenance.md`,
 `docs/research/issue-96-memory-bounded-dfs.md`,
-`docs/research/issue-96-implicit-context-feasibility.md` and issue #96.
+`docs/research/issue-96-implicit-context-feasibility.md`,
+`docs/research/issue-96-transposition-role-feasibility.md` and issue #96.
 
 ## Reference edges
 
