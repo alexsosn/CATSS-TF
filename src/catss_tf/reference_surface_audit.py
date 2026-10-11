@@ -116,9 +116,9 @@ def audit_lxx_reference_surface_candidates(
                         default.verse,
                         None,
                     )
-                    implicit_alignments.setdefault(implicit_scope, {})[
-                        alignment.alignment_id
-                    ] = alignment.lxx_tokens
+                    implicit_alignments.setdefault(implicit_scope, {})[alignment.alignment_id] = (
+                        alignment.lxx_tokens
+                    )
                 for reference in alignment.lxx_references:
                     counts["scalar_references"] += 1
                     if status is LxxSourceStatus.UNSUPPORTED:
