@@ -6,6 +6,7 @@ import hashlib
 import os
 import pathlib
 import ssl
+import tempfile
 import typing
 import urllib.error
 import urllib.parse
@@ -145,12 +146,25 @@ def download_parallel_source(
         if not payload:
             raise SourceDownloadError(f"empty response while downloading {url}")
 
-        partial = target.with_name(f"{target.name}.part")
+        # Allocate an exclusive, unique sibling instead of reusing a fixed
+        # '.part' name: Path.write_bytes follows pre-existing symlinks.
+        # Atomic replacement on this filesystem must not touch anyone
+        # else's stale partial file.
+        partial: pathlib.Path | None = None
         try:
-            partial.write_bytes(payload)
-            partial.replace(target)
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=root,
+                prefix=f".{target.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as staged:
+                partial = pathlib.Path(staged.name)
+                staged.write(payload)
+            os.replace(partial, target)
         finally:
-            partial.unlink(missing_ok=True)
+            if partial is not None:
+                partial.unlink(missing_ok=True)
 
     requested_paths = tuple(root / name for name in names)
     return _manifest_for_paths(root, requested_paths)
