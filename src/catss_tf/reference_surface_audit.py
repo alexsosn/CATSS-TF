@@ -119,8 +119,7 @@ def audit_lxx_reference_surface_candidates(
                         continue
                     n = len(needle)
                     matches = sum(
-                        haystack[i : i + n] == needle
-                        for i in range(len(haystack) - n + 1)
+                        haystack[i : i + n] == needle for i in range(len(haystack) - n + 1)
                     )
                     if matches == 0:
                         counts["no_surface_match"] += 1
@@ -130,8 +129,7 @@ def audit_lxx_reference_surface_candidates(
                         counts["exact_multiple"] += 1
 
     assert counts["scalar_references"] == sum(
-        value for name, value in counts.items()
-        if name not in {"source_files", "scalar_references"}
+        value for name, value in counts.items() if name not in {"source_files", "scalar_references"}
     )
     return LxxReferenceSurfaceCandidates(
         source_files=counts["source_files"],
