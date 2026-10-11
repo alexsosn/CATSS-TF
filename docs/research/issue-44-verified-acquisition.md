@@ -60,3 +60,25 @@ intermediate or an independently authenticated HTTPS alternative:
 Inspect the successful certificate chain and source manifest, then
 document origin/chain fingerprint and upstream data/license equivalence.
 Do not embed third-party source bytes or a private CA in this repo.
+
+## Adversarial RED → GREEN — R44-2
+
+A separate review of the actual standard-library URL parser exposed
+a normalization hazard: `urllib.parse.urlsplit` silently strips raw
+embedded CR/LF/TAB characters, so a value such as
+`https://example.invalid/path\\nmisleading` previously passed the
+base URL policy with a different effective target path. The initial
+guard also never evaluated `SplitResult.port`, so an invalid value
+such as `:99999` was not rejected until the network path.
+
+**Exact RED:** GitHub CI job `114352491811` on
+`02acbd00e3cc7790d5fd8da93cdfe48216072cd4`:
+`2 failed, 445 passed`. Both failures are the deliberately added
+control-character and invalid-port input tests. The preceding
+version had already passed the original synthetic TLS regression
+tests; those were not changed to make the added tests pass.
+
+**GREEN fix:** reject untrusted URL controls *before* parsing and
+force the parser's port validation before any network I/O; apply
+control-character rejection to redirects, too. This is a fail-closed
+URL validation improvement, not a certificate-chain workaround.
