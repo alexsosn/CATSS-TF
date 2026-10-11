@@ -17,6 +17,8 @@ from catss_tf.lxx_schema import (
 )
 from catss_tf.parser import ParallelDocument
 
+_CandidateScope: typing.TypeAlias = tuple[str, str, int, int, str | None]
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class LxxReferenceSurfaceCandidates:
@@ -64,9 +66,8 @@ def audit_lxx_reference_surface_candidates(
     # Only offsets, not Greek text or parent node IDs, are retained. A candidate
     # with one local occurrence may still overlap a different alignment's
     # candidate (including ambiguous alternative occurrences).
-    Scope = tuple[str, str, int, int, str | None]
-    candidate_intervals: dict[Scope, dict[str, set[tuple[int, int]]]] = {}
-    single_candidates: list[tuple[Scope, str, tuple[int, int]]] = []
+    candidate_intervals: dict[_CandidateScope, dict[str, set[tuple[int, int]]]] = {}
+    single_candidates: list[tuple[_CandidateScope, str, tuple[int, int]]] = []
 
     for document in documents:
         counts["source_files"] += 1
@@ -166,7 +167,7 @@ def audit_lxx_reference_surface_candidates(
         scalar_references=counts["scalar_references"],
         exact_single=counts["exact_single"],
         exact_single_with_overlap=with_overlap,
-        exact_single_without_overlap=without_overlap
+        exact_single_without_overlap=without_overlap,
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
         no_greek_tokens=counts["no_greek_tokens"],
