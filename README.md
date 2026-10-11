@@ -109,6 +109,8 @@ CATSS morphology files are not required.
 
 The user is responsible for the upstream CATSS/CCAT terms that apply to acquisition and use. CATSS-TF does not redistribute the downloaded corpus. The local source directory is fingerprinted by filename, byte size, and SHA-256 before parsing, and repository tests use synthetic fixtures only.
 
+Direct-child `.par` symbolic links (including broken links) are rejected during local inspection and download; linked targets cannot masquerade as acquired CATSS files in the source manifest. An explicitly symlinked **source directory** is supported when its direct-child `.par` entries are ordinary files. If source files are supplied via symlinks, copy them into a directory you control first. This is a snapshot/discovery safeguard, not protection against concurrent filesystem modifications by another process.
+
 See [research.md](research.md), [design.md](design.md), and [LICENSE_SCOPE.md](LICENSE_SCOPE.md) for the rationale and data-license boundary.
 
 
