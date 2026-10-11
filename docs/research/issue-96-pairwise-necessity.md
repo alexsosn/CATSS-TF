@@ -26,3 +26,31 @@ Use synthetic pinned-provider tests:
 5. Adjacent nonintersecting candidates, repeated scalar refs of one alignment and two source traditions preserve the previous invariants.
 
 The old two-counter overlap behavior stays the authoritative outer partition; no claim of resolved CATSS reference destinations or `catss_reference_target` edges. Count actual category frequencies only after the complete pinned 46-file CI probe; do not guess.
+
+
+## R96-9 pinned 46-file result (2026-10-11)
+
+The production-code head `3354115a902520ec82422c453064142f91dcf94f` passed the [CI run 38129496270](https://github.com/alexsosn/CATSS-TF/actions/runs/38129496270): 472 tests on Python 3.11, 3.12 and 3.13, Ruff/mypy, release smoke, complete CCAT-source notation checks, pinned CenterBLC/LXX reference diagnostics, canonical TF materialization and TF reload.
+
+Observed output from all 46 CATSS files and exact pinned CenterBLC/LXX `f32a98eddf7eb239aa73ab863d70381e416d5076`:
+
+| Field | Count |
+| --- | ---: |
+| `scalar_references` | 6,218 |
+| `exact_single` | 4,349 |
+| `exact_single_with_overlap` | 232 |
+| `exact_single_with_unavoidable_overlap` | **108** |
+| `exact_single_with_avoidable_overlap_only` | **124** |
+| `exact_single_without_overlap` | 4,117 |
+| `exact_multiple` | 455 |
+| `no_surface_match` | 294 |
+| `no_greek_tokens` | 453 |
+| `catss_normalization_error` | 4 |
+| `parent_normalization_error` | 0 |
+| `parent_span_missing` | 641 |
+| `unsupported_source` | 22 |
+| `unknown_source` | 0 |
+
+**Partition invariants:** 108 + 124 = 232; 232 + 4,117 = 4,349. All previous outcome counts remain identical to R96-8. The 108 references have an overlap with a competitor for which **every** local candidate intersects the unique interval. The 124 references have overlap possibilities but no such single inevitably intersecting competitor. These are counts of **scalar references**, not of distinct alignments, verses or proven translational events.
+
+Next investigations for #96 must establish which CATSS scalar references actually entail placements, then incorporate implicit alignments and global constraints in a pinned-parent joint solver. Neither the 124 nor the 4,117 class can be interpreted as verified canonical LXX targets; the 108 class must not be interpreted as a demonstrable scribal error without source-specific investigation. No new edges or upstream corpora are distributed.
