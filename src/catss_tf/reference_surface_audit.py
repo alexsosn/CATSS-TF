@@ -28,6 +28,8 @@ class LxxReferenceSurfaceCandidates:
     scalar_references: int
     exact_single: int
     exact_single_with_overlap: int
+    exact_single_with_unavoidable_overlap: int
+    exact_single_with_avoidable_overlap_only: int
     exact_single_without_overlap: int
     exact_multiple: int
     no_surface_match: int
@@ -165,6 +167,8 @@ def audit_lxx_reference_surface_candidates(
         scalar_references=counts["scalar_references"],
         exact_single=counts["exact_single"],
         exact_single_with_overlap=with_overlap,
+        exact_single_with_unavoidable_overlap=0,  # RED: not implemented
+        exact_single_with_avoidable_overlap_only=0,  # RED: not implemented
         exact_single_without_overlap=without_overlap,
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
