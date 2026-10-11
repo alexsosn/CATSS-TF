@@ -25,3 +25,27 @@ This is *conditional feasibility if all explicitly referenced candidate alignmen
 ## Expected RED evidence
 
 Synthetic pinned-provider fixtures: one local unique plus another same-key unique on disjoint words -> group unique; competing unique/unique same word -> impossible; locally ambiguous alternative that permits multiple global placements -> multiple; locally ambiguous alternatives all colliding with another unique -> impossible; valid tasks plus one missing/non-normalizable candidate -> incomplete; repeated scalar refs on one alignment not two tasks; sibling Greek parent subverse or distinct CATSS source remain separate; a very low search budget must return indeterminate rather than claiming unique/impossible. Test cap through a pure helper without creating massive corpora. Preserve 6,218 outer counts and 108+124=232 at pinned parent.
+
+
+## Observed pinned 46-file results (2026-10-11)
+
+The GREEN production head `a5ea8243b6478568e34f98752cac52878d8aa506` passed [GitHub Actions run 38130859928](https://github.com/alexsosn/CATSS-TF/actions/runs/38130859928): 479 pytest tests across Python 3.11, 3.12, 3.13 with Ruff and mypy; release-smoke; all 46 source-file notation and repair gates; exact CenterBLC/LXX revision `f32a98eddf7eb239aa73ab863d70381e416d5076` research; and full canonical Text-Fabric corpus materialization/readback.
+
+Observed counts are **groups of distinct source-name / exact parent-key combinations**, deduplicating repeated scalar references on the same alignment ID:
+
+| Explicit-reference group classification | Count |
+| --- | ---: |
+| `reference_groups` | **671** |
+| `joint_unique_groups` | **326** |
+| `joint_multiple_groups` | **70** |
+| `joint_impossible_groups` | **19** |
+| `joint_incomplete_groups` | **256** |
+| `joint_indeterminate_groups` | **0** |
+
+The five exclusive outcomes partition all **671** groups (326 + 70 + 19 + 256 + 0). No group reached the 10,000-state cutoff on this pinned dataset; this does **not** justify omitting cutoff handling for another provider or future corpus.
+
+All original **6,218** scalar-reference outer counts were unchanged: 4,349 exact-single local candidates, 232 with an overlapping competitor, 108 pairwise unavoidable versus 124 optional-only, 4,117 without candidate overlap, 455 multiple local candidates, 294 no surface match, 453 Greek-token-free references, 4 CATSS normalization errors, 0 parent errors, 641 missing parent spans, 22 unsupported sources.
+
+**Interpretive boundary:** `joint_unique_groups` means the *modeled explicit lexical candidates* have one non-overlapping interval assignment, **not** that scalar reference notation demands that assignment or that the full CATSS alignment of a parent Greek verse is uniquely solvable. `joint_impossible_groups` (19) means those candidates cannot all be assigned if each must occupy a distinct word span, **not** proof of a textual mistake or a contradiction when CATSS transposition-carrier exceptions or contextual reference semantics are considered. `joint_incomplete_groups` (256) includes missing/nonmatching lexical evidence; it is not valid to treat these as impossible or ambiguous. The 70 `multiple` groups are demonstrably ambiguous in candidate space, but the reference text's actual meaning still needs research.
+
+No `catss_reference_target` edges were created. The follow-up under open issue #96 is to establish primary-source reference meanings and incorporate implicit/nonreferenced alignments plus any scientifically justified transposition exceptions into a complete joint model before considering verified reference destinations.
