@@ -17,9 +17,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def _source(root: pathlib.Path) -> pathlib.Path:
     root.mkdir(parents=True)
-    (root / "01.Genesis.par").write_text(
-        "Gen 1:1\n)B\tQEOS\n--+\tLOGOS\n", encoding="utf-8"
-    )
+    (root / "01.Genesis.par").write_text("Gen 1:1\n)B\tQEOS\n--+\tLOGOS\n", encoding="utf-8")
     return root
 
 
@@ -54,16 +52,24 @@ def test_agora_manifest_is_standalone_user_local_network_denied() -> None:
         "type": "python-module",
         "module": "catss_tf.agora_adapter",
         "args": [
-            "{source}", "--output", "{output}",
-            "--allow", "invalid_lxx_reference",
-            "--allow", "malformed_continuation",
-            "--allow", "unsplit_row",
+            "{source}",
+            "--output",
+            "{output}",
+            "--allow",
+            "invalid_lxx_reference",
+            "--allow",
+            "malformed_continuation",
+            "--allow",
+            "unsplit_row",
         ],
         "network": "deny",
     }
     assert item["output"]["format"] == "text-fabric"
     assert set(item["output"]["required_paths"]) == {
-        "otype.tf", "oslots.tf", "otext.tf", "catss_alignment_id.tf"
+        "otype.tf",
+        "oslots.tf",
+        "otext.tf",
+        "catss_alignment_id.tf",
     }
     assert "composition" not in item["output"]
 
@@ -82,9 +88,7 @@ def test_precreated_agora_output_produces_real_standalone_text_fabric(
     assert any(file.suffix == ".tsv" for file in output.iterdir())
     assert all(file.is_file() and not file.is_symlink() for file in output.iterdir())
     assert not (output / ".catss-agora-native-artifact").exists()
-    api = Fabric(locations=[str(output)], modules=[""], silent="deep").loadAll(
-        silent="deep"
-    )
+    api = Fabric(locations=[str(output)], modules=[""], silent="deep").loadAll(silent="deep")
     assert api is not None
     assert api.F.otype.slotType == "alignment"
     assert api.F.otype.maxSlot == 2
@@ -105,6 +109,7 @@ def test_agora_output_must_be_real_precreated_empty_directory(
         outside = tmp_path / "outside"
         outside.mkdir()
         output.symlink_to(outside, target_is_directory=True)
+
     def _unexpected(*args: object, **kwargs: object) -> None:
         raise AssertionError("native materializer must not run")
 
@@ -232,8 +237,12 @@ def test_agora_python_module_subprocess_entrypoint(
     output.mkdir()
     run = subprocess.run(
         [
-            sys.executable, "-m", "catss_tf.agora_adapter",
-            str(source), "--output", str(output),
+            sys.executable,
+            "-m",
+            "catss_tf.agora_adapter",
+            str(source),
+            "--output",
+            str(output),
         ],
         capture_output=True,
         text=True,
@@ -277,19 +286,25 @@ def test_agora_diagnostics_are_strict_by_default_and_explicitly_opt_in(
     tmp_path: pathlib.Path,
 ) -> None:
     source = _source(tmp_path / "source")
-    (source / "01.Genesis.par").write_text(
-        "Gen 1:1\nHB\tLOGOS [6x7]\n", encoding="utf-8"
-    )
+    (source / "01.Genesis.par").write_text("Gen 1:1\nHB\tLOGOS [6x7]\n", encoding="utf-8")
     output = tmp_path / "staging"
     output.mkdir()
     with pytest.raises(CanonicalMaterializationError, match="invalid_lxx_reference"):
         _run(source, output)
     assert list(output.iterdir()) == []
 
-    assert agora_adapter.main([
-        str(source), "--output", str(output),
-        "--allow", "invalid_lxx_reference",
-    ]) == 0
+    assert (
+        agora_adapter.main(
+            [
+                str(source),
+                "--output",
+                str(output),
+                "--allow",
+                "invalid_lxx_reference",
+            ]
+        )
+        == 0
+    )
     diagnostics = (output / "catss-diagnostics.tsv").read_text(encoding="utf-8")
     assert "invalid_lxx_reference" in diagnostics
 
@@ -298,16 +313,21 @@ def test_agora_known_diagnostic_allowance_does_not_mask_unknown_annotations(
     tmp_path: pathlib.Path,
 ) -> None:
     source = _source(tmp_path / "source")
-    (source / "01.Genesis.par").write_text(
-        "Gen 1:1\nHB\tLOGOS {zzUNKNOWN}\n", encoding="utf-8"
-    )
+    (source / "01.Genesis.par").write_text("Gen 1:1\nHB\tLOGOS {zzUNKNOWN}\n", encoding="utf-8")
     output = tmp_path / "staging"
     output.mkdir()
     with pytest.raises(CanonicalMaterializationError, match="validation failed"):
-        agora_adapter.main([
-            str(source), "--output", str(output),
-            "--allow", "invalid_lxx_reference",
-            "--allow", "malformed_continuation",
-            "--allow", "unsplit_row",
-        ])
+        agora_adapter.main(
+            [
+                str(source),
+                "--output",
+                str(output),
+                "--allow",
+                "invalid_lxx_reference",
+                "--allow",
+                "malformed_continuation",
+                "--allow",
+                "unsplit_row",
+            ]
+        )
     assert list(output.iterdir()) == []
