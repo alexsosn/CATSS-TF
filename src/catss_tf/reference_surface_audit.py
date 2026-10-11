@@ -228,8 +228,11 @@ def audit_lxx_reference_surface_candidates(
     for scope, alignment_ids in expected_alignments.items():
         candidates = candidate_intervals.get(scope, {})
         missing_explicit = any(not candidates.get(alignment_id) for alignment_id in alignment_ids)
-        tasks = {alignment_id: candidates[alignment_id] for alignment_id in sorted(alignment_ids)
-                 if candidates.get(alignment_id)}
+        tasks = {
+            alignment_id: candidates[alignment_id]
+            for alignment_id in sorted(alignment_ids)
+            if candidates.get(alignment_id)
+        }
         explicit_outcome = (
             "incomplete" if missing_explicit else _classify_joint_intervals(tasks)
         )
@@ -269,7 +272,8 @@ def audit_lxx_reference_surface_candidates(
                 incomplete = True
                 break
             tasks[alignment_id] = matches
-        context_counts["incomplete" if incomplete else _classify_joint_intervals(tasks)] += 1
+        outcome = "incomplete" if incomplete else _classify_joint_intervals(tasks)
+        context_counts[outcome] += 1
     assert sum(joint_counts.values()) == len(expected_alignments)
     assert sum(context_counts.values()) == len(expected_alignments)
 
