@@ -118,9 +118,7 @@ def download_parallel_source(
 
     upstream = _verified_https_base_url(base_url)
     if ca_bundle is not None and not pathlib.Path(ca_bundle).is_file():
-        raise SourceDownloadError(
-            f"verified CA bundle must be an existing PEM file: {ca_bundle}"
-        )
+        raise SourceDownloadError(f"verified CA bundle must be an existing PEM file: {ca_bundle}")
     for name in names:
         _validate_filename(name)
         target = root / name
@@ -248,9 +246,7 @@ class _HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 
 def _fetch_bytes(url: str, *, ca_bundle: str | os.PathLike[str] | None = None) -> bytes:
-    context = ssl.create_default_context(
-        cafile=str(ca_bundle) if ca_bundle is not None else None
-    )
+    context = ssl.create_default_context(cafile=str(ca_bundle) if ca_bundle is not None else None)
     opener = urllib.request.build_opener(
         urllib.request.HTTPSHandler(context=context),
         _HttpsOnlyRedirectHandler(),
