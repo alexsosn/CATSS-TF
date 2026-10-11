@@ -5,6 +5,7 @@ import tracemalloc
 
 import pytest
 
+from catss_tf import reference_surface_audit
 from catss_tf.lxx_resolver import LxxSpan, LxxWord
 from catss_tf.lxx_schema import (
     LXX_MAX_NODE,
@@ -510,3 +511,137 @@ def test_implicit_default_rows_do_not_compete_with_explicit_override_to_other_ve
     assert result.context_groups_with_implicit == 0
     assert result.context_unique_groups == 1
     assert result.context_incomplete_groups == 0
+
+
+def test_role_aware_joint_search_allows_only_identical_alignment_carrier_overlap() -> None:
+    candidates = {"alignment": {(0, 1)}, "carrier": {(0, 1)}}
+    assert _classify_joint_intervals(candidates) == "impossible"
+    assert (
+        _classify_joint_intervals(
+            candidates,
+            roles={"alignment": "transposition_alignment", "carrier": "transposition_carrier"},
+        )
+        == "unique"
+    )
+
+
+@pytest.mark.parametrize(
+    ("candidates", "roles"),
+    [
+        (
+            {"alignment": {(0, 2)}, "carrier": {(1, 3)}},
+            {"alignment": "transposition_alignment", "carrier": "transposition_carrier"},
+        ),
+        (
+            {"alignment": {(0, 1)}, "plain": {(0, 1)}},
+            {"alignment": "transposition_alignment", "plain": "exact"},
+        ),
+        (
+            {"first": {(0, 1)}, "second": {(0, 1)}},
+            {"first": "transposition_carrier", "second": "transposition_carrier"},
+        ),
+        (
+            {"first": {(0, 1)}, "second": {(0, 1)}},
+            {"first": "transposition_alignment", "second": "transposition_alignment"},
+        ),
+        (
+            {"alignment": {(0, 1)}, "carrier": {(0, 1)}, "plain": {(0, 1)}},
+            {
+                "alignment": "transposition_alignment",
+                "carrier": "transposition_carrier",
+                "plain": "exact",
+            },
+        ),
+    ],
+)
+def test_role_aware_joint_search_does_not_allow_other_overlap(
+    candidates: dict[str, set[tuple[int, int]]], roles: dict[str, str]
+) -> None:
+    assert _classify_joint_intervals(candidates, roles=roles) == "impossible"
+
+
+def test_role_aware_joint_search_preserves_ambiguity_and_state_budget() -> None:
+    candidates = {"alignment": {(0, 1), (1, 2)}, "carrier": {(0, 1)}}
+    roles = {"alignment": "transposition_alignment", "carrier": "transposition_carrier"}
+    assert _classify_joint_intervals(candidates, roles=roles) == "multiple"
+    assert _classify_joint_intervals(candidates, roles=roles, max_states=2) == "indeterminate"
+
+
+def test_actual_catss_transposition_annotation_roles_change_only_role_context() -> None:
+    # Same annotation syntax tested by the strict production LXX resolver.
+    document = parse_parallel_text(
+        "Gen 1:29\nZR(\t{..^SPORI/MOU} [29]\n{...}\tSPORI/MOU\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 29, "σπορίμου"),))
+    )
+    assert report.reference_groups == 1
+    assert report.scalar_references == 1
+    assert report.joint_unique_groups == 1
+    assert report.context_impossible_groups == 1
+    assert report.role_context_groups_with_eligible_pair == 1
+    assert report.role_context_changed_groups == 1
+    assert report.role_context_unique_groups == 1
+
+
+def test_role_context_does_not_infer_transposition_from_identical_plain_words() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [1]\nHB\tLOGOS\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 1, "λόγος"),))
+    )
+    assert report.context_impossible_groups == 1
+    assert report.role_context_impossible_groups == 1
+    assert report.role_context_groups_with_eligible_pair == 0
+    assert report.role_context_changed_groups == 0
+
+
+def test_role_relaxation_never_loses_proven_strict_multiple_under_budget() -> None:
+    # A role relaxation may explore extra branches first, but cannot erase
+    # two assignments already proven by the stricter solver.
+    tasks = {
+        "a": {(0, 2), (2, 3)},
+        "b": {(0, 1), (0, 2), (1, 2)},
+        "c": {(0, 1), (0, 2), (1, 2)},
+    }
+    roles = {
+        "a": "transposition_alignment",
+        "b": "transposition_carrier",
+        "c": "exact",
+    }
+    assert _classify_joint_intervals(tasks, max_states=8) == "multiple"
+    # A role-only bounded search has no knowledge of the stronger strict
+    # result and may legitimately exhaust its budget first.
+    assert _classify_joint_intervals(tasks, roles=roles, max_states=8) == "indeterminate"
+
+
+def test_report_preserves_proven_multiple_when_role_search_would_exhaust_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # This reproduces the combination-layer concern independently of parent
+    # lexical candidate size: the strict solver proved two assignments, so
+    # the relaxed branch must not erase that evidence.
+    document = parse_parallel_text(
+        "Gen 1:29\nZR(\t{..^SPORI/MOU} [29]\n{...}\tSPORI/MOU\n",
+        source_name="01.Genesis.par",
+    )
+    calls: list[bool] = []
+
+    def fake_solver(*_args: object, **kwargs: object) -> str:
+        role_aware = kwargs.get("roles") is not None
+        calls.append(role_aware)
+        return "indeterminate" if role_aware else "multiple"
+
+    monkeypatch.setattr(reference_surface_audit, "_classify_joint_intervals", fake_solver)
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 29, "σπορίμου"),))
+    )
+    assert report.context_multiple_groups == 1
+    assert report.role_context_groups_with_eligible_pair == 1
+    assert report.role_context_multiple_groups == 1
+    assert report.role_context_indeterminate_groups == 0
+    assert report.role_context_changed_groups == 0
+    assert calls == [False, False]

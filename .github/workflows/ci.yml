@@ -1178,6 +1178,23 @@ jobs:
               + surface.context_impossible_groups + surface.context_incomplete_groups
               + surface.context_indeterminate_groups
           ) == surface.reference_groups, surface
+          assert (
+              surface.role_context_unique_groups + surface.role_context_multiple_groups
+              + surface.role_context_impossible_groups + surface.role_context_incomplete_groups
+              + surface.role_context_indeterminate_groups
+          ) == surface.reference_groups, surface
+          assert (
+              0 <= surface.role_context_changed_groups
+              <= surface.role_context_groups_with_eligible_pair
+              <= surface.reference_groups
+          ), surface
+          assert surface.role_context_groups_with_eligible_pair == 96, surface
+          assert surface.role_context_changed_groups == 17, surface
+          assert (
+              surface.role_context_unique_groups, surface.role_context_multiple_groups,
+              surface.role_context_impossible_groups, surface.role_context_incomplete_groups,
+              surface.role_context_indeterminate_groups,
+          ) == (260, 84, 32, 295, 0), surface
           assert surface.context_groups_with_implicit == 279, surface
           assert (
               surface.context_unique_groups, surface.context_multiple_groups,
