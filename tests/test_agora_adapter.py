@@ -164,6 +164,8 @@ def test_agora_rejects_forged_native_outputs_and_cleans_up(
         (target / "oslots.tf").write_text("oslots")
         (target / "otext.tf").write_text("otext")
         (target / "catss_alignment_id.tf").write_text("ids")
+        (target / "catss-alignments.tsv").write_text("aligned")
+        (target / "catss-sources.tsv").write_text("source")
         if forged == "oslots-only":
             (target / "otext.tf").unlink()
         elif forged == "symlink":
