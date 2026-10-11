@@ -8,12 +8,13 @@ import pytest
 from tf.fabric import Fabric  # type: ignore[import-untyped]
 
 from catss_tf import agora_adapter
+from catss_tf.canonical_materializer import CanonicalMaterializationError
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def _source(root: pathlib.Path) -> pathlib.Path:
-    root.mkdir()
+    root.mkdir(parents=True)
     (root / "01.Genesis.par").write_text(
         "Gen 1:1\n)B\tQEOS\n--+\tLOGOS\n", encoding="utf-8"
     )
@@ -144,7 +145,7 @@ def test_agora_native_validation_failure_does_not_publish_partial_bundle(
     (source / "01.Genesis.par").write_text("Gen 1:1\nHB\tLOGOS {zzUNKNOWN}\n")
     output = tmp_path / "staging"
     output.mkdir()
-    with pytest.raises(ValueError, match="validation failed"):
+    with pytest.raises(CanonicalMaterializationError, match="validation failed"):
         _run(source, output)
     assert list(output.iterdir()) == []
 
