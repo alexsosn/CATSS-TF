@@ -28,6 +28,9 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check .
       - run: ruff format --check .
+      - name: R96-15 RED-only focused behavioral pytest (must fail)
+        if: matrix.python-version == '3.11'
+        run: pytest -q tests/test_reference_audit.py -k source_header_relative
       - run: mypy
       - run: pytest -q
       - name: Reproduce canonical Jonah RED on preimplementation head
