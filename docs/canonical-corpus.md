@@ -289,15 +289,46 @@ candidate alternatives, with a 10,000-visited-state limit per group.
 **Input candidate intervals and deterministic sorted alternatives still
 consume memory proportional to input size**; the visit budget is not an
 overall memory or CPU limit on input normalization and sorting.
-These categories partition `reference_groups`. Every input document
-must have a **distinct CATSS source filename**: the audit rejects repeated
+These original five `joint_*` categories partition `reference_groups`.
+A second **conditional default-context** view includes lexical alignments
+without any scalar Greek reference or typed contextual range, assigning
+them to the policy-derived default Greek book/chapter/verse from the MT
+header. Each implicit lexical row is an additional mandatory candidate
+task **only when its exact default parent key already has an explicit
+reference group**. `context_groups_with_implicit` counts how many
+explicit groups had such contenders. The five `context_*_groups`
+outcomes independently partition the same `reference_groups`:
+unique, multiple, impossible, incomplete, and indeterminate. A missing,
+non-normalizable, or unmatched implicit contender makes the corresponding
+context incomplete; Greek-empty placeholders and typed contextual ranges
+do not become lexical tasks.
+
+The pinned 46-source CenterBLC/LXX audit finds **279 of 671**
+explicit groups with eligible implicit lexical contenders. Original
+explicit-only classes are 326 unique, 70 multiple, 19 impossible, 256
+incomplete, 0 indeterminate; conditional default-context classes are
+**252 unique, 75 multiple, 49 impossible, 295 incomplete, 0
+indeterminate**. All counts refer to the same 671 groups and do not
+establish a verified semantic Greek target.
+
+The two views are deliberately kept separate. A group classed as unique
+by the explicit-only view may become impossible or incomplete when
+the hypothesized implicit contenders are included, **but the default
+Greek location itself is not a verified reference destination**.
+Transposition carrier overlap exceptions, cross-key interactions and
+source-notation interpretation are still not modeled. No new
+Text-Fabric mappings or `catss_reference_target` edges are created.
+
+Every input document must have a **distinct CATSS source filename**: the audit rejects repeated
 `source_name` values with `ValueError`, including identical or empty
 documents, because its candidate scopes rely on unique file provenance.
 It does not automatically combine or rename source fragments. None of
 these counts proves translation reference semantics:
-**unreferenced/default CATSS alignments and transposition-carrier
-exceptions are not included**; a unique candidate assignment is not a
-verified Text-Fabric target.
+**transposition-carrier exceptions and full cross-reference
+constraints are not included**; unreferenced lexical rows are included
+only in the separate conditional context view, not in the original
+explicit-only counts. A unique candidate assignment is not a verified
+Text-Fabric target.
 
 The report includes **no raw source text, Greek parent word IDs, or
 canonical target edges**. Neither a local `exact_single` match nor an
@@ -311,7 +342,8 @@ before proposing any canonical `catss_reference_target` relation. See
 `docs/research/issue-96-pairwise-necessity.md`,
 `docs/research/issue-96-joint-candidate-feasibility.md`,
 `docs/research/issue-96-duplicate-source-provenance.md`,
-`docs/research/issue-96-memory-bounded-dfs.md` and issue #96.
+`docs/research/issue-96-memory-bounded-dfs.md`,
+`docs/research/issue-96-implicit-context-feasibility.md` and issue #96.
 
 ## Reference edges
 

@@ -438,3 +438,75 @@ def test_joint_dfs_iterative_semantics_match_depth_first_oracle(
 def test_joint_dfs_long_chain_avoids_recursion_and_clone_of_selected_prefix() -> None:
     tasks = {f"a{i:04d}": {(2 * i, 2 * i + 1)} for i in range(1_200)}
     assert _classify_joint_intervals(tasks, max_states=1_201) == "unique"
+
+
+def test_explicit_unique_group_becomes_context_impossible_when_implicit_row_collides() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [1]\nHB\tLOGOS\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 1, "λόγος"),))
+    )
+    assert result.scalar_references == 1
+    assert result.reference_groups == 1
+    assert result.joint_unique_groups == 1
+    assert result.context_groups_with_implicit == 1
+    assert result.context_impossible_groups == 1
+    assert result.context_unique_groups == 0
+
+
+def test_implicit_disjoint_row_preserves_context_unique_group() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [1]\nHB\tKAI\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 1, "λόγος", "καί"),))
+    )
+    assert result.joint_unique_groups == 1
+    assert result.context_groups_with_implicit == 1
+    assert result.context_unique_groups == 1
+    assert result.context_impossible_groups == 0
+
+
+def test_implicit_nonmatching_lexical_row_makes_context_incomplete_not_impossible() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [1]\nHB\tANHR\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 1, "λόγος"),))
+    )
+    assert result.joint_unique_groups == 1
+    assert result.context_groups_with_implicit == 1
+    assert result.context_incomplete_groups == 1
+    assert result.context_impossible_groups == 0
+
+
+def test_implicit_ambiguous_row_can_create_multiple_context_placements() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [1]\nHB\tKAI\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 1, "λόγος", "καί", "καί"),))
+    )
+    assert result.joint_unique_groups == 1
+    assert result.context_groups_with_implicit == 1
+    assert result.context_multiple_groups == 1
+
+
+def test_implicit_default_rows_do_not_compete_with_explicit_override_to_other_verse() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\nHB\tLOGOS\n",
+        source_name="01.Genesis.par",
+    )
+    result = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος"),))
+    )
+    assert result.scalar_references == 1
+    assert result.joint_unique_groups == 1
+    assert result.context_groups_with_implicit == 0
+    assert result.context_unique_groups == 1
+    assert result.context_incomplete_groups == 0

@@ -37,6 +37,12 @@ class LxxReferenceSurfaceCandidates:
     joint_impossible_groups: int
     joint_incomplete_groups: int
     joint_indeterminate_groups: int
+    context_groups_with_implicit: int
+    context_unique_groups: int
+    context_multiple_groups: int
+    context_impossible_groups: int
+    context_incomplete_groups: int
+    context_indeterminate_groups: int
     exact_multiple: int
     no_surface_match: int
     no_greek_tokens: int
@@ -78,6 +84,9 @@ def audit_lxx_reference_surface_candidates(
     # Include ALL supported explicit-reference alignments before any lexical
     # validation; a missing candidate makes the whole group incomplete.
     expected_alignments: dict[_CandidateScope, set[str]] = {}
+    # Implicit/default lexical rows can constrain an explicit reference group.
+    # Index by source and exact unsuffixed default parent, not by MT verse alone.
+    implicit_alignments: dict[_CandidateScope, dict[str, tuple[str, ...]]] = {}
     single_candidates: list[tuple[_CandidateScope, str, tuple[int, int]]] = []
     seen_source_names: set[str] = set()
 
@@ -88,7 +97,28 @@ def audit_lxx_reference_surface_candidates(
         counts["source_files"] += 1
         status = classify_catss_source(document.source_name).status
         for verse in document.verses:
+            default = (
+                default_lxx_reference(document.source_name, verse.chapter, verse.verse)
+                if status is LxxSourceStatus.SUPPORTED
+                else None
+            )
             for alignment in verse.alignments:
+                if (
+                    default is not None
+                    and alignment.lxx_tokens
+                    and not alignment.lxx_references
+                    and not alignment.lxx_reference_ranges
+                ):
+                    implicit_scope = (
+                        document.source_name,
+                        default.book,
+                        default.chapter,
+                        default.verse,
+                        None,
+                    )
+                    implicit_alignments.setdefault(implicit_scope, {})[alignment.alignment_id] = (
+                        alignment.lxx_tokens
+                    )
                 for reference in alignment.lxx_references:
                     counts["scalar_references"] += 1
                     if status is LxxSourceStatus.UNSUPPORTED:
@@ -98,9 +128,7 @@ def audit_lxx_reference_surface_candidates(
                         counts["unknown_source"] += 1
                         continue
 
-                    default = default_lxx_reference(
-                        document.source_name, verse.chapter, verse.verse
-                    )
+                    assert default is not None
                     key = (
                         default.book,
                         default.chapter if reference.chapter is None else reference.chapter,
@@ -195,14 +223,57 @@ def audit_lxx_reference_surface_candidates(
         "incomplete": 0,
         "indeterminate": 0,
     }
+    context_counts = dict.fromkeys(joint_counts, 0)
+    context_groups_with_implicit = 0
     for scope, alignment_ids in expected_alignments.items():
         candidates = candidate_intervals.get(scope, {})
-        if any(not candidates.get(alignment_id) for alignment_id in alignment_ids):
-            joint_counts["incomplete"] += 1
+        missing_explicit = any(not candidates.get(alignment_id) for alignment_id in alignment_ids)
+        tasks = {
+            alignment_id: candidates[alignment_id]
+            for alignment_id in sorted(alignment_ids)
+            if candidates.get(alignment_id)
+        }
+        explicit_outcome = "incomplete" if missing_explicit else _classify_joint_intervals(tasks)
+        joint_counts[explicit_outcome] += 1
+
+        implicit = implicit_alignments.get(scope, {})
+        if not implicit:
+            context_counts[explicit_outcome] += 1
             continue
-        tasks = {alignment_id: candidates[alignment_id] for alignment_id in sorted(alignment_ids)}
-        joint_counts[_classify_joint_intervals(tasks)] += 1
+        context_groups_with_implicit += 1
+        if missing_explicit:
+            context_counts["incomplete"] += 1
+            continue
+
+        # An explicit matching lexical candidate guarantees a normalized
+        # exact-key parent haystack already cached during the scalar audit.
+        haystack = token_cache.get(scope[1:])
+        if haystack is None:
+            context_counts["incomplete"] += 1
+            continue
+        incomplete = False
+        for alignment_id, tokens in implicit.items():
+            if alignment_id in tasks:
+                raise ValueError(f"duplicate alignment task in CATSS context: {alignment_id}")
+            try:
+                needle = tuple(normalize_catss_greek(token) for token in tokens)
+            except ValueError:
+                incomplete = True
+                break
+            length = len(needle)
+            implicit_matches = {
+                (i, i + length)
+                for i in range(len(haystack) - length + 1)
+                if haystack[i : i + length] == needle
+            }
+            if not implicit_matches:
+                incomplete = True
+                break
+            tasks[alignment_id] = implicit_matches
+        outcome = "incomplete" if incomplete else _classify_joint_intervals(tasks)
+        context_counts[outcome] += 1
     assert sum(joint_counts.values()) == len(expected_alignments)
+    assert sum(context_counts.values()) == len(expected_alignments)
 
     assert counts["scalar_references"] == sum(
         value for name, value in counts.items() if name not in {"source_files", "scalar_references"}
@@ -221,6 +292,12 @@ def audit_lxx_reference_surface_candidates(
         joint_impossible_groups=joint_counts["impossible"],
         joint_incomplete_groups=joint_counts["incomplete"],
         joint_indeterminate_groups=joint_counts["indeterminate"],
+        context_groups_with_implicit=context_groups_with_implicit,
+        context_unique_groups=context_counts["unique"],
+        context_multiple_groups=context_counts["multiple"],
+        context_impossible_groups=context_counts["impossible"],
+        context_incomplete_groups=context_counts["incomplete"],
+        context_indeterminate_groups=context_counts["indeterminate"],
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
         no_greek_tokens=counts["no_greek_tokens"],

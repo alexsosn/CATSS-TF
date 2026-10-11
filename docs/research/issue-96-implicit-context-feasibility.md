@@ -1,0 +1,40 @@
+# R96-13 — include implicit default-reference lexical rows in conditional Greek candidate feasibility
+
+## Code/source grounding (2026-10-11)
+
+Main `7ad0467a5470eca5c14689bc62f93f764f19d6a1`, `src/catss_tf/reference_surface_audit.py` enumerates *only* `alignment.lxx_references`: it forms `expected_alignments` and `candidate_intervals` keyed by `(document.source_name, pinned Greek book/chapter/verse/subverse)`, classifying 671 explicit-reference groups into 326 unique, 70 multiple, 19 conditionally impossible, 256 incomplete and zero indeterminate in exact pinned 46-file CATSS + CenterBLC/LXX [run 38143708741](https://github.com/alexsosn/CATSS-TF/actions/runs/38143708741). Its local scalar outcomes are 6,218 references, 4,349 exact singles, 232 overlaps (108 unavoidable/124 optional), 455 multiple, 294 no surface match, 453 no Greek tokens, 641 parent spans missing, four CATSS normalization errors, 22 unsupported source references.
+
+`src/catss_tf/lxx_resolver.py::resolve_lxx_documents` processes *all* Greek lexical alignments. `_alignment_reference` applies `default_lxx_reference(source_name, verse.chapter, verse.verse)` when no scalar override; `lxx_reference_ranges` instead uses a separate contextual range path. The default reference is a **policy projection of the CATSS MT header**, not a verified Greek destination; `lxx_schema.default_lxx_reference` maps Nehemiah to 2 Esdras chapter +10, Psalm 151, etc. `parser.AlignmentRecord` distinguishes scalar `lxx_references`, contextual `lxx_reference_ranges`, and lexical `lxx_tokens`. A row with **no Greek scalar or contextual range references and nonempty Greek tokens** is thus an *implicit/default lexical contender* for its source and default Greek book/chapter/verse. None are currently modeled in the explicit candidate feasibility audit.
+
+An explicitly referenced row and an implicit/default row targeting the same exact parent key may compete for identical word intervals. Under the strict *non-overlapping lexical task hypothesis*, an explicitly unique group can therefore become ambiguous, impossible, or incomplete. A reference **to another parent key** cannot constrain an unrelated default location. Explicit subverse `a` does not collide with implicit unsuffixed `None` without a verified subverse bridge. Existing transposition carriers may intentionally overlap; results cannot establish actual CATSS reference semantics.
+
+## Design boundaries
+
+**Keep all existing 6,218 scalar and 671 explicit-only counters exactly unchanged.** Add a *second* group-level outcome partition over precisely the same 671 explicit-reference scopes, adding all same-source, same-exact-parent-key, implicit/default lexical alignments as additional mandatory candidate tasks. New summary fields:
+- `context_groups_with_implicit`: number of explicit reference scopes with >=1 such implicit lexical alignment, regardless of whether a candidate is available.
+- `context_unique_groups`, `context_multiple_groups`, `context_impossible_groups`, `context_incomplete_groups`, `context_indeterminate_groups`: exhaustive/bounded outcome partition of `reference_groups`.
+
+Use the same pinned parent fingerprint, exact span identity/subverse validation, existing normalized surface matching, stable alignment IDs, deterministic sorting and 10,000-state lazy DFS. Missing/no-match/un-normalizable implicit lexical rows make that context group **incomplete** (never silently drop the contender or misclassify as impossible). Do **not** create new context-only groups without any explicit reference, and exclude Greek-empty markers and typed contextual-reference ranges from implicit contenders. Cache parent span/normalized tokens already read for explicitly referenced scope and do not let repeated implicit rows or duplicate scalar refs count twice. Fail closed on duplicate CATSS source names as before.
+
+The default key assumption itself is conditional. Neither an old or new `unique` class justifies a `catss_reference_target` canonical edge; this is read-only research, not LXX projection semantics.
+
+## TDD / real data / review
+
+Commit research/plan before RED. RED fixtures must exercise: unique explicit-only group whose implicit lexical row collides → context impossible; disjoint implicit row → context unique; implicit row with no surface match → context incomplete; no Greek lexical content and typed ranges excluded; different-key explicit override unchanged; local scalar outcomes invariant. Check a generated 46-file pinned CenterBLC/LXX report and record all actual context counts after GREEN; do not guess them. Require exact-head Python 3.11–3.13 tests, Ruff/mypy, release smoke and complete canonical TF build/readback. Independent adversarial review must inspect exact final code, source-context equivalence, cross-verse and cross-source isolation, scalar/ref range exclusivity, normalization fail-closed, solver cutoff and no semantic-target promotion. Issue #96 remains open; upstream texts are never committed.
+
+## Observed real 46-source pinned result — R96-13
+
+[CI run 38146803521](https://github.com/alexsosn/CATSS-TF/actions/runs/38146803521), `complete-catss-audit` job `114491774630`, **succeeded** using the exact pinned source and CenterBLC/LXX revision on candidate-head `fbf00254238971e910f8cd41ce3ab27bb12695d5`. Although the run's Python matrix stopped at a separate Ruff formatting failure, the full source audit and canonical TF materialization/readback passed. Measured exact classification:
+
+| Counter | Explicit only | Conditional default-context |
+| --- | ---: | ---: |
+| Unique | 326 | **252** |
+| Multiple | 70 | **75** |
+| Impossible | 19 | **49** |
+| Incomplete | 256 | **295** |
+| Indeterminate | 0 | **0** |
+| Total groups | **671** | **671** |
+
+**279** of the 671 explicit-key groups contain at least one implicit/default Greek lexical contender. Original scalar counts are untouched (**6,218** scalar references; 4,349 exact singles, including 232 with overlapping alternatives—108 unavoidable/124 avoidable; 4,117 nonoverlapping; 455 exact-multiple; 294 no surface match; 453 no Greek tokens; 641 missing parent spans; 4 CATSS normalization errors; 22 unsupported refs).
+
+The context numbers are not additional CATSS alignments, verified Greek reference endpoints, or proof that the default MT-header-derived Greek verse is correct. They measure the stricter conditional hypothesis only; overlapping transposition carrier roles and semantic scope still need investigation. Record same figures again in final exact-head CI after passing Ruff, mypy and the three Python test suites.
