@@ -363,3 +363,40 @@ def test_joint_search_budget_must_not_forge_unique_or_impossible() -> None:
     assert _classify_joint_intervals(unique, max_states=1) == "indeterminate"
     assert _classify_joint_intervals(unique, max_states=2) == "unique"
     assert _classify_joint_intervals({"a": {(0, 1)}, "b": {(0, 1)}}) == "impossible"
+
+
+def test_duplicate_catss_source_name_with_distinct_content_fails_closed() -> None:
+    documents = (
+        parse_parallel_text(
+            "Gen 1:1\nHB\tLOGOS [2]\n",
+            source_name="01.Genesis.par",
+        ),
+        parse_parallel_text(
+            "Gen 1:1\nHB\tKAI [2]\n",
+            source_name="01.Genesis.par",
+        ),
+    )
+    provider = Provider((_span("Gen", 1, 2, "λόγος", "καί"),))
+    with pytest.raises(ValueError, match="duplicate CATSS source name.*01.Genesis.par"):
+        audit_lxx_reference_surface_candidates(documents, provider)
+    # The first document is inspected, but the duplicate cannot be consumed.
+    assert provider.calls == [("Gen", 1, 2, None)]
+
+
+def test_duplicate_catss_source_name_in_generator_is_not_deduplicated() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\n",
+        source_name="01.Genesis.par",
+    )
+    provider = Provider((_span("Gen", 1, 2, "λόγος"),))
+    with pytest.raises(ValueError, match="duplicate CATSS source name"):
+        audit_lxx_reference_surface_candidates((doc for doc in (document, document)), provider)
+    assert provider.calls == [("Gen", 1, 2, None)]
+
+
+def test_duplicate_empty_catss_documents_are_ambiguous_provenance() -> None:
+    document = parse_parallel_text("", source_name="01.Genesis.par")
+    provider = Provider(())
+    with pytest.raises(ValueError, match="duplicate CATSS source name"):
+        audit_lxx_reference_surface_candidates((document, document), provider)
+    assert provider.calls == []
