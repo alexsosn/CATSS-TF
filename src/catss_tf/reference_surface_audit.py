@@ -364,8 +364,7 @@ def _classify_joint_intervals(
         raise ValueError("candidate intervals must be nonempty and nonnegative")
     if roles is not None and (
         set(roles) != set(tasks)
-        or set(roles.values())
-        - {"exact", "transposition_alignment", "transposition_carrier"}
+        or set(roles.values()) - {"exact", "transposition_alignment", "transposition_carrier"}
     ):
         raise ValueError("role-aware candidate tasks require a valid role for each alignment")
 
