@@ -261,15 +261,15 @@ def audit_lxx_reference_surface_candidates(
                 incomplete = True
                 break
             length = len(needle)
-            matches = {
+            implicit_matches = {
                 (i, i + length)
                 for i in range(len(haystack) - length + 1)
                 if haystack[i : i + length] == needle
             }
-            if not matches:
+            if not implicit_matches:
                 incomplete = True
                 break
-            tasks[alignment_id] = matches
+            tasks[alignment_id] = implicit_matches
         outcome = "incomplete" if incomplete else _classify_joint_intervals(tasks)
         context_counts[outcome] += 1
     assert sum(joint_counts.values()) == len(expected_alignments)
