@@ -79,8 +79,12 @@ def audit_lxx_reference_surface_candidates(
     # validation; a missing candidate makes the whole group incomplete.
     expected_alignments: dict[_CandidateScope, set[str]] = {}
     single_candidates: list[tuple[_CandidateScope, str, tuple[int, int]]] = []
+    seen_source_names: set[str] = set()
 
     for document in documents:
+        if document.source_name in seen_source_names:
+            raise ValueError(f"duplicate CATSS source name: {document.source_name}")
+        seen_source_names.add(document.source_name)
         counts["source_files"] += 1
         status = classify_catss_source(document.source_name).status
         for verse in document.verses:
