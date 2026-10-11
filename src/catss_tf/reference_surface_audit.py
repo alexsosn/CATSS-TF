@@ -31,6 +31,12 @@ class LxxReferenceSurfaceCandidates:
     exact_single_with_unavoidable_overlap: int
     exact_single_with_avoidable_overlap_only: int
     exact_single_without_overlap: int
+    reference_groups: int
+    joint_unique_groups: int
+    joint_multiple_groups: int
+    joint_impossible_groups: int
+    joint_incomplete_groups: int
+    joint_indeterminate_groups: int
     exact_multiple: int
     no_surface_match: int
     no_greek_tokens: int
@@ -69,6 +75,9 @@ def audit_lxx_reference_surface_candidates(
     # with one local occurrence may still overlap a different alignment's
     # candidate (including ambiguous alternative occurrences).
     candidate_intervals: dict[_CandidateScope, dict[str, set[tuple[int, int]]]] = {}
+    # Include ALL supported explicit-reference alignments before any lexical
+    # validation; a missing candidate makes the whole group incomplete.
+    expected_alignments: dict[_CandidateScope, set[str]] = {}
     single_candidates: list[tuple[_CandidateScope, str, tuple[int, int]]] = []
 
     for document in documents:
@@ -94,6 +103,8 @@ def audit_lxx_reference_surface_candidates(
                         reference.verse,
                         reference.subverse,
                     )
+                    scope = (document.source_name, *key)
+                    expected_alignments.setdefault(scope, set()).add(alignment.alignment_id)
                     if key not in span_cache:
                         span = provider.get_span(*key)
                         if span is not None:
@@ -137,7 +148,6 @@ def audit_lxx_reference_surface_candidates(
                     if not matches:
                         counts["no_surface_match"] += 1
                         continue
-                    scope = (document.source_name, *key)
                     candidate_intervals.setdefault(scope, {}).setdefault(
                         alignment.alignment_id, set()
                     ).update(matches)
@@ -174,6 +184,22 @@ def audit_lxx_reference_surface_candidates(
     without_overlap = len(single_candidates) - with_overlap
     assert counts["exact_single"] == with_overlap + without_overlap
 
+    joint_counts = {
+        "unique": 0,
+        "multiple": 0,
+        "impossible": 0,
+        "incomplete": 0,
+        "indeterminate": 0,
+    }
+    for scope, alignment_ids in expected_alignments.items():
+        candidates = candidate_intervals.get(scope, {})
+        if any(not candidates.get(alignment_id) for alignment_id in alignment_ids):
+            joint_counts["incomplete"] += 1
+            continue
+        tasks = {alignment_id: candidates[alignment_id] for alignment_id in sorted(alignment_ids)}
+        joint_counts[_classify_joint_intervals(tasks)] += 1
+    assert sum(joint_counts.values()) == len(expected_alignments)
+
     assert counts["scalar_references"] == sum(
         value for name, value in counts.items() if name not in {"source_files", "scalar_references"}
     )
@@ -185,6 +211,12 @@ def audit_lxx_reference_surface_candidates(
         exact_single_with_unavoidable_overlap=unavoidable_overlap,
         exact_single_with_avoidable_overlap_only=avoidable_overlap_only,
         exact_single_without_overlap=without_overlap,
+        reference_groups=len(expected_alignments),
+        joint_unique_groups=joint_counts["unique"],
+        joint_multiple_groups=joint_counts["multiple"],
+        joint_impossible_groups=joint_counts["impossible"],
+        joint_incomplete_groups=joint_counts["incomplete"],
+        joint_indeterminate_groups=joint_counts["indeterminate"],
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
         no_greek_tokens=counts["no_greek_tokens"],
@@ -194,3 +226,40 @@ def audit_lxx_reference_surface_candidates(
         unsupported_source=counts["unsupported_source"],
         unknown_source=counts["unknown_source"],
     )
+
+
+def _classify_joint_intervals(
+    tasks: dict[str, set[tuple[int, int]]], *, max_states: int = 10000
+) -> typing.Literal["unique", "multiple", "impossible", "indeterminate"]:
+    """Boundedly count 0, 1 or 2 complete *candidate* assignments, not mappings."""
+    if not tasks or any(not spans for spans in tasks.values()) or max_states < 1:
+        raise ValueError("joint candidate tasks must be nonempty and budget positive")
+    if any(start < 0 or stop <= start for spans in tasks.values() for start, stop in spans):
+        raise ValueError("candidate intervals must be nonempty and nonnegative")
+
+    ordered = sorted(
+        ((alignment_id, tuple(sorted(spans))) for alignment_id, spans in tasks.items()),
+        key=lambda item: (len(item[1]), item[0]),
+    )
+    # An iterative DFS avoids recursion-depth errors on large user datasets.
+    # The state budget caps work and prevents unproven uniqueness/impossibility.
+    pending: list[tuple[int, tuple[tuple[int, int], ...]]] = [(0, ())]
+    visited = 0
+    solutions = 0
+    while pending:
+        if visited >= max_states:
+            return "indeterminate"
+        index, selected = pending.pop()
+        visited += 1
+        if index == len(ordered):
+            solutions += 1
+            if solutions == 2:
+                return "multiple"
+            continue
+        for start, stop in reversed(ordered[index][1]):
+            is_disjoint = all(
+                stop <= other_start or other_stop <= start for other_start, other_stop in selected
+            )
+            if is_disjoint:
+                pending.append((index + 1, (*selected, (start, stop))))
+    return "unique" if solutions == 1 else "impossible"

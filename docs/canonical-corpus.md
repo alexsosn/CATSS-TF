@@ -273,6 +273,21 @@ may not demand placement. Multiple scalar references on the same alignment
 do not compete with themselves; separate CATSS source traditions are counted
 independently even where parent book/verse keys coincide.
 
+For each source and exact pinned Greek-parent reference key, the audit
+also forms **explicit-reference candidate groups**: one task per distinct
+alignment ID, even when a row repeats the same scalar reference. A bounded
+(up to 10,000 explored states per group) non-overlapping interval search
+classifies each group as `joint_unique_groups` (exhaustively one full
+candidate assignment), `joint_multiple_groups` (at least two assignments),
+`joint_impossible_groups` (exhaustively no full assignment),
+`joint_incomplete_groups` (at least one referenced alignment has no valid
+candidate, including missing parents or unsupported lexical normalizations),
+or `joint_indeterminate_groups` (the search budget was exceeded).
+These categories partition `reference_groups`. None proves translation
+reference semantics: **unreferenced/default CATSS alignments and
+transposition-carrier exceptions are not included**; a unique candidate
+assignment is not a verified Text-Fabric target.
+
 The report includes **no raw source text, Greek parent word IDs, or
 canonical target edges**. Neither a local `exact_single` match nor an
 `exact_single_without_overlap` match is a verified reference destination:
@@ -282,7 +297,8 @@ Follow the existing LXX resolver's stricter full-document validation
 before proposing any canonical `catss_reference_target` relation. See
 `docs/research/issue-96-reference-surface-candidates.md`,
 `docs/research/issue-96-overlap-triage.md`,
-`docs/research/issue-96-pairwise-necessity.md` and issue #96.
+`docs/research/issue-96-pairwise-necessity.md`,
+`docs/research/issue-96-joint-candidate-feasibility.md` and issue #96.
 
 ## Reference edges
 

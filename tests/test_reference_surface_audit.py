@@ -19,7 +19,10 @@ from catss_tf.lxx_schema import (
     LxxParentProbe,
 )
 from catss_tf.parser import parse_parallel_text
-from catss_tf.reference_surface_audit import audit_lxx_reference_surface_candidates
+from catss_tf.reference_surface_audit import (
+    _classify_joint_intervals,
+    audit_lxx_reference_surface_candidates,
+)
 
 
 def _probe() -> LxxParentProbe:
@@ -264,3 +267,99 @@ def test_repeated_scalar_references_are_counted_without_self_collision() -> None
     assert report.exact_single_with_overlap == 0
     assert report.exact_single_with_unavoidable_overlap == 0
     assert report.exact_single_with_avoidable_overlap_only == 0
+
+
+def test_joint_reference_candidates_distinguish_unique_and_impossible_groups() -> None:
+    unique = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\nHB\tKAI [2]\n",
+        source_name="01.Genesis.par",
+    )
+    impossible = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\nHB\tLOGOS [2]\n",
+        source_name="01.Genesis.par",
+    )
+    provider = Provider((_span("Gen", 1, 2, "λόγος", "καί"),))
+    unique_report = audit_lxx_reference_surface_candidates((unique,), provider)
+    assert unique_report.reference_groups == 1
+    assert unique_report.joint_unique_groups == 1
+    assert unique_report.joint_impossible_groups == 0
+    impossible_report = audit_lxx_reference_surface_candidates(
+        (impossible,), Provider((_span("Gen", 1, 2, "λόγος"),))
+    )
+    assert impossible_report.reference_groups == 1
+    assert impossible_report.joint_impossible_groups == 1
+    assert impossible_report.joint_unique_groups == 0
+
+
+def test_joint_group_with_locally_ambiguous_word_is_not_falsely_unique() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος", "λόγος"),))
+    )
+    assert report.reference_groups == 1
+    assert report.joint_multiple_groups == 1
+    assert report.joint_unique_groups == 0
+
+
+def test_joint_group_with_missing_surface_candidate_is_incomplete_not_impossible() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2]\nHB\tKAI [2]\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος"),))
+    )
+    assert report.reference_groups == 1
+    assert report.joint_incomplete_groups == 1
+    assert report.joint_impossible_groups == 0
+    assert report.joint_unique_groups == 0
+
+
+def test_joint_duplicate_scalar_reference_is_one_alignment_task() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [2] [2]\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 2, "λόγος"),))
+    )
+    assert report.scalar_references == 2
+    assert report.reference_groups == 1
+    assert report.joint_unique_groups == 1
+
+
+def test_joint_groups_isolate_distinct_catss_sources_sharing_parent_key() -> None:
+    documents = (
+        parse_parallel_text("Ezra 1:1\nHB\tLOGOS [11:2]\n", source_name="18.Ezra.par"),
+        parse_parallel_text("Neh 1:1\nHB\tLOGOS [2]\n", source_name="19.Neh.par"),
+    )
+    report = audit_lxx_reference_surface_candidates(
+        documents, Provider((_span("2Esdr", 11, 2, "λόγος"),))
+    )
+    assert report.reference_groups == 2
+    assert report.joint_unique_groups == 2
+    assert report.joint_impossible_groups == 0
+
+
+def test_joint_solver_detects_globally_impossible_despite_all_pairwise_choices() -> None:
+    # Every pair can occupy two separate words, but three distinct tasks
+    # cannot all fit into two word slots.
+    tasks = {
+        "a": {(0, 1), (1, 2)},
+        "b": {(0, 1), (1, 2)},
+        "c": {(0, 1), (1, 2)},
+    }
+    assert _classify_joint_intervals(tasks) == "impossible"
+
+
+def test_joint_search_budget_must_not_forge_unique_or_impossible() -> None:
+    task = {"a": {(0, 1), (1, 2)}}
+    assert _classify_joint_intervals(task, max_states=2) == "indeterminate"
+    assert _classify_joint_intervals(task, max_states=3) == "multiple"
+    unique = {"a": {(0, 1)}}
+    assert _classify_joint_intervals(unique, max_states=1) == "indeterminate"
+    assert _classify_joint_intervals(unique, max_states=2) == "unique"
+    assert _classify_joint_intervals({"a": {(0, 1)}, "b": {(0, 1)}}) == "impossible"
