@@ -159,8 +159,7 @@ def audit_lxx_reference_surface_candidates(
             # One unavoidable pairwise collision takes priority over any
             # other competitor that could choose a disjoint alternative.
             overlaps = tuple(
-                other_start < stop and start < other_stop
-                for other_start, other_stop in intervals
+                other_start < stop and start < other_stop for other_start, other_stop in intervals
             )
             if all(overlaps):
                 unavoidable = True
