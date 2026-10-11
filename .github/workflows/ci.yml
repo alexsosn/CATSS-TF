@@ -1178,7 +1178,12 @@ jobs:
               + surface.context_impossible_groups + surface.context_incomplete_groups
               + surface.context_indeterminate_groups
           ) == surface.reference_groups, surface
-          assert 0 <= surface.context_groups_with_implicit <= surface.reference_groups, surface
+          assert surface.context_groups_with_implicit == 279, surface
+          assert (
+              surface.context_unique_groups, surface.context_multiple_groups,
+              surface.context_impossible_groups, surface.context_incomplete_groups,
+              surface.context_indeterminate_groups,
+          ) == (252, 75, 49, 295, 0), surface
           assert (
               surface.exact_single_with_unavoidable_overlap
               + surface.exact_single_with_avoidable_overlap_only
