@@ -26,6 +26,8 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
+      - name: Issue 16 RED-only pytest against missing adapter (must fail)
+        run: pytest -q tests/test_agora_adapter.py
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy
