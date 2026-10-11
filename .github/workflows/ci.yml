@@ -213,6 +213,14 @@ jobs:
           )
           assert audit.source_files == 46, audit
           assert audit.scalar_references == 6218, audit
+          assert audit.explicit_chapters == 6, audit
+          assert audit.subverse_suffixes == 424, audit
+          assert (
+              audit.same_header_numeric
+              + audit.different_verse_same_chapter
+              + audit.different_chapter
+          ) == audit.scalar_references, audit
+          assert 0 <= audit.different_chapter <= audit.explicit_chapters, audit
           assert (
               audit.numeric_candidates_zero
               + audit.numeric_candidates_one
