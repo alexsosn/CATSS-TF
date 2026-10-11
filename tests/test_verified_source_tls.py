@@ -4,8 +4,8 @@ import io
 import ssl
 import urllib.error
 import urllib.request
-from typing import Any, cast
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -68,7 +68,7 @@ def test_downloader_rejects_unverified_or_ambiguous_origin_before_network(
 
 def test_https_to_http_redirect_is_rejected() -> None:
     original = urllib.request.Request("https://ccat.sas.upenn.edu/start")
-    handler = getattr(source, "_HttpsOnlyRedirectHandler")()
+    handler = cast(Any, source)._HttpsOnlyRedirectHandler()
     with pytest.raises(urllib.error.URLError, match="HTTPS"):
         handler.redirect_request(
             original, None, 302, "Found", {}, "http://untrusted.example.invalid/file"
