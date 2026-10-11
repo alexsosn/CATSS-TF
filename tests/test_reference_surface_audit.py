@@ -333,12 +333,8 @@ def test_joint_duplicate_scalar_reference_is_one_alignment_task() -> None:
 
 def test_joint_groups_isolate_distinct_catss_sources_sharing_parent_key() -> None:
     documents = (
-        parse_parallel_text(
-            "Ezra 1:1\nHB\tLOGOS [11:2]\n", source_name="18.Ezra.par"
-        ),
-        parse_parallel_text(
-            "Neh 1:1\nHB\tLOGOS [2]\n", source_name="19.Neh.par"
-        ),
+        parse_parallel_text("Ezra 1:1\nHB\tLOGOS [11:2]\n", source_name="18.Ezra.par"),
+        parse_parallel_text("Neh 1:1\nHB\tLOGOS [2]\n", source_name="19.Neh.par"),
     )
     report = audit_lxx_reference_surface_candidates(
         documents, Provider((_span("2Esdr", 11, 2, "λόγος"),))
