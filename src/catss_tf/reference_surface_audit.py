@@ -3,7 +3,18 @@
 import dataclasses
 import typing
 
-from catss_tf.lxx_resolver import LxxVerseProvider
+from catss_tf.lxx_resolver import (
+    LxxSpan,
+    LxxVerseProvider,
+    normalize_catss_greek,
+    normalize_lxx_greek,
+)
+from catss_tf.lxx_schema import (
+    LxxSourceStatus,
+    classify_catss_source,
+    default_lxx_reference,
+    validate_lxx_parent,
+)
 from catss_tf.parser import ParallelDocument
 
 
@@ -29,4 +40,109 @@ def audit_lxx_reference_surface_candidates(
     provider: LxxVerseProvider,
 ) -> LxxReferenceSurfaceCandidates:
     """Count textual candidates without asserting their relation is a mapping."""
-    raise NotImplementedError("R96-7 reference-surface candidates not yet implemented")
+    validation = validate_lxx_parent(provider.parent_probe)
+    if not validation.ok:
+        raise ValueError(f"invalid LXX parent fingerprint: {validation.findings}")
+
+    counts: dict[str, int] = {
+        "source_files": 0,
+        "scalar_references": 0,
+        "exact_single": 0,
+        "exact_multiple": 0,
+        "no_surface_match": 0,
+        "no_greek_tokens": 0,
+        "catss_normalization_error": 0,
+        "parent_normalization_error": 0,
+        "parent_span_missing": 0,
+        "unsupported_source": 0,
+        "unknown_source": 0,
+    }
+    span_cache: dict[tuple[str, int, int, str | None], LxxSpan | None] = {}
+    token_cache: dict[tuple[str, int, int, str | None], tuple[str, ...] | None] = {}
+
+    for document in documents:
+        counts["source_files"] += 1
+        status = classify_catss_source(document.source_name).status
+        for verse in document.verses:
+            for alignment in verse.alignments:
+                for reference in alignment.lxx_references:
+                    counts["scalar_references"] += 1
+                    if status is LxxSourceStatus.UNSUPPORTED:
+                        counts["unsupported_source"] += 1
+                        continue
+                    if status is LxxSourceStatus.UNKNOWN:
+                        counts["unknown_source"] += 1
+                        continue
+
+                    default = default_lxx_reference(
+                        document.source_name, verse.chapter, verse.verse
+                    )
+                    key = (
+                        default.book,
+                        default.chapter if reference.chapter is None else reference.chapter,
+                        reference.verse,
+                        reference.subverse,
+                    )
+                    if key not in span_cache:
+                        span = provider.get_span(*key)
+                        if span is not None:
+                            if (span.book, span.chapter, span.verse, span.subverse) != key:
+                                raise ValueError(f"LXX parent span identity mismatch for {key}")
+                            if any(word.subverse != (key[3] or "") for word in span.words):
+                                raise ValueError(f"LXX parent span word subverse mismatch for {key}")
+                        span_cache[key] = span
+                    span = span_cache[key]
+                    if span is None or not span.words:
+                        counts["parent_span_missing"] += 1
+                        continue
+                    if not alignment.lxx_tokens:
+                        counts["no_greek_tokens"] += 1
+                        continue
+
+                    try:
+                        needle = tuple(
+                            normalize_catss_greek(token) for token in alignment.lxx_tokens
+                        )
+                    except ValueError:
+                        counts["catss_normalization_error"] += 1
+                        continue
+                    if key not in token_cache:
+                        try:
+                            token_cache[key] = tuple(
+                                normalize_lxx_greek(word.word) for word in span.words
+                            )
+                        except ValueError:
+                            token_cache[key] = None
+                    haystack = token_cache[key]
+                    if haystack is None:
+                        counts["parent_normalization_error"] += 1
+                        continue
+                    n = len(needle)
+                    matches = sum(
+                        haystack[i : i + n] == needle
+                        for i in range(len(haystack) - n + 1)
+                    )
+                    if matches == 0:
+                        counts["no_surface_match"] += 1
+                    elif matches == 1:
+                        counts["exact_single"] += 1
+                    else:
+                        counts["exact_multiple"] += 1
+
+    assert counts["scalar_references"] == sum(
+        value for name, value in counts.items()
+        if name not in {"source_files", "scalar_references"}
+    )
+    return LxxReferenceSurfaceCandidates(
+        source_files=counts["source_files"],
+        scalar_references=counts["scalar_references"],
+        exact_single=counts["exact_single"],
+        exact_multiple=counts["exact_multiple"],
+        no_surface_match=counts["no_surface_match"],
+        no_greek_tokens=counts["no_greek_tokens"],
+        catss_normalization_error=counts["catss_normalization_error"],
+        parent_normalization_error=counts["parent_normalization_error"],
+        parent_span_missing=counts["parent_span_missing"],
+        unsupported_source=counts["unsupported_source"],
+        unknown_source=counts["unknown_source"],
+    )
