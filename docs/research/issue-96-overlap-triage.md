@@ -19,3 +19,27 @@ Reuse the existing exact source classification, version pin, parent-span metadat
 ## RED-first fixtures
 
 Test a single candidate overlapped by (a) another alignment's unique candidate and (b) another alignment's *multiple* candidates; a non-overlapping pair; duplicate scalar references on the same alignment; and a different source document with the same parent key. Run the fixed tests before implementation and capture intended assertion RED. Validate final behavior against all 46 user-acquired CCAT files and pinned LXX; record observed counts in this research file once measured.
+
+
+## R96-8 — real pinned 46-file overlap distribution (2026-10-11)
+
+The initial GREEN exact-head [CI run 38125940495](https://github.com/alexsosn/CATSS-TF/actions/runs/38125940495) passed the full Python matrix (467 tests on each of 3.11, 3.12 and 3.13), release smoke, complete source/annotation checks, canonical Text-Fabric materialization and round-trip. The source was all 46 current CATSS parallel files; Greek parent was the exact `CenterBLC/LXX` revision `f32a98eddf7eb239aa73ab863d70381e416d5076`.
+
+| Observed category | Count |
+| --- | ---: |
+| `scalar_references` | 6,218 |
+| `exact_single` | 4,349 |
+| `exact_single_with_overlap` | **232** |
+| `exact_single_without_overlap` | **4,117** |
+| `exact_multiple` | 455 |
+| `no_surface_match` | 294 |
+| `no_greek_tokens` | 453 |
+| `catss_normalization_error` | 4 |
+| `parent_normalization_error` | 0 |
+| `parent_span_missing` | 641 |
+| `unsupported_source` | 22 |
+| `unknown_source` | 0 |
+
+The exact single class partitions **232 + 4,117 = 4,349**. All 6,218 references are accounted for by unchanged outer outcome classes. The 232 potential competing placements are *existential overlaps*, not proof that all are impossible under a joint resolver; an ambiguous other alignment can select a different word interval. The 4,117 have no overlap **among explicitly referenced and successfully normalized candidate intervals in the same CATSS source and exact parent key**. That does not guarantee globally consistent placement or any meaning of the reference notation. In particular, the unreferenced Greek alignments in a parent verse are outside this screen. No `catss_reference_target` edges were generated.
+
+This milestone narrows the next issue #96 research from the raw 4,349 local matches but does not close that issue or validate any semantic target.
