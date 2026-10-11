@@ -1151,6 +1151,28 @@ jobs:
               + audit.subverse_unprofiled
           ) == 424, audit
           print('PINNED_LXX_REFERENCE_SPAN_AUDIT', audit, flush=True)
+
+          # Read-only R96-7: a locally matching word sequence is not a
+          # verified contextual reference destination or canonical edge.
+          from catss_tf.reference_surface_audit import audit_lxx_reference_surface_candidates
+          surface = audit_lxx_reference_surface_candidates(
+              (
+                  parse_parallel_file(pathlib.Path('/tmp/catss-parallel') / filename)
+                  for filename in CATSS_PARALLEL_FILENAMES
+              ),
+              provider,
+          )
+          assert surface.source_files == audit.source_files == 46, surface
+          assert surface.scalar_references == audit.scalar_references == 6218, surface
+          assert surface.parent_span_missing == audit.parent_span_missing, surface
+          assert surface.unsupported_source == audit.unsupported_source, surface
+          assert surface.unknown_source == audit.unknown_source, surface
+          assert (
+              surface.exact_single + surface.exact_multiple + surface.no_surface_match
+              + surface.no_greek_tokens + surface.catss_normalization_error
+              + surface.parent_normalization_error
+          ) == audit.parent_span_present, surface
+          print('PINNED_LXX_REFERENCE_SURFACE_CANDIDATES', surface, flush=True)
           PY
       - name: Research pinned Josh 9:2 subverse node hierarchy
         run: |
