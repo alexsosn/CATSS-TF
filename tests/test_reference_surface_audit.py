@@ -510,3 +510,89 @@ def test_implicit_default_rows_do_not_compete_with_explicit_override_to_other_ve
     assert result.context_groups_with_implicit == 0
     assert result.context_unique_groups == 1
     assert result.context_incomplete_groups == 0
+
+
+def test_role_aware_joint_search_allows_only_identical_alignment_carrier_overlap() -> None:
+    candidates = {"alignment": {(0, 1)}, "carrier": {(0, 1)}}
+    assert _classify_joint_intervals(candidates) == "impossible"
+    assert (
+        _classify_joint_intervals(
+            candidates,
+            roles={"alignment": "transposition_alignment", "carrier": "transposition_carrier"},
+        )
+        == "unique"
+    )
+
+
+@pytest.mark.parametrize(
+    ("candidates", "roles"),
+    [
+        (
+            {"alignment": {(0, 2)}, "carrier": {(1, 3)}},
+            {"alignment": "transposition_alignment", "carrier": "transposition_carrier"},
+        ),
+        (
+            {"alignment": {(0, 1)}, "plain": {(0, 1)}},
+            {"alignment": "transposition_alignment", "plain": "exact"},
+        ),
+        (
+            {"first": {(0, 1)}, "second": {(0, 1)}},
+            {"first": "transposition_carrier", "second": "transposition_carrier"},
+        ),
+        (
+            {"first": {(0, 1)}, "second": {(0, 1)}},
+            {"first": "transposition_alignment", "second": "transposition_alignment"},
+        ),
+        (
+            {"alignment": {(0, 1)}, "carrier": {(0, 1)}, "plain": {(0, 1)}},
+            {
+                "alignment": "transposition_alignment",
+                "carrier": "transposition_carrier",
+                "plain": "exact",
+            },
+        ),
+    ],
+)
+def test_role_aware_joint_search_does_not_allow_other_overlap(
+    candidates: dict[str, set[tuple[int, int]]], roles: dict[str, str]
+) -> None:
+    assert _classify_joint_intervals(candidates, roles=roles) == "impossible"
+
+
+def test_role_aware_joint_search_preserves_ambiguity_and_state_budget() -> None:
+    candidates = {"alignment": {(0, 1), (1, 2)}, "carrier": {(0, 1)}}
+    roles = {"alignment": "transposition_alignment", "carrier": "transposition_carrier"}
+    assert _classify_joint_intervals(candidates, roles=roles) == "multiple"
+    assert _classify_joint_intervals(candidates, roles=roles, max_states=2) == "indeterminate"
+
+
+def test_actual_catss_transposition_annotation_roles_change_only_role_context() -> None:
+    # Same annotation syntax tested by the strict production LXX resolver.
+    document = parse_parallel_text(
+        "Gen 1:29\nZR(\t{..^SPORI/MOU} [29]\n{...}\tSPORI/MOU\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 29, "σπορίμου"),))
+    )
+    assert report.reference_groups == 1
+    assert report.scalar_references == 1
+    assert report.joint_unique_groups == 1
+    assert report.context_impossible_groups == 1
+    assert report.role_context_groups_with_eligible_pair == 1
+    assert report.role_context_changed_groups == 1
+    assert report.role_context_unique_groups == 1
+
+
+def test_role_context_does_not_infer_transposition_from_identical_plain_words() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tLOGOS [1]\nHB\tLOGOS\n",
+        source_name="01.Genesis.par",
+    )
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 1, "λόγος"),))
+    )
+    assert report.context_impossible_groups == 1
+    assert report.role_context_impossible_groups == 1
+    assert report.role_context_groups_with_eligible_pair == 0
+    assert report.role_context_changed_groups == 0
