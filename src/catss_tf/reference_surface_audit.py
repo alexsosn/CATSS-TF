@@ -25,6 +25,8 @@ class LxxReferenceSurfaceCandidates:
     source_files: int
     scalar_references: int
     exact_single: int
+    exact_single_with_overlap: int
+    exact_single_without_overlap: int
     exact_multiple: int
     no_surface_match: int
     no_greek_tokens: int
@@ -135,6 +137,8 @@ def audit_lxx_reference_surface_candidates(
         source_files=counts["source_files"],
         scalar_references=counts["scalar_references"],
         exact_single=counts["exact_single"],
+        exact_single_with_overlap=0,  # R96-8 RED stub
+        exact_single_without_overlap=0,  # R96-8 RED stub
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
         no_greek_tokens=counts["no_greek_tokens"],
