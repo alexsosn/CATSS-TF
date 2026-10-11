@@ -43,3 +43,7 @@ A simple workflow-source assertion is necessary but insufficient:
 after implementation, collect Actions run IDs on two rapid commits
 and observe the superseded PR run cancel with the newer head's jobs
 still scheduled. Do not merge if YAML expressions fail GitHub validation.
+
+## Reproducible Actions supersession probe
+
+The first workflow-concurrency commit is `485e9679f632ecd8cfaa7f56182dce34c3cdc35e`, Actions run `38100119996`. It was observed **in progress** across the test matrix, release smoke and real-data audit before the subsequent *documentation-only* PR commit. Inspect both run IDs using the Actions API: the earlier PR run should transition to `cancelled` and the latest run must retain all five checks. This comparison tests actual GitHub scheduling, not just a YAML assertion. A completed run on `main` has a separate group keyed by its unique run ID.
