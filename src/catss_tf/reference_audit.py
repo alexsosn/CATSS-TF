@@ -17,6 +17,9 @@ class GreekReferenceAudit:
     numeric_candidates_zero: int
     numeric_candidates_one: int
     numeric_candidates_multiple: int
+    same_header_numeric: int
+    different_verse_same_chapter: int
+    different_chapter: int
     by_source: tuple[tuple[str, int], ...]
 
 
@@ -31,6 +34,9 @@ def audit_greek_references(
     zero = 0
     one = 0
     multiple = 0
+    same_header_numeric = 0
+    different_verse_same_chapter = 0
+    different_chapter = 0
     by_source: dict[str, int] = {}
 
     for document in documents:
@@ -49,10 +55,16 @@ def audit_greek_references(
                     if reference.subverse is not None:
                         suffix += 1
                     by_source[document.source_name] = by_source.get(document.source_name, 0) + 1
-                    key = (
-                        reference.chapter if reference.chapter is not None else verse.chapter,
-                        reference.verse,
+                    effective_chapter = (
+                        reference.chapter if reference.chapter is not None else verse.chapter
                     )
+                    if effective_chapter != verse.chapter:
+                        different_chapter += 1
+                    elif reference.verse != verse.verse:
+                        different_verse_same_chapter += 1
+                    else:
+                        same_header_numeric += 1
+                    key = (effective_chapter, reference.verse)
                     matching_mt_headers = header_counts.get(key, 0)
                     if matching_mt_headers == 0:
                         zero += 1
@@ -60,6 +72,8 @@ def audit_greek_references(
                         one += 1
                     else:
                         multiple += 1
+
+    assert same_header_numeric + different_verse_same_chapter + different_chapter == scalar
 
     return GreekReferenceAudit(
         source_files=sources,
@@ -69,5 +83,8 @@ def audit_greek_references(
         numeric_candidates_zero=zero,
         numeric_candidates_one=one,
         numeric_candidates_multiple=multiple,
+        same_header_numeric=same_header_numeric,
+        different_verse_same_chapter=different_verse_same_chapter,
+        different_chapter=different_chapter,
         by_source=tuple(sorted(by_source.items())),
     )
