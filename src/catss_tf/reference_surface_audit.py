@@ -287,9 +287,7 @@ def audit_lxx_reference_surface_candidates(
                             incomplete = True
                             break
                         tasks[alignment_id] = implicit_matches
-                context_outcome = (
-                    "incomplete" if incomplete else _classify_joint_intervals(tasks)
-                )
+                context_outcome = "incomplete" if incomplete else _classify_joint_intervals(tasks)
         context_counts[context_outcome] += 1
 
         roles = roles_by_scope[scope]
