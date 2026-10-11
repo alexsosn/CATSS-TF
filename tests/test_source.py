@@ -242,3 +242,87 @@ def test_interleaved_downloads_do_not_share_temporary_name(
     assert len(staged) == 2 and staged[0] != staged[1]
     assert (destination / "01.First.par").read_bytes() == b"outer payload"
     assert not list(destination.glob(".01.First.par.*.tmp"))
+
+
+@pytest.mark.parametrize("inside_root", [False, True])
+def test_inspection_rejects_par_symlinks_even_when_target_is_regular(
+    tmp_path: Path, inside_root: bool
+) -> None:
+    root = tmp_path / "parallel"
+    root.mkdir()
+    actual = (root if inside_root else tmp_path) / "real-source.txt"
+    actual.write_bytes(b"not authenticated as a CATSS source")
+    (root / "01.Genesis.par").symlink_to(actual)
+
+    with pytest.raises(SourceInspectionError, match="symlink"):
+        inspect_parallel_source(root)
+
+
+def test_inspection_rejects_dangling_par_symlink_among_regular_files(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "01.Genesis.par").write_bytes(b"legitimate file")
+    (tmp_path / "02.Exodus.par").symlink_to(tmp_path / "missing.par")
+
+    with pytest.raises(SourceInspectionError, match="symlink"):
+        inspect_parallel_source(tmp_path)
+
+
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_download_rejects_existing_final_par_symlink_without_touching_referent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, overwrite: bool
+) -> None:
+    root = tmp_path / "parallel"
+    root.mkdir()
+    outside = tmp_path / "unrelated.txt"
+    outside.write_bytes(b"not a CATSS file")
+    link = root / "01.Genesis.par"
+    link.symlink_to(outside)
+    fetched: list[str] = []
+    monkeypatch.setattr(source, "_fetch_bytes", lambda url: fetched.append(url) or b"new bytes")
+
+    with pytest.raises(source.SourceDownloadError, match="symlink"):
+        source.download_parallel_source(
+            root,
+            filenames=("01.Genesis.par",),
+            base_url="https://example.invalid/parallel",
+            overwrite=overwrite,
+        )
+
+    assert fetched == []
+    assert link.is_symlink()
+    assert outside.read_bytes() == b"not a CATSS file"
+
+
+def test_download_preflights_later_symlink_before_fetching_earlier_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "parallel"
+    root.mkdir()
+    (root / "02.Exodus.par").symlink_to(tmp_path / "missing.par")
+    fetched: list[str] = []
+    monkeypatch.setattr(source, "_fetch_bytes", lambda url: fetched.append(url) or b"first")
+
+    with pytest.raises(source.SourceDownloadError, match="symlink"):
+        source.download_parallel_source(
+            root,
+            filenames=("02.Exodus.par", "01.Genesis.par"),
+            base_url="https://example.invalid/parallel",
+        )
+
+    assert fetched == []
+    assert not (root / "01.Genesis.par").exists()
+
+
+def test_inspection_allows_explicit_symlink_to_source_root(tmp_path: Path) -> None:
+    root = tmp_path / "real-parallel"
+    root.mkdir()
+    (root / "01.Genesis.par").write_bytes(b"local corpus")
+    alias = tmp_path / "source-root-alias"
+    alias.symlink_to(root, target_is_directory=True)
+
+    manifest = inspect_parallel_source(alias)
+
+    assert [(item.relative_path, item.size_bytes) for item in manifest.files] == [
+        ("01.Genesis.par", len(b"local corpus"))
+    ]
