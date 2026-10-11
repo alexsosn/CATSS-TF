@@ -202,11 +202,19 @@ def _validate_filename(name: str) -> None:
 
 def _verified_https_base_url(value: str) -> str:
     """Reject ambiguous or insecure origins before any network I/O."""
-    parts = urllib.parse.urlsplit(value)
+    if _url_contains_controls(value):
+        raise SourceDownloadError("CATSS source requires an HTTPS base URL without controls")
+    try:
+        parts = urllib.parse.urlsplit(value)
+        hostname = parts.hostname
+        port = parts.port
+    except ValueError as exc:
+        raise SourceDownloadError("CATSS source requires a syntactically valid HTTPS URL") from exc
     if (
-        value != value.strip()
+        (port is not None and port == 0)
+        or value != value.strip()
         or parts.scheme != "https"
-        or not parts.hostname
+        or not hostname
         or parts.username is not None
         or parts.password is not None
         or "?" in value
@@ -216,6 +224,10 @@ def _verified_https_base_url(value: str) -> str:
             "CATSS source requires an HTTPS base URL without credentials, query or fragment"
         )
     return value.rstrip("/")
+
+
+def _url_contains_controls(value: str) -> bool:
+    return any(ord(character) < 32 or ord(character) == 127 for character in value)
 
 
 class _HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -230,6 +242,8 @@ class _HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
         headers: typing.Any,
         newurl: str,
     ) -> urllib.request.Request | None:
+        if _url_contains_controls(newurl):
+            raise urllib.error.URLError("HTTPS redirects may not contain control characters")
         before = urllib.parse.urlsplit(req.full_url)
         after = urllib.parse.urlsplit(newurl)
         if (
