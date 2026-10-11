@@ -29,3 +29,22 @@ The CATSS source `Gen 1:29` fixture justifies a **separate role-aware conditiona
 ## RED evidence
 
 Regression tests were committed first in `2cfb86b45904d5c9bd91694f1f5c3a982ac81317`. A targeted rerun of that original *preimplementation* SHA ([workflow 38155269932, attempt 2](https://github.com/alexsosn/CATSS-TF/actions/runs/38155269932), Python 3.11 job 114517952269) passed Ruff/format and then **failed at mypy** with precisely 10 intended missing-contract findings: `_classify_joint_intervals` rejects the new `roles` parameter, and `LxxReferenceSurfaceCandidates` lacks the new role-context fields. Since the type gate was RED, the workflow did **not** execute pytest; do not misreport this as behavioral pytest RED evidence. Existing behavioral fixtures and their expected outcomes remain committed, to be verified by the GREEN pytest matrix. Running the original SHA after a newer head had queued canceled that newer run due to the configured pull-request workflow concurrency; the subsequent final-head GREEN must be rerun separately.
+
+
+## Observed pinned 46-file CATSS / CenterBLC-LXX outcome (2026-10-11)
+
+[GREEN workflow 38156016173](https://github.com/alexsosn/CATSS-TF/actions/runs/38156016173) on code head `551d930f6289fb0f5f4c5deb60043f42b32d22e7`: **505 pytest tests each** on Python 3.11/3.12/3.13, Ruff, formatter, mypy, clean wheel/release smoke, entire 46-source CATSS source/notation and pinned LXX checks, full canonical Text-Fabric materialization and readback. The source-audit job `114519040026` printed the unchanged 6,218 scalar references; 4,349 local exact singles (232 overlaps = 108 unavoidable + 124 optional-only); 4,117 singles without overlap; 455 multiple, 294 no surface, 453 Greek-empty, 641 parent missing, four CATSS normalization errors, 22 unsupported. Original 671 explicit-only groups **326/70/19/256/0**, and 671 strict default-context groups **252/75/49/295/0** are unchanged.
+
+The *new* conditional model found **96 groups** containing both transposition-alignment and transposition-carrier roles. The strict default-context classification changed in **17 groups** when identical interval sharing was permitted for exactly this role pair.
+
+| Outcome (same 671 explicit-key scopes) | Strict default-context | Role-aware context |
+| --- | ---: | ---: |
+| Unique | 252 | **260** |
+| Multiple | 75 | **84** |
+| Impossible | 49 | **32** |
+| Incomplete | 295 | **295** |
+| Indeterminate | 0 | **0** |
+
+The strict impossibility count falls by 17; uniqueness rises by eight and multiplicity by nine. Given the role-aware rule *only relaxes* a conflict (without changing candidate sets), no case can move from possible to impossible. On this pinned dataset (no indeterminate outcomes), the 17 changed classifications therefore consist of eight conditional impossible→unique and nine conditional impossible→multiple. **These are not resolved CATSS errors or verified targets**. Their default Greek parent key derives from a CATSS MT header unless a real scalar reference overrides it; typed transposition roles may share an LXX surface yet the reference notation itself remains unverified. The remaining 32 impossible groups may reflect contextual notation, a missing cross-key model, or other provenance issues.
+
+No LXX word IDs, source lines, or raw corpora are emitted. Before finalizing the PR, repeat the identical pinned counts as CI assertions on the last reviewed exact head (this run preceded the new documentation/pins). Leave issue #96 OPEN.
