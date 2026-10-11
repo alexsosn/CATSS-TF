@@ -21,3 +21,20 @@ The default key assumption itself is conditional. Neither an old or new `unique`
 ## TDD / real data / review
 
 Commit research/plan before RED. RED fixtures must exercise: unique explicit-only group whose implicit lexical row collides → context impossible; disjoint implicit row → context unique; implicit row with no surface match → context incomplete; no Greek lexical content and typed ranges excluded; different-key explicit override unchanged; local scalar outcomes invariant. Check a generated 46-file pinned CenterBLC/LXX report and record all actual context counts after GREEN; do not guess them. Require exact-head Python 3.11–3.13 tests, Ruff/mypy, release smoke and complete canonical TF build/readback. Independent adversarial review must inspect exact final code, source-context equivalence, cross-verse and cross-source isolation, scalar/ref range exclusivity, normalization fail-closed, solver cutoff and no semantic-target promotion. Issue #96 remains open; upstream texts are never committed.
+
+## Observed real 46-source pinned result — R96-13
+
+[CI run 38146803521](https://github.com/alexsosn/CATSS-TF/actions/runs/38146803521), `complete-catss-audit` job `114491774630`, **succeeded** using the exact pinned source and CenterBLC/LXX revision on candidate-head `fbf00254238971e910f8cd41ce3ab27bb12695d5`. Although the run's Python matrix stopped at a separate Ruff formatting failure, the full source audit and canonical TF materialization/readback passed. Measured exact classification:
+
+| Counter | Explicit only | Conditional default-context |
+| --- | ---: | ---: |
+| Unique | 326 | **252** |
+| Multiple | 70 | **75** |
+| Impossible | 19 | **49** |
+| Incomplete | 256 | **295** |
+| Indeterminate | 0 | **0** |
+| Total groups | **671** | **671** |
+
+**279** of the 671 explicit-key groups contain at least one implicit/default Greek lexical contender. Original scalar counts are untouched (**6,218** scalar references; 4,349 exact singles, including 232 with overlapping alternatives—108 unavoidable/124 avoidable; 4,117 nonoverlapping; 455 exact-multiple; 294 no surface match; 453 no Greek tokens; 641 missing parent spans; 4 CATSS normalization errors; 22 unsupported refs).
+
+The context numbers are not additional CATSS alignments, verified Greek reference endpoints, or proof that the default MT-header-derived Greek verse is correct. They measure the stricter conditional hypothesis only; overlapping transposition carrier roles and semantic scope still need investigation. Record same figures again in final exact-head CI after passing Ruff, mypy and the three Python test suites.
