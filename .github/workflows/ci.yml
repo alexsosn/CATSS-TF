@@ -1168,6 +1168,13 @@ jobs:
           assert surface.unsupported_source == audit.unsupported_source, surface
           assert surface.unknown_source == audit.unknown_source, surface
           assert (
+              surface.exact_single_with_unavoidable_overlap
+              + surface.exact_single_with_avoidable_overlap_only
+          ) == surface.exact_single_with_overlap, surface
+          assert (
+              surface.exact_single_with_overlap + surface.exact_single_without_overlap
+          ) == surface.exact_single, surface
+          assert (
               surface.exact_single + surface.exact_multiple + surface.no_surface_match
               + surface.no_greek_tokens + surface.catss_normalization_error
               + surface.parent_normalization_error
