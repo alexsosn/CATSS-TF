@@ -131,6 +131,32 @@ You can also use the direct Text-Fabric `--locations/--modules` mechanism or
 See [docs/browser.md](docs/browser.md) for exact pinned commands and search examples.
 
 
+## Agora materialization (standalone corpus)
+
+An Agora v1 manifest at [`agora.materializer.json`](agora.materializer.json)
+advertises exactly **one** executable materializer, `catss-canonical`:
+local licensed CATSS `.par` source → standalone `catss` Text-Fabric corpus.
+It uses a network-denied Python adapter for Agora's *precreated empty staging
+output*. The normal public `materialize_corpus` API still requires an absent
+destination. No CATSS data, output corpus or parent warp is redistributed.
+
+The standalone adapter can be smoke-tested with an existing empty directory:
+
+```sh
+mkdir -p ./generated/agora-staging
+python -m catss_tf.agora_adapter ./data/catss-parallel \
+  --output ./generated/agora-staging
+```
+
+This is **upstream executability metadata**, not a claim that Agora has already
+registered or installed it. Agora must use an explicitly approved installation,
+user-local licensed input and its normal network-denied sandbox. The manifest
+does **not** advertise `catss-bhsa` or `catss-lxx`: those feature modules need
+a separately verified, trusted read-only *exact parent* binding (BHSA 2021,
+LXX 1935), and complete LXX materialization is still affected by JoshB's
+unrepresented lettered subverses. Track remaining work at [CATSS-TF #16](https://github.com/alexsosn/CATSS-TF/issues/16)
+and [Agora #221](https://github.com/alexsosn/Agora/issues/221).
+
 ## Public Python API
 
 v0.1 freezes the following package-level entry points:
