@@ -260,9 +260,7 @@ def _classify_joint_intervals(
             if selected:
                 selected.pop()
             continue
-        if any(
-            start < other_stop and other_start < stop for other_start, other_stop in selected
-        ):
+        if any(start < other_stop and other_start < stop for other_start, other_stop in selected):
             continue
         if visited >= max_states:
             return "indeterminate"
