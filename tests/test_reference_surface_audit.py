@@ -37,9 +37,7 @@ def _probe() -> LxxParentProbe:
     )
 
 
-def _span(
-    book: str, chapter: int, verse: int, *texts: str, subverse: str | None = None
-) -> LxxSpan:
+def _span(book: str, chapter: int, verse: int, *texts: str, subverse: str | None = None) -> LxxSpan:
     return LxxSpan(
         node=800000 + verse,
         book=book,
@@ -73,12 +71,8 @@ def test_surface_reference_triage_never_confuses_local_candidate_with_target() -
             "Gen 1:1\nHB\tLOGOS [2] [3] [4] [5] [6]\nHB\t[7]\n",
             source_name="01.Genesis.par",
         ),
-        parse_parallel_text(
-            "JoshA 1:1\nHB\tLOGOS [2]\n", source_name="07.JoshA.par"
-        ),
-        parse_parallel_text(
-            "Gen 1:1\nHB\tLOGOS [2]\n", source_name="99.Unknown.par"
-        ),
+        parse_parallel_text("JoshA 1:1\nHB\tLOGOS [2]\n", source_name="07.JoshA.par"),
+        parse_parallel_text("Gen 1:1\nHB\tLOGOS [2]\n", source_name="99.Unknown.par"),
     )
     provider = Provider(
         (
@@ -106,9 +100,7 @@ def test_surface_reference_triage_never_confuses_local_candidate_with_target() -
 
 
 def test_parent_fingerprint_mismatch_rejected_before_looking_up_words() -> None:
-    document = parse_parallel_text(
-        "Gen 1:1\nHB\tLOGOS [2]\n", source_name="01.Genesis.par"
-    )
+    document = parse_parallel_text("Gen 1:1\nHB\tLOGOS [2]\n", source_name="01.Genesis.par")
     provider = Provider(
         (_span("Gen", 1, 2, "λόγος"),),
         dataclasses.replace(_probe(), release_commit="wrong"),
@@ -119,9 +111,7 @@ def test_parent_fingerprint_mismatch_rejected_before_looking_up_words() -> None:
 
 
 def test_forged_subverse_parent_span_cannot_be_counted_as_surface_match() -> None:
-    document = parse_parallel_text(
-        "JoshB 9:2\nHB\tLOGOS [9:2a]\n", source_name="06.JoshB.par"
-    )
+    document = parse_parallel_text("JoshB 9:2\nHB\tLOGOS [9:2a]\n", source_name="06.JoshB.par")
 
     class AliasProvider(Provider):
         def get_span(
