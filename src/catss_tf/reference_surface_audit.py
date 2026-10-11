@@ -208,7 +208,6 @@ def audit_lxx_reference_surface_candidates(
     )
 
 
-
 def _classify_joint_intervals(
     tasks: dict[str, set[tuple[int, int]]], *, max_states: int = 10000
 ) -> typing.Literal["unique", "multiple", "impossible", "indeterminate"]:
