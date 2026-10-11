@@ -22,3 +22,7 @@ The state/frame memory is `O(depth)` on top of the already existing `O(sum candi
 ## Interpretation
 
 This is a pure performance/stability patch. The categories remain **conditional lexical candidate feasibility**, not proven Greek reference semantics. Issue #96 remains OPEN for source notation and implicit/nonreferenced alignment research.
+
+## RED evidence
+
+The preimplementation CI head `400a0e5008a0e3b8f4224e6fe7e94e5c08155394` reached pytest after successful Ruff, formatting and mypy on Python 3.13, [run 38143281953, test job 114481373664](https://github.com/alexsosn/CATSS-TF/actions/runs/38143281953). **1 expected failure, 490 passing tests**. The RED memory fixture measured **14,152,656 transient bytes** from the pre-change eager DFS with 80,000 one-word alternatives and `max_states=1`, versus the intended 4,000,000-byte peak ceiling. This is Python `tracemalloc` transient memory **after test input construction**, not total program RSS or parent corpus size. The other bounded-search parity and long-chain regression fixtures were already green on the pre-change solver.
