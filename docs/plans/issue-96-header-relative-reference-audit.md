@@ -7,3 +7,7 @@
 5. **Researcher docs:** add a concise source-only explanation and real counts to `docs/canonical-corpus.md`. Explicitly warn that source-header *coincidence* or *displacement* is not verified lexical mapping.
 6. **Independent adversarial review:** at exact head, challenge counting a range as scalar, explicit chapter 0 being swallowed, double-counting chapter+verse difference, conflating source-local header match with *any* file header match, and source/corpus leakage. If a finding requires behavior change, record a RED test before fixing it, then re-run checks and re-review.
 7. **Merge gating:** merge only after all five jobs green on reviewed commit; preserve #96 open and zero `catss_reference_target` edges.
+
+## Observed corpus fixture
+
+On pinned complete-source green run 38164945447, the new fields were exactly 24 / 6,188 / 6. The old numeric counts remained 1,749 / 4,433 / 36; use these as exact CI assertions in the final PR head. RED pytest, final exact-head matrix and logically independent adversarial review remain separate gates.

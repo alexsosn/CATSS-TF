@@ -222,6 +222,16 @@ jobs:
           ) == audit.scalar_references, audit
           assert 0 <= audit.different_chapter <= audit.explicit_chapters, audit
           assert (
+              audit.same_header_numeric,
+              audit.different_verse_same_chapter,
+              audit.different_chapter,
+          ) == (24, 6188, 6), audit
+          assert (
+              audit.numeric_candidates_zero,
+              audit.numeric_candidates_one,
+              audit.numeric_candidates_multiple,
+          ) == (1749, 4433, 36), audit
+          assert (
               audit.numeric_candidates_zero
               + audit.numeric_candidates_one
               + audit.numeric_candidates_multiple

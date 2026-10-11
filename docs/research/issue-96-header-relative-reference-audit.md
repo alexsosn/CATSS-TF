@@ -17,8 +17,6 @@ Measure the scalar label's **own source-header** relationship, with mutually exc
 1. `same_header_numeric`: effective reference chapter equals containing CATSS header chapter AND reference verse equals the header verse. Keep lettered suffix in the suffix count only: a matching `JoshB 9:2` / `[9:2a]` is still *not* a proved Greek subverse.
 2. `different_verse_same_chapter`: effective chapter equals header chapter, but reference verse differs; e.g. the documented `Gen 23:5` / `[6]`. This is *potential* changed Greek versification, not a target.
 3. `different_chapter`: a supplied explicit chapter differs from header chapter, regardless of whether verse also differs. Count once, before verse comparison.
-4. `explicit_chapter_different`: cross-check redundant counter for the actual chapter-mismatch class; the six chapter-explicit references are not necessarily all chapter shifts.
-
 Use `reference.chapter if reference.chapter is not None else verse.chapter` (never `or`, so explicit zero is not swallowed). Count **each scalar occurrence**, including repeated tags on one alignment. Do not infer anything from nearby lines, lexical tokens, Greek parent spans, translational equivalence or source numerals outside scalar references. Existing MT-header numeric-coincidence distribution and all other reports remain unchanged. Do not create new TF nodes/edges or modify parent mappings; only aggregate counts, with no raw source bytes or node IDs in results.
 
 ## Risk-focused validation matrix
@@ -38,3 +36,20 @@ On the pinned 46 files, record exact totals **after** source integration runs, a
 ## Boundaries and next research
 
 This is a source-label diagnostic, independent of CenterBLC/LXX and BHSA. Greek reference semantics, Greek parent subverses, sentence-level span/scope, contextual `[c.v]`, Greek edition variation and cross-verse transposition are **not** resolved by these counters. Before introducing `catss_reference_target`, inspect authoritative CCAT/Tov documentation and examine actual Psalms/Esther/JoshB source rows and matching pinned parent surfaces with ambiguity checks. Leave #96 OPEN.
+
+## Actual 46-source pinned audit (R96-15, 2026-10-11)
+
+Full CI [run 38164945447](https://github.com/alexsosn/CATSS-TF/actions/runs/38164945447) on code head `e88a76ab554b374e882df0cd91a651f861b5c2a7` succeeded (Python 3.11/3.12/3.13, release smoke, full real source/parent audit, 46-file Text-Fabric materialization and readback). The `complete-catss-audit` job recorded:
+
+| Source-only numeric evidence | Count |
+| --- | ---: |
+| Source files / scalar Greek references | 46 / **6,218** |
+| Own-header chapter + verse **numeric equality** | **24** |
+| Own-header different verse, effective chapter equal | **6,188** |
+| Explicitly different chapter | **6** |
+| Original MT-header numeric matches: zero / one / multiple | **1,749 / 4,433 / 36** |
+| Explicit chapter labels / lettered suffixes | **6 / 424** |
+
+Exactly 24 + 6,188 + 6 = 6,218. All six explicit chapter labels differ from the containing source chapter on this pinned corpus. The *24 same-numeric* cases are not verified Greek verse identity, while the *6,188 same-chapter verse differences* are not evidence by themselves for the nature, scope, or even textual destination of the bracket notation. Real Greek parent checks remain separate: 5,555 references with nonempty exact labeled parent spans, 641 missing, 22 unsupported; all 424 explicit lettered subverses have no matching labeled parent span. The original 671 explicit group and 260/84/32/295/0 conditional role-aware group partitions remain unchanged. Canonical TF readback still reports 349,670 alignment slots and 6,218 reference nodes. These observed categories are diagnostic only and yield **zero new verified reference-target edges**.
+
+The test-only RED attempt on `22db138` failed at Ruff format before pytest; the corrected test-only head `23584c0` passed Ruff/format but correctly failed mypy with twelve missing-attribute contract errors before pytest. A later temporary test-only workflow `b3cd139` deliberately runs the focused pytest before mypy to obtain a behavioral RED; its result must be recorded separately. No intentional failure of mypy/format is presented as pytest RED.

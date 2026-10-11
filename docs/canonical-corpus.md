@@ -199,6 +199,33 @@ print(
 )
 ```
 
+For each parsed scalar Greek reference, the report also classifies its
+**relationship to its own containing CATSS source header**:
+
+```python
+print(
+    report.same_header_numeric,
+    report.different_verse_same_chapter,
+    report.different_chapter,
+)
+```
+
+The first field means the chapter and verse numbers agree with the source
+header (a subverse suffix does **not** establish a Greek subverse target).
+The second means the reference verse differs while its effective chapter
+equals the source header's chapter. The third means an explicit Greek
+chapter is different from the header chapter; that case is counted once
+even when the verse differs too. Square-bracketed contextual ranges are
+not scalar references, and duplicate scalar tags are counted as separate
+occurrences.
+
+On the pinned 46 CATSS source files, **24** scalar references agree
+numerically with their own headers, **6,188** have different verse
+numbers in the same effective chapter, and **6** explicitly refer to
+another chapter (6,218 total). The earlier independent across-file-header
+numeric-candidate counts remain 1,749 zero / 4,433 one / 36 multiple.
+These source-notation counts contain no Greek parent text or node IDs.
+
 This counts **numeric matches to CATSS MT-based source headers** only, not
 verified Greek target nodes. A `numeric_candidates_one` record is not a
 license to emit `catss_reference_target`: Greek/MT versification and
