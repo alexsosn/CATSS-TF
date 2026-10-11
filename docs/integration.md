@@ -194,6 +194,28 @@ catss-tf browse lxx ./generated/catss-lxx
 These commands invoke the standard Text-Fabric parent apps. See `docs/browser.md` for
 direct `tf`/Python equivalents and search examples.
 
+## Agora's executable standalone adapter
+
+The root `agora.materializer.json` declares one user-local and
+network-denied `catss-canonical` producer. Its `catss_tf.agora_adapter` module
+accepts `{source} --output {output}` and requires the host to create a
+**real empty output directory**. Native `materialize_corpus` builds a
+separate absent-path child within staging; only validated flat `.tf` and
+`.tsv` files are published to the host's output by no-replace hard links.
+The adapter fails on source/output overlap, hostile native outputs,
+validation errors and partial hard-link publication, and removes private
+staging files on failure. The host retains responsibility for the final
+sandboxed transaction and parent-independent Text-Fabric load.
+
+The adapter never fetches CATSS or installs a parent corpus. Registration is
+not implied by the manifest: Agora must pin an immutable reviewed CATSS-TF
+commit, obtain explicit code execution approval and verify the user-local
+input license and output permissions. The root manifest currently exposes
+**only the standalone canonical corpus**; BHSA/LXX feature-module registration
+requires separate reviewed parent bindings and remains unresolved under
+CATSS-TF #16 / Agora #221. The standalone corpus is not a substitute for
+either projection.
+
 ## What to retain for reproducibility
 
 Keep, locally:
