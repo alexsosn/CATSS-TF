@@ -283,10 +283,15 @@ candidate assignment), `joint_multiple_groups` (at least two assignments),
 `joint_incomplete_groups` (at least one referenced alignment has no valid
 candidate, including missing parents or unsupported lexical normalizations),
 or `joint_indeterminate_groups` (the search budget was exceeded).
-These categories partition `reference_groups`. None proves translation
-reference semantics: **unreferenced/default CATSS alignments and
-transposition-carrier exceptions are not included**; a unique candidate
-assignment is not a verified Text-Fabric target.
+These categories partition `reference_groups`. Every input document
+must have a **distinct CATSS source filename**: the audit rejects repeated
+`source_name` values with `ValueError`, including identical or empty
+documents, because its candidate scopes rely on unique file provenance.
+It does not automatically combine or rename source fragments. None of
+these counts proves translation reference semantics:
+**unreferenced/default CATSS alignments and transposition-carrier
+exceptions are not included**; a unique candidate assignment is not a
+verified Text-Fabric target.
 
 The report includes **no raw source text, Greek parent word IDs, or
 canonical target edges**. Neither a local `exact_single` match nor an
@@ -298,7 +303,8 @@ before proposing any canonical `catss_reference_target` relation. See
 `docs/research/issue-96-reference-surface-candidates.md`,
 `docs/research/issue-96-overlap-triage.md`,
 `docs/research/issue-96-pairwise-necessity.md`,
-`docs/research/issue-96-joint-candidate-feasibility.md` and issue #96.
+`docs/research/issue-96-joint-candidate-feasibility.md`,
+`docs/research/issue-96-duplicate-source-provenance.md` and issue #96.
 
 ## Reference edges
 
