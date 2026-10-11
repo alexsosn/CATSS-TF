@@ -5,6 +5,7 @@ import tracemalloc
 
 import pytest
 
+from catss_tf import reference_surface_audit
 from catss_tf.lxx_resolver import LxxSpan, LxxWord
 from catss_tf.lxx_schema import (
     LXX_MAX_NODE,
@@ -612,4 +613,35 @@ def test_role_relaxation_never_loses_proven_strict_multiple_under_budget() -> No
         "c": "exact",
     }
     assert _classify_joint_intervals(tasks, max_states=8) == "multiple"
-    assert _classify_joint_intervals(tasks, roles=roles, max_states=8) == "multiple"
+    # A role-only bounded search has no knowledge of the stronger strict
+    # result and may legitimately exhaust its budget first.
+    assert _classify_joint_intervals(tasks, roles=roles, max_states=8) == "indeterminate"
+
+
+def test_report_preserves_proven_multiple_when_role_search_would_exhaust_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # This reproduces the combination-layer concern independently of parent
+    # lexical candidate size: the strict solver proved two assignments, so
+    # the relaxed branch must not erase that evidence.
+    document = parse_parallel_text(
+        "Gen 1:29\nZR(\t{..^SPORI/MOU} [29]\n{...}\tSPORI/MOU\n",
+        source_name="01.Genesis.par",
+    )
+    calls: list[bool] = []
+
+    def fake_solver(*_args: object, **kwargs: object) -> str:
+        role_aware = kwargs.get("roles") is not None
+        calls.append(role_aware)
+        return "indeterminate" if role_aware else "multiple"
+
+    monkeypatch.setattr(reference_surface_audit, "_classify_joint_intervals", fake_solver)
+    report = audit_lxx_reference_surface_candidates(
+        (document,), Provider((_span("Gen", 1, 29, "σπορίμου"),))
+    )
+    assert report.context_multiple_groups == 1
+    assert report.role_context_groups_with_eligible_pair == 1
+    assert report.role_context_multiple_groups == 1
+    assert report.role_context_indeterminate_groups == 0
+    assert report.role_context_changed_groups == 0
+    assert calls == [False, False]
