@@ -145,7 +145,10 @@ The standalone adapter can be smoke-tested with an existing empty directory:
 ```sh
 mkdir -p ./generated/agora-staging
 python -m catss_tf.agora_adapter ./data/catss-parallel \
-  --output ./generated/agora-staging
+  --output ./generated/agora-staging \
+  --allow invalid_lxx_reference \
+  --allow malformed_continuation \
+  --allow unsplit_row
 ```
 
 This is **upstream executability metadata**, not a claim that Agora has already
