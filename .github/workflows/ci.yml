@@ -1435,3 +1435,55 @@ jobs:
           print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
                 'alignments, single JoshB contextual reference_range')
           PY
+      - name: Real 46-file Agora canonical adapter smoke
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          from tf.fabric import Fabric
+          from catss_tf.agora_adapter import main as agora_main
+
+          source = Path('/tmp/catss-parallel')
+          original = Path('/tmp/catss-canonical')
+          staging = Path('/tmp/catss-agora-staging')
+          staging.mkdir()  # Actual Agora contract: output is pre-created empty.
+          assert agora_main([
+              str(source), '--output', str(staging),
+              '--allow', 'invalid_lxx_reference',
+              '--allow', 'malformed_continuation',
+              '--allow', 'unsplit_row',
+          ]) == 0
+          assert not (staging / '.catss-agora-native-artifact').exists()
+          original_files = {
+              p.name: p for p in original.iterdir() if p.is_file()
+          }
+          staged_files = {
+              p.name: p for p in staging.iterdir() if p.is_file() and not p.is_symlink()
+          }
+          assert original_files.keys() == staged_files.keys(), (
+              original_files.keys() ^ staged_files.keys()
+          )
+          # The Agora bridge must not alter any feature or provenance file,
+          # including ignored parser-diagnostic audit sidecars.
+          for name in sorted(original_files):
+              def digest(p):
+                  h = hashlib.sha256()
+                  with p.open('rb') as source_file:
+                      for block in iter(lambda: source_file.read(1024 * 1024), b''):
+                          h.update(block)
+                  return h.digest()
+              assert digest(original_files[name]) == digest(staged_files[name]), name
+
+          api = Fabric(locations=[str(staging)], modules=[''], silent='deep').load(
+              'catss_alignment_id', silent='deep'
+          )
+          assert api is not None
+          assert api.F.otype.slotType == 'alignment'
+          assert len(api.F.otype.s('alignment')) == 349670
+          assert len(api.F.otype.s('reference')) == 6218
+          assert api.F.catss_alignment_id.v(1)
+          assert (staging / 'catss-diagnostics.tsv').is_file()
+          print('AGORA_FULL_CORPUS_ROUNDTRIP_OK', len(staged_files),
+                'files, 349670 alignment slots, 6218 references', flush=True)
+          PY
