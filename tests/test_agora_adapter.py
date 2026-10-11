@@ -191,12 +191,17 @@ def test_agora_partial_hardlink_failure_rolls_back_without_touching_source(
     original_link = os.link
     count = 0
 
-    def fail_second(source_file: object, target_file: object, **kwargs: object) -> None:
+    def fail_second(
+        source_file: os.PathLike[str] | str,
+        target_file: os.PathLike[str] | str,
+        *,
+        follow_symlinks: bool = True,
+    ) -> None:
         nonlocal count
         count += 1
         if count == 2:
             raise OSError("injected link failure")
-        original_link(source_file, target_file, **kwargs)
+        original_link(source_file, target_file, follow_symlinks=follow_symlinks)
 
     monkeypatch.setattr(agora_adapter.os, "link", fail_second)
     with pytest.raises(OSError, match="injected link failure"):
