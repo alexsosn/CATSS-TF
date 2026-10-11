@@ -147,15 +147,31 @@ def audit_lxx_reference_surface_candidates(
                     else:
                         counts["exact_multiple"] += 1
 
-    with_overlap = 0
+    unavoidable_overlap = 0
+    avoidable_overlap_only = 0
     for scope, alignment_id, (start, stop) in single_candidates:
-        competitors = candidate_intervals[scope]
-        if any(
-            competing_id != alignment_id and other_start < stop and start < other_stop
-            for competing_id, intervals in competitors.items()
-            for other_start, other_stop in intervals
-        ):
-            with_overlap += 1
+        unavoidable = False
+        possible = False
+        for competing_id, intervals in candidate_intervals[scope].items():
+            if competing_id == alignment_id:
+                continue
+            # Every competing alignment has >=1 actual candidate interval.
+            # One unavoidable pairwise collision takes priority over any
+            # other competitor that could choose a disjoint alternative.
+            overlaps = tuple(
+                other_start < stop and start < other_stop
+                for other_start, other_stop in intervals
+            )
+            if all(overlaps):
+                unavoidable = True
+                break
+            if any(overlaps):
+                possible = True
+        if unavoidable:
+            unavoidable_overlap += 1
+        elif possible:
+            avoidable_overlap_only += 1
+    with_overlap = unavoidable_overlap + avoidable_overlap_only
     without_overlap = len(single_candidates) - with_overlap
     assert counts["exact_single"] == with_overlap + without_overlap
 
@@ -167,8 +183,8 @@ def audit_lxx_reference_surface_candidates(
         scalar_references=counts["scalar_references"],
         exact_single=counts["exact_single"],
         exact_single_with_overlap=with_overlap,
-        exact_single_with_unavoidable_overlap=0,  # RED: not implemented
-        exact_single_with_avoidable_overlap_only=0,  # RED: not implemented
+        exact_single_with_unavoidable_overlap=unavoidable_overlap,
+        exact_single_with_avoidable_overlap_only=avoidable_overlap_only
         exact_single_without_overlap=without_overlap,
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
