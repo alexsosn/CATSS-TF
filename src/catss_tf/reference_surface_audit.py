@@ -257,6 +257,10 @@ def _classify_joint_intervals(
                 return "multiple"
             continue
         for start, stop in reversed(ordered[index][1]):
-            if all(stop <= other_start or other_stop <= start for other_start, other_stop in selected):
+            is_disjoint = all(
+                stop <= other_start or other_stop <= start
+                for other_start, other_stop in selected
+            )
+            if is_disjoint:
                 pending.append((index + 1, (*selected, (start, stop))))
     return "unique" if solutions == 1 else "impossible"
