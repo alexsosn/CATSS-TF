@@ -283,6 +283,12 @@ candidate assignment), `joint_multiple_groups` (at least two assignments),
 `joint_incomplete_groups` (at least one referenced alignment has no valid
 candidate, including missing parents or unsupported lexical normalizations),
 or `joint_indeterminate_groups` (the search budget was exceeded).
+The search uses lazy iterative depth-first iterator frames: the active
+frontier is proportional to assignment depth rather than the number of
+candidate alternatives, with a 10,000-visited-state limit per group.
+**Input candidate intervals and deterministic sorted alternatives still
+consume memory proportional to input size**; the visit budget is not an
+overall memory or CPU limit on input normalization and sorting.
 These categories partition `reference_groups`. Every input document
 must have a **distinct CATSS source filename**: the audit rejects repeated
 `source_name` values with `ValueError`, including identical or empty
@@ -304,7 +310,8 @@ before proposing any canonical `catss_reference_target` relation. See
 `docs/research/issue-96-overlap-triage.md`,
 `docs/research/issue-96-pairwise-necessity.md`,
 `docs/research/issue-96-joint-candidate-feasibility.md`,
-`docs/research/issue-96-duplicate-source-provenance.md` and issue #96.
+`docs/research/issue-96-duplicate-source-provenance.md`,
+`docs/research/issue-96-memory-bounded-dfs.md` and issue #96.
 
 ## Reference edges
 

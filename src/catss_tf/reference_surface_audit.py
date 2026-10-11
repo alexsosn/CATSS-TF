@@ -245,25 +245,31 @@ def _classify_joint_intervals(
         ((alignment_id, tuple(sorted(spans))) for alignment_id, spans in tasks.items()),
         key=lambda item: (len(item[1]), item[0]),
     )
-    # An iterative DFS avoids recursion-depth errors on large user datasets.
-    # The state budget caps work and prevents unproven uniqueness/impossibility.
-    pending: list[tuple[int, tuple[tuple[int, int], ...]]] = [(0, ())]
-    visited = 0
+    # Frame per active depth rather than eager tuples for *every* sibling.
+    # Root entry counts as a visited state. Subsequent admissible child
+    # entries consume the budget only as their iterator is advanced.
+    selected: list[tuple[int, int]] = []
+    frames: list[typing.Iterator[tuple[int, int]]] = [iter(ordered[0][1])]
+    visited = 1
     solutions = 0
-    while pending:
+    while frames:
+        try:
+            start, stop = next(frames[-1])
+        except StopIteration:
+            frames.pop()
+            if selected:
+                selected.pop()
+            continue
+        if any(start < other_stop and other_start < stop for other_start, other_stop in selected):
+            continue
         if visited >= max_states:
             return "indeterminate"
-        index, selected = pending.pop()
         visited += 1
-        if index == len(ordered):
+        if len(frames) == len(ordered):
             solutions += 1
             if solutions == 2:
                 return "multiple"
-            continue
-        for start, stop in reversed(ordered[index][1]):
-            is_disjoint = all(
-                stop <= other_start or other_stop <= start for other_start, other_stop in selected
-            )
-            if is_disjoint:
-                pending.append((index + 1, (*selected, (start, stop))))
+        else:
+            selected.append((start, stop))
+            frames.append(iter(ordered[len(frames)][1]))
     return "unique" if solutions == 1 else "impossible"
