@@ -137,3 +137,44 @@ def test_download_parallel_source_manifest_excludes_unrequested_par_files(
 
     assert [item.relative_path for item in manifest.files] == ["01.First.par"]
     assert (destination / "99.Unrelated.par").exists()
+
+def test_download_ignores_preexisting_partial_symlink_without_clobbering_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "parallel"
+    destination.mkdir()
+    victim = tmp_path / "unrelated-private.txt"
+    victim.write_bytes(b"keep this unrelated content")
+    old_partial = destination / "01.First.par.part"
+    old_partial.symlink_to(victim)
+
+    monkeypatch.setattr(source, "_fetch_bytes", lambda url: b"actual CATSS payload")
+    manifest = source.download_parallel_source(
+        destination,
+        base_url="https://example.invalid/parallel",
+        filenames=("01.First.par",),
+    )
+
+    assert victim.read_bytes() == b"keep this unrelated content"
+    assert old_partial.is_symlink() and old_partial.resolve() == victim
+    assert (destination / "01.First.par").read_bytes() == b"actual CATSS payload"
+    assert manifest.files[0].size_bytes == len(b"actual CATSS payload")
+
+
+def test_download_preserves_unrelated_stale_partial_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "parallel"
+    destination.mkdir()
+    old_partial = destination / "01.First.par.part"
+    old_partial.write_bytes(b"stale file owned by a different operation")
+    monkeypatch.setattr(source, "_fetch_bytes", lambda url: b"new verified payload")
+
+    source.download_parallel_source(
+        destination,
+        base_url="https://example.invalid/parallel",
+        filenames=("01.First.par",),
+    )
+
+    assert old_partial.read_bytes() == b"stale file owned by a different operation"
+    assert (destination / "01.First.par").read_bytes() == b"new verified payload"
