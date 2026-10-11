@@ -5,7 +5,10 @@ import dataclasses
 import hashlib
 import os
 import pathlib
+import ssl
 import typing
+import urllib.error
+import urllib.parse
 import urllib.request
 
 CCAT_PARALLEL_BASE_URL = "https://ccat.sas.upenn.edu/gopher/text/religion/biblical/parallel"
@@ -95,6 +98,7 @@ def download_parallel_source(
     base_url: str = CCAT_PARALLEL_BASE_URL,
     filenames: collections.abc.Iterable[str] = CATSS_PARALLEL_FILENAMES,
     overwrite: bool = False,
+    ca_bundle: str | os.PathLike[str] | None = None,
 ) -> ParallelSourceManifest:
     """Download CATSS parallel files directly from the configured upstream host.
 
@@ -112,7 +116,11 @@ def download_parallel_source(
     if len(names) != len(set(names)):
         raise SourceDownloadError("duplicate CATSS parallel filenames were requested")
 
-    upstream = base_url.rstrip("/")
+    upstream = _verified_https_base_url(base_url)
+    if ca_bundle is not None and not pathlib.Path(ca_bundle).is_file():
+        raise SourceDownloadError(
+            f"verified CA bundle must be an existing PEM file: {ca_bundle}"
+        )
     for name in names:
         _validate_filename(name)
         target = root / name
@@ -121,8 +129,17 @@ def download_parallel_source(
 
         url = f"{upstream}/{name}"
         try:
-            payload = _fetch_bytes(url)
+            payload = _fetch_bytes(url) if ca_bundle is None else _fetch_bytes(url, ca_bundle=ca_bundle)
         except Exception as exc:
+            reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
+            if isinstance(reason, ssl.SSLCertVerificationError):
+                raise SourceDownloadError(
+                    f"TLS certificate validation failed for {url}: {reason}. "
+                    "Use an independently verified CA chain with --ca-bundle PATH, "
+                    "an explicitly authenticated HTTPS origin via --base-url HTTPS_URL, "
+                    "or an already-downloaded local CATSS source directory. "
+                    "Do not disable certificate verification."
+                ) from exc
             raise SourceDownloadError(f"failed to download {url}: {exc}") from exc
         if not payload:
             raise SourceDownloadError(f"empty response while downloading {url}")
@@ -182,9 +199,61 @@ def _validate_filename(name: str) -> None:
         raise SourceDownloadError(f"invalid CATSS parallel filename: {name!r}")
 
 
-def _fetch_bytes(url: str) -> bytes:
+def _verified_https_base_url(value: str) -> str:
+    """Reject ambiguous or insecure origins before any network I/O."""
+    parts = urllib.parse.urlsplit(value)
+    if (
+        value != value.strip()
+        or parts.scheme != "https"
+        or not parts.hostname
+        or parts.username is not None
+        or parts.password is not None
+        or "?" in value
+        or "#" in value
+    ):
+        raise SourceDownloadError(
+            "CATSS source requires an HTTPS base URL without credentials, query or fragment"
+        )
+    return value.rstrip("/")
+
+
+class _HttpsOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Never let a verified initial request downgrade or change its origin."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: typing.Any,
+        code: int,
+        msg: str,
+        headers: typing.Any,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        before = urllib.parse.urlsplit(req.full_url)
+        after = urllib.parse.urlsplit(newurl)
+        if (
+            after.scheme != "https"
+            or not after.hostname
+            or after.username is not None
+            or after.password is not None
+            or (after.hostname, after.port) != (before.hostname, before.port)
+        ):
+            raise urllib.error.URLError(
+                "HTTPS redirect to a different origin or insecure protocol is forbidden"
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _fetch_bytes(url: str, *, ca_bundle: str | os.PathLike[str] | None = None) -> bytes:
+    context = ssl.create_default_context(
+        cafile=str(ca_bundle) if ca_bundle is not None else None
+    )
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPSHandler(context=context),
+        _HttpsOnlyRedirectHandler(),
+    )
     request = urllib.request.Request(url, headers={"User-Agent": "CATSS-TF/0.0.0"})
-    with urllib.request.urlopen(request, timeout=60) as response:
+    with opener.open(request, timeout=60) as response:
         return typing.cast(bytes, response.read())
 
 
