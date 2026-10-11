@@ -4,6 +4,7 @@ import io
 import ssl
 import urllib.error
 import urllib.request
+from typing import Any, cast
 from pathlib import Path
 
 import pytest
@@ -29,9 +30,10 @@ def test_downloader_accepts_explicit_ca_bundle_with_verified_tls(
             observed.append(("url", request.full_url))
             return io.BytesIO(b"verified test payload")
 
-    monkeypatch.setattr(source.ssl, "create_default_context", capture_context)
-    monkeypatch.setattr(source.urllib.request, "build_opener", lambda *handlers: FakeOpener())
-    manifest = source.download_parallel_source(
+    monkeypatch.setattr(ssl, "create_default_context", capture_context)
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *handlers: FakeOpener())
+    download = cast(Any, source.download_parallel_source)
+    manifest = download(
         tmp_path / "output",
         filenames=("01.Genesis.par",),
         base_url="https://verified.example.invalid/parallel",
@@ -66,7 +68,7 @@ def test_downloader_rejects_unverified_or_ambiguous_origin_before_network(
 
 def test_https_to_http_redirect_is_rejected() -> None:
     original = urllib.request.Request("https://ccat.sas.upenn.edu/start")
-    handler = source._HttpsOnlyRedirectHandler()
+    handler = getattr(source, "_HttpsOnlyRedirectHandler")()
     with pytest.raises(urllib.error.URLError, match="HTTPS"):
         handler.redirect_request(
             original, None, 302, "Found", {}, "http://untrusted.example.invalid/file"
