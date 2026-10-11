@@ -129,7 +129,10 @@ def download_parallel_source(
 
         url = f"{upstream}/{name}"
         try:
-            payload = _fetch_bytes(url) if ca_bundle is None else _fetch_bytes(url, ca_bundle=ca_bundle)
+            if ca_bundle is None:
+                payload = _fetch_bytes(url)
+            else:
+                payload = _fetch_bytes(url, ca_bundle=ca_bundle)
         except Exception as exc:
             reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
             if isinstance(reason, ssl.SSLCertVerificationError):
