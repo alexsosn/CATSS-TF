@@ -1,6 +1,7 @@
 """A matched Greek word is a candidate, not a verified CATSS reference target."""
 
 import dataclasses
+import tracemalloc
 
 import pytest
 
@@ -400,3 +401,41 @@ def test_duplicate_empty_catss_documents_are_ambiguous_provenance() -> None:
     with pytest.raises(ValueError, match="duplicate CATSS source name"):
         audit_lxx_reference_surface_candidates((document, document), provider)
     assert provider.calls == []
+
+
+def test_joint_dfs_frontier_is_memory_bounded_before_state_cutoff() -> None:
+    # The original eager pending stack allocated one selected-prefix tuple
+    # for each of 80,000 siblings, despite a one-state search budget.
+    task = {"one": {(i, i + 1) for i in range(80_000)}}
+    tracemalloc.start()
+    try:
+        result = _classify_joint_intervals(task, max_states=1)
+        _current, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert result == "indeterminate"
+    assert peak < 4_000_000, f"excess DFS frontier allocation: {peak} bytes"
+
+
+@pytest.mark.parametrize(
+    ("tasks", "budget", "expected"),
+    [
+        ({"a": {(0, 1)}, "b": {(1, 2)}}, 3, "unique"),
+        ({"a": {(0, 1)}, "b": {(0, 1)}}, 2, "impossible"),
+        ({"a": {(0, 2)}, "b": {(1, 3), (2, 3)}}, 3, "unique"),
+        ({"a": {(0, 1), (1, 2)}, "b": {(2, 3)}}, 3, "indeterminate"),
+        ({"a": {(0, 1), (1, 2)}, "b": {(2, 3)}}, 4, "indeterminate"),
+        ({"a": {(0, 1), (1, 2)}, "b": {(2, 3)}}, 5, "multiple"),
+        ({"a": {(0, 1), (1, 2)}, "b": {(0, 1), (1, 2)}, "c": {(0, 1), (1, 2)}},
+         100, "impossible"),
+    ],
+)
+def test_joint_dfs_iterative_semantics_match_depth_first_oracle(
+    tasks: dict[str, set[tuple[int, int]]], budget: int, expected: str
+) -> None:
+    assert _classify_joint_intervals(tasks, max_states=budget) == expected
+
+
+def test_joint_dfs_long_chain_avoids_recursion_and_clone_of_selected_prefix() -> None:
+    tasks = {f"a{i:04d}": {(2 * i, 2 * i + 1)} for i in range(1_200)}
+    assert _classify_joint_intervals(tasks, max_states=1_201) == "unique"
