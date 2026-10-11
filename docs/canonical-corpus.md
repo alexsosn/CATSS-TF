@@ -256,13 +256,24 @@ print(surface)
 The aggregate distinguishes one exact contiguous candidate, multiple
 occurrences, no matching sequence, Greek-token-free references,
 normalization obstacles, missing parent spans and unsupported sources.
+For locally unique occurrences, `exact_single_with_overlap` counts those
+whose candidate **word-offset interval** intersects at least one
+candidate interval from a *different* alignment in the same source and
+exact Greek parent key (including another alignment's ambiguous matches).
+`exact_single_without_overlap` is the complementary count, and they sum
+to `exact_single`. Multiple scalar references on the same alignment do
+not compete with themselves; separate CATSS source traditions are counted
+independently even where parent book/verse keys coincide.
+
 The report includes **no raw source text, Greek parent word IDs, or
-canonical target edges**. Even `exact_single` is **not a verified
-reference destination**: contextual references and other competing
-alignments can prevent an unambiguous joint placement. Follow the
-existing LXX resolver's stricter full-document validation before
-proposing any canonical `catss_reference_target` relation. See
-`docs/research/issue-96-reference-surface-candidates.md` and issue #96.
+canonical target edges**. Neither a local `exact_single` match nor an
+`exact_single_without_overlap` match is a verified reference destination:
+contextual references, implicit (unreferenced) alignment tasks, and
+joint-placement constraints may still prevent any one-to-one mapping.
+Follow the existing LXX resolver's stricter full-document validation
+before proposing any canonical `catss_reference_target` relation. See
+`docs/research/issue-96-reference-surface-candidates.md`,
+`docs/research/issue-96-overlap-triage.md` and issue #96.
 
 ## Reference edges
 
