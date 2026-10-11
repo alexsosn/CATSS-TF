@@ -37,7 +37,7 @@ Agora issue #135 and #221 are still OPEN for managed parent-dependent feature-mo
 After implementing the first adapter, an independent cross-check of `.github/workflows/ci.yml`, step **Materialize complete canonical corpus**, found that the *actual pinned 46-file source* is only accepted with the explicit reviewed native option:
 
 ```python
-allowed_validation_codes={
+allowed_validation_codes = {
     "invalid_lxx_reference",
     "malformed_continuation",
     "unsplit_row",
