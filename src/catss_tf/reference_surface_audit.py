@@ -184,7 +184,7 @@ def audit_lxx_reference_surface_candidates(
         exact_single=counts["exact_single"],
         exact_single_with_overlap=with_overlap,
         exact_single_with_unavoidable_overlap=unavoidable_overlap,
-        exact_single_with_avoidable_overlap_only=avoidable_overlap_only
+        exact_single_with_avoidable_overlap_only=avoidable_overlap_only,
         exact_single_without_overlap=without_overlap,
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
