@@ -6,6 +6,7 @@ import typing
 from catss_tf.lxx_resolver import (
     LxxSpan,
     LxxVerseProvider,
+    _mapping_kind,
     normalize_catss_greek,
     normalize_lxx_greek,
 )
@@ -43,6 +44,13 @@ class LxxReferenceSurfaceCandidates:
     context_impossible_groups: int
     context_incomplete_groups: int
     context_indeterminate_groups: int
+    role_context_groups_with_eligible_pair: int
+    role_context_changed_groups: int
+    role_context_unique_groups: int
+    role_context_multiple_groups: int
+    role_context_impossible_groups: int
+    role_context_incomplete_groups: int
+    role_context_indeterminate_groups: int
     exact_multiple: int
     no_surface_match: int
     no_greek_tokens: int
@@ -87,6 +95,8 @@ def audit_lxx_reference_surface_candidates(
     # Implicit/default lexical rows can constrain an explicit reference group.
     # Index by source and exact unsuffixed default parent, not by MT verse alone.
     implicit_alignments: dict[_CandidateScope, dict[str, tuple[str, ...]]] = {}
+    # Mirror the LXX resolver's typed annotation roles, never raw spelling.
+    roles_by_scope: dict[_CandidateScope, dict[str, str]] = {}
     single_candidates: list[tuple[_CandidateScope, str, tuple[int, int]]] = []
     seen_source_names: set[str] = set()
 
@@ -119,6 +129,9 @@ def audit_lxx_reference_surface_candidates(
                     implicit_alignments.setdefault(implicit_scope, {})[alignment.alignment_id] = (
                         alignment.lxx_tokens
                     )
+                    roles_by_scope.setdefault(implicit_scope, {})[alignment.alignment_id] = (
+                        _mapping_kind(alignment)
+                    )
                 for reference in alignment.lxx_references:
                     counts["scalar_references"] += 1
                     if status is LxxSourceStatus.UNSUPPORTED:
@@ -137,6 +150,9 @@ def audit_lxx_reference_surface_candidates(
                     )
                     scope = (document.source_name, *key)
                     expected_alignments.setdefault(scope, set()).add(alignment.alignment_id)
+                    roles_by_scope.setdefault(scope, {})[alignment.alignment_id] = _mapping_kind(
+                        alignment
+                    )
                     if key not in span_cache:
                         span = provider.get_span(*key)
                         if span is not None:
@@ -224,7 +240,10 @@ def audit_lxx_reference_surface_candidates(
         "indeterminate": 0,
     }
     context_counts = dict.fromkeys(joint_counts, 0)
+    role_context_counts = dict.fromkeys(joint_counts, 0)
     context_groups_with_implicit = 0
+    role_context_groups_with_eligible_pair = 0
+    role_context_changed_groups = 0
     for scope, alignment_ids in expected_alignments.items():
         candidates = candidate_intervals.get(scope, {})
         missing_explicit = any(not candidates.get(alignment_id) for alignment_id in alignment_ids)
@@ -236,44 +255,62 @@ def audit_lxx_reference_surface_candidates(
         explicit_outcome = "incomplete" if missing_explicit else _classify_joint_intervals(tasks)
         joint_counts[explicit_outcome] += 1
 
+        context_outcome = explicit_outcome
         implicit = implicit_alignments.get(scope, {})
-        if not implicit:
-            context_counts[explicit_outcome] += 1
-            continue
-        context_groups_with_implicit += 1
-        if missing_explicit:
-            context_counts["incomplete"] += 1
-            continue
+        if implicit:
+            context_groups_with_implicit += 1
+            if missing_explicit:
+                context_outcome = "incomplete"
+            else:
+                # Explicit lexical candidates guarantee an exact-key
+                # normalized Greek parent haystack already in the cache.
+                haystack = token_cache.get(scope[1:])
+                incomplete = haystack is None
+                if haystack is not None:
+                    for alignment_id, tokens in implicit.items():
+                        if alignment_id in tasks:
+                            raise ValueError(
+                                f"duplicate alignment task in CATSS context: {alignment_id}"
+                            )
+                        try:
+                            needle = tuple(normalize_catss_greek(token) for token in tokens)
+                        except ValueError:
+                            incomplete = True
+                            break
+                        length = len(needle)
+                        implicit_matches = {
+                            (i, i + length)
+                            for i in range(len(haystack) - length + 1)
+                            if haystack[i : i + length] == needle
+                        }
+                        if not implicit_matches:
+                            incomplete = True
+                            break
+                        tasks[alignment_id] = implicit_matches
+                context_outcome = (
+                    "incomplete" if incomplete else _classify_joint_intervals(tasks)
+                )
+        context_counts[context_outcome] += 1
 
-        # An explicit matching lexical candidate guarantees a normalized
-        # exact-key parent haystack already cached during the scalar audit.
-        haystack = token_cache.get(scope[1:])
-        if haystack is None:
-            context_counts["incomplete"] += 1
-            continue
-        incomplete = False
-        for alignment_id, tokens in implicit.items():
-            if alignment_id in tasks:
-                raise ValueError(f"duplicate alignment task in CATSS context: {alignment_id}")
-            try:
-                needle = tuple(normalize_catss_greek(token) for token in tokens)
-            except ValueError:
-                incomplete = True
-                break
-            length = len(needle)
-            implicit_matches = {
-                (i, i + length)
-                for i in range(len(haystack) - length + 1)
-                if haystack[i : i + length] == needle
-            }
-            if not implicit_matches:
-                incomplete = True
-                break
-            tasks[alignment_id] = implicit_matches
-        outcome = "incomplete" if incomplete else _classify_joint_intervals(tasks)
-        context_counts[outcome] += 1
+        roles = roles_by_scope[scope]
+        eligible_pair = (
+            "transposition_alignment" in roles.values()
+            and "transposition_carrier" in roles.values()
+        )
+        if eligible_pair:
+            role_context_groups_with_eligible_pair += 1
+        role_outcome = (
+            _classify_joint_intervals(tasks, roles=roles)
+            if eligible_pair and context_outcome != "incomplete"
+            else context_outcome
+        )
+        role_context_counts[role_outcome] += 1
+        if role_outcome != context_outcome:
+            role_context_changed_groups += 1
+
     assert sum(joint_counts.values()) == len(expected_alignments)
     assert sum(context_counts.values()) == len(expected_alignments)
+    assert sum(role_context_counts.values()) == len(expected_alignments)
 
     assert counts["scalar_references"] == sum(
         value for name, value in counts.items() if name not in {"source_files", "scalar_references"}
@@ -298,6 +335,13 @@ def audit_lxx_reference_surface_candidates(
         context_impossible_groups=context_counts["impossible"],
         context_incomplete_groups=context_counts["incomplete"],
         context_indeterminate_groups=context_counts["indeterminate"],
+        role_context_groups_with_eligible_pair=role_context_groups_with_eligible_pair,
+        role_context_changed_groups=role_context_changed_groups,
+        role_context_unique_groups=role_context_counts["unique"],
+        role_context_multiple_groups=role_context_counts["multiple"],
+        role_context_impossible_groups=role_context_counts["impossible"],
+        role_context_incomplete_groups=role_context_counts["incomplete"],
+        role_context_indeterminate_groups=role_context_counts["indeterminate"],
         exact_multiple=counts["exact_multiple"],
         no_surface_match=counts["no_surface_match"],
         no_greek_tokens=counts["no_greek_tokens"],
@@ -310,22 +354,30 @@ def audit_lxx_reference_surface_candidates(
 
 
 def _classify_joint_intervals(
-    tasks: dict[str, set[tuple[int, int]]], *, max_states: int = 10000
+    tasks: dict[str, set[tuple[int, int]]],
+    *,
+    max_states: int = 10000,
+    roles: typing.Mapping[str, str] | None = None,
 ) -> typing.Literal["unique", "multiple", "impossible", "indeterminate"]:
-    """Boundedly count 0, 1 or 2 complete *candidate* assignments, not mappings."""
+    """Count 0, 1 or 2 bounded candidate assignments, optionally role-aware."""
     if not tasks or any(not spans for spans in tasks.values()) or max_states < 1:
         raise ValueError("joint candidate tasks must be nonempty and budget positive")
     if any(start < 0 or stop <= start for spans in tasks.values() for start, stop in spans):
         raise ValueError("candidate intervals must be nonempty and nonnegative")
+    if roles is not None and (
+        set(roles) != set(tasks)
+        or set(roles.values())
+        - {"exact", "transposition_alignment", "transposition_carrier"}
+    ):
+        raise ValueError("role-aware candidate tasks require a valid role for each alignment")
 
     ordered = sorted(
         ((alignment_id, tuple(sorted(spans))) for alignment_id, spans in tasks.items()),
         key=lambda item: (len(item[1]), item[0]),
     )
-    # Frame per active depth rather than eager tuples for *every* sibling.
-    # Root entry counts as a visited state. Subsequent admissible child
-    # entries consume the budget only as their iterator is advanced.
-    selected: list[tuple[int, int]] = []
+    # Lazy iterative DFS: one frame for each active depth rather than a
+    # cloned selected-prefix tuple for every alternative candidate.
+    selected: list[tuple[str, int, int]] = []
     frames: list[typing.Iterator[tuple[int, int]]] = [iter(ordered[0][1])]
     visited = 1
     solutions = 0
@@ -337,7 +389,22 @@ def _classify_joint_intervals(
             if selected:
                 selected.pop()
             continue
-        if any(start < other_stop and other_start < stop for other_start, other_stop in selected):
+        alignment_id = ordered[len(frames) - 1][0]
+        conflict = False
+        for other_id, other_start, other_stop in selected:
+            if stop <= other_start or other_stop <= start:
+                continue
+            if (
+                roles is not None
+                and start == other_start
+                and stop == other_stop
+                and {roles[alignment_id], roles[other_id]}
+                == {"transposition_alignment", "transposition_carrier"}
+            ):
+                continue
+            conflict = True
+            break
+        if conflict:
             continue
         if visited >= max_states:
             return "indeterminate"
@@ -347,6 +414,6 @@ def _classify_joint_intervals(
             if solutions == 2:
                 return "multiple"
         else:
-            selected.append((start, stop))
+            selected.append((alignment_id, start, stop))
             frames.append(iter(ordered[len(frames)][1]))
     return "unique" if solutions == 1 else "impossible"
