@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import os
 import pathlib
 
@@ -34,6 +35,11 @@ def _parent(root: pathlib.Path, data: dict[str, bytes] | None = None) -> pathlib
     for name, blob in (data or _SAMPLE).items():
         (root / f"{name}.tf").write_bytes(blob)
     return root
+
+
+def test_public_verifier_cannot_override_pinned_bhsa_expected_fingerprints() -> None:
+    signature = inspect.signature(verify_bhsa_parent_feature_blobs)
+    assert "expected_blob_shas" not in signature.parameters
 
 
 def test_valid_pinned_shape_streams_exact_git_blob_ids(tmp_path: pathlib.Path) -> None:
