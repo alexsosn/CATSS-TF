@@ -35,17 +35,12 @@ def snapshot(
         "slot_type": api.F.otype.slotType,
         "types": type_nodes,
         "values": {
-            feature: tuple((n, getattr(api.F, feature).v(n)) for n in nodes)
-            for feature in features
+            feature: tuple((n, getattr(api.F, feature).v(n)) for n in nodes) for feature in features
         },
-        "descendants": tuple(
-            (n, tuple(api.L.d(n, otype=slot_type))) for n in parents
-        ),
+        "descendants": tuple((n, tuple(api.L.d(n, otype=slot_type))) for n in parents),
         "query": tuple(tuple(row) for row in api.S.search(query, silent="deep")),
         "edges": {
-            feature: tuple(
-                (n, tuple(sorted(getattr(api.E, feature).f(n)))) for n in nodes
-            )
+            feature: tuple((n, tuple(sorted(getattr(api.E, feature).f(n)))) for n in nodes)
             for feature in edges
         },
     }
@@ -71,8 +66,7 @@ def verify(
     baseline = snapshot(native, types, features, parent_type, slot_type, query, edges)
     assert baseline["slot_type"] == slot_type
     assert all(
-        any(value is not None for _, value in baseline["values"][feature])
-        for feature in features
+        any(value is not None for _, value in baseline["values"][feature]) for feature in features
     ), "fixture lacks values for a required feature"
 
     cf_fabric = importlib.import_module("cfabric.core").Fabric
@@ -98,9 +92,9 @@ def verify(
     assert getattr(compiled_fabric, "_loaded_from_cfm", False), (
         "fresh loader silently fell back to raw .tf"
     )
-    assert snapshot(
-        compiled_api, types, features, parent_type, slot_type, query, edges
-    ) == baseline, "compiled Context-Fabric graph differs from native Text-Fabric"
+    assert (
+        snapshot(compiled_api, types, features, parent_type, slot_type, query, edges) == baseline
+    ), "compiled Context-Fabric graph differs from native Text-Fabric"
 
 
 def test_native_to_context_fabric_raw_and_compiled(tmp_path: Path) -> None:
