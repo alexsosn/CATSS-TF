@@ -49,3 +49,29 @@ Native `materialize_corpus` defaults to allowing **none**. A v1 Agora manifest w
 Decision: preserve the **strict default** for direct `python -m catss_tf.agora_adapter ...`; expose explicit repeatable `--allow CODE`, forward exactly the selected code strings into native `materialize_corpus(..., allowed_validation_codes=...)`. Agora's immutable reviewed root manifest must list each of these three known source diagnostics **literally in its `execution.args`**; describe them as explicit acknowledged source anomalies, not trust bypasses, and never allow `unknown_annotation`, `unknown_mt_strategy_siglum` or mapping/parent drift by default. The native materializer retains per-finding ignored-diagnostic provenance in `catss-diagnostics.tsv` and continues to validate all source rows. The wildcard `*.par` still accepts user-local subsets; no exact source hash is asserted beyond native manifest SHA-256 fingerprints.
 
 Add a **real pinned 46-file adapter invocation** to existing opt-in complete-catss-audit after canonical reload: precreate an empty stage, execute `agora_adapter.main([... --allow CODE ...])`, then reload as a standalone Text-Fabric corpus with exactly 349,670 alignment slots, 6,218 reference nodes, intact `catss-diagnostics.tsv` and absence of the private child. Preserve the existing full native audit; this is deliberate additional coverage of the public Agora path. Never publish/upload generated corpus artifacts.
+
+## R16-2 — Adversarial correction: the allowances were not required by this snapshot
+
+The first integration plan incorrectly inferred that the three `allowed_validation_codes`
+arguments passed by the existing native 46-file CI were *necessary* for the
+actual complete source. The real CI [38176020121](https://github.com/alexsosn/CATSS-TF/actions/runs/38176020121)
+printed `CanonicalMaterializationSummary(... ignored_validation_findings=0,
+audit_ok=True)` for 46 files and 349,670 alignments. **Zero ignored findings**
+is concrete evidence that these allowances had no observed effect on
+this snapshot. Their presence in an older invocation is not proof of necessity.
+
+Security implication: embedding all three `--allow` pairs into an Agora
+manifest unconditionally would silently permit novel corrupted user-local
+snapshots with `invalid_lxx_reference`, `malformed_continuation` or
+`unsplit_row` to publish. That conflicts with the fail-closed default and
+would be especially misleading because Agora accepts arbitrary user-local
+licensed source input. This must be corrected **before #119 merges**.
+
+Disposition: the manifest's fixed execution args must be only `{source}`,
+`--output`, `{output}` (strict validation); retain the adapter's opt-in
+repeatable `--allow CODE` for an explicitly invoked operator command and
+synthetic test proving it is forwarded, but never silently use this option
+through the default registered materializer. Strengthen the 46-file
+Agora-vs-native comparison by invoking the Agora adapter without `--allow`;
+if the 46-file corpus fails strict validation despite the previous zero ignored
+count, stop and investigate rather than silently reintroduce exceptions.
