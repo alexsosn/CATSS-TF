@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "plugin": {
+    "id": "catss-tf",
+    "name": "CATSS Hebrew-Greek alignment Text-Fabric",
+    "version": "0.1.0",
+    "repository": "alexsosn/CATSS-TF"
+  },
+  "materializers": [
+    {
+      "id": "catss-canonical",
+      "description": "Generate a standalone CATSS alignment-slot Text-Fabric corpus from user-local licensed CATSS .par files; no parent warp or network fetch.",
+      "acquisition": [
+        {
+          "type": "user-local",
+          "path_type": "directory",
+          "prompt": "Select a user-local directory containing licensed CATSS/CCAT parallel .par files; CATSS data redistribution is not authorized by this software license."
+        }
+      ],
+      "input": {
+        "type": "directory",
+        "required_globs": [
+          "*.par"
+        ],
+        "allow_symlinks": false
+      },
+      "execution": {
+        "type": "python-module",
+        "module": "catss_tf.agora_adapter",
+        "args": [
+          "{source}",
+          "--output",
+          "{output}"
+        ],
+        "network": "deny"
+      },
+      "output": {
+        "format": "text-fabric",
+        "required_paths": [
+          "otype.tf",
+          "oslots.tf",
+          "otext.tf",
+          "catss_alignment_id.tf"
+        ]
+      }
+    }
+  ]
+}

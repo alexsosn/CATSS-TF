@@ -1,0 +1,59 @@
+# #16 research — executable standalone CATSS Agora contract (stage 1)
+
+2026-10-11; main at merged R96-15 `05e95b011053c5607a3f89b3b6ae6a7fbcc27dc1`.
+
+## Actual downstream contract
+
+Read Agora `registry/schema/materializer-plugin.schema.json` at `main`: a root `agora.materializer.json` can advertise independently runnable materializer IDs with `user-local` acquisition, `input.type=directory`, `required_globs`, `allow_symlinks=false`, `execution.type=python-module`, literal `{source}` and `{output}` placeholders, and `execution.network=deny`. `output.format=text-fabric` can assert `otype.tf`, `oslots.tf`, `otext.tf`. A standalone native corpus MUST NOT specify an output `composition.kind=feature-module` or `parent_input`. The executable `python-module` must exist inside the installed package; the current `catss-tf` CLI offers only `fetch/validate/browse` and cannot produce a module in one command.
+
+Agora's `_create_staging_output` (existing Burns acceptance case in `alexsosn/CTC-TF`, `agora.materializer.json` and `ugarit_context_parsing.agora_adapter`) pre-creates an **empty staging directory**, whereas `catss_tf.canonical_materializer.materialize_corpus(source, destination)` **requires destination absent** and publishes atomically as a new sibling. Passing Agora's `{output}` directly would fail. The adapter must invoke native materialization in a **private absent child** under the pre-created output, validate native corpus files, and publish only those files into Agora's staging root, preserving native fail-closed behavior.
+
+## Boundaries from code and real pinned source checks
+
+Native `materialize_corpus` writes a real standalone Text-Fabric warp with `alignment` slots and source/provenance sidecars. The existing `tests/test_canonical_materializer.py` proves a tiny Genesis fixture yields loadable Text-Fabric `otype/oslots/otext` and stable `catss_alignment_id`. The full pinned 46-file audit at CATSS-TF PR #117 proves 349,670 canonical alignment slots and 6,218 reference nodes. The adapter must not parse/reinterpret CATSS itself, include licensed corpus files, or download automatically; it should simply invoke the existing native method.
+
+Agora issue #135 and #221 are still OPEN for managed parent-dependent feature-module installation/publication. The current `catss-bhsa` writer requires `BhsaParentProbe` and a parent-specific provider; `catss-lxx` requires `TextFabricLxxProvider` with exact pinned release identity. The pinned complete CCAT snapshot currently cannot always materialize full LXX due to JoshB 9:2 absent lettered subverse spans. **Do not declare or register these profiles yet**: declaring feature modules without tested trusted read-only parent bindings would be a false capability claim. The upstream #16 and downstream Agora#221 remain open until all profiles are executable.
+
+## Security and provenance risks
+
+- Reject absent, occupied, symlink output and source/output overlap **before invoking** native code. Reject non-directory/symlink source path; native source inspection independently rejects direct-child symlink `.par` files.
+- Validate every native output entry is a regular file (no symlinks, directories, hard-coded parent warp from another corpus or foreign files) and include `otype.tf`, `oslots.tf`, `otext.tf` plus at least one `catss_alignment_id.tf` feature. Reject unexpected file extensions (allow native `.tf` and `.tsv` files only), no fake missing files.
+- Publish with no-replace hard links into Agora-owned staging. If validation/copy fails, do not retain partial files, and remove private native child. Never write outside staging or into source/parent. Agora is responsible for transactional final promotion.
+- Do not run `catss-tf fetch` or any network action; the manifest acquisition is `user-local` only, and Agora execution network policy is `deny`.
+- An **empty staging root** is required; no overwriting even when foreign contents appear during execution.
+- This is one standalone artifact; do not bundle a BHSA or LXX parent warp or claim such compatibility.
+
+## Sources
+
+- https://github.com/alexsosn/Agora/blob/main/registry/schema/materializer-plugin.schema.json
+- https://github.com/alexsosn/CTC-TF/blob/master/agora.materializer.json
+- https://github.com/alexsosn/CTC-TF/blob/master/src/ugarit_context_parsing/agora_adapter.py
+- https://github.com/alexsosn/Agora/issues/135
+- https://github.com/alexsosn/Agora/issues/221
+- CATSS-TF `src/catss_tf/canonical_materializer.py`, `tests/test_canonical_materializer.py`, `LICENSE_SCOPE.md`.
+
+## R16-2 — Adversarial correction: the allowances were not required by this snapshot
+
+The first integration plan incorrectly inferred that the three `allowed_validation_codes`
+arguments passed by the existing native 46-file CI were *necessary* for the
+actual complete source. The real CI [38176020121](https://github.com/alexsosn/CATSS-TF/actions/runs/38176020121)
+printed `CanonicalMaterializationSummary(... ignored_validation_findings=0,
+audit_ok=True)` for 46 files and 349,670 alignments. **Zero ignored findings**
+is concrete evidence that these allowances had no observed effect on
+this snapshot. Their presence in an older invocation is not proof of necessity.
+
+Security implication: embedding all three `--allow` pairs into an Agora
+manifest unconditionally would silently permit novel corrupted user-local
+snapshots with `invalid_lxx_reference`, `malformed_continuation` or
+`unsplit_row` to publish. That conflicts with the fail-closed default and
+would be especially misleading because Agora accepts arbitrary user-local
+licensed source input. This must be corrected **before #119 merges**.
+
+Disposition: the manifest's fixed execution args must be only `{source}`,
+`--output`, `{output}` (strict validation); retain the adapter's opt-in
+repeatable `--allow CODE` for an explicitly invoked operator command and
+synthetic test proving it is forwarded, but never silently use this option
+through the default registered materializer. Strengthen the 46-file
+Agora-vs-native comparison by invoking the Agora adapter without `--allow`;
+if the 46-file corpus fails strict validation despite the previous zero ignored
+count, stop and investigate rather than silently reintroduce exceptions.
