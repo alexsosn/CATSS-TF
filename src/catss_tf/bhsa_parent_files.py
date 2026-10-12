@@ -24,6 +24,17 @@ class BhsaParentFingerprintError(ValueError):
     """The candidate parent does not match the pinned BHSA source features."""
 
 
+def _stat_identity(entry: os.stat_result) -> tuple[int, int, int, int, int]:
+    """Descriptor/path identity, byte count, and mutation-sensitive timestamps."""
+    return (
+        entry.st_dev,
+        entry.st_ino,
+        entry.st_size,
+        entry.st_mtime_ns,
+        entry.st_ctime_ns,
+    )
+
+
 def _fingerprint_file(path: pathlib.Path) -> str:
     """Hash an unchanged regular file using Git's raw blob-object algorithm."""
     try:
@@ -65,18 +76,11 @@ def _fingerprint_file(path: pathlib.Path) -> str:
             raise BhsaParentFingerprintError(
                 f"BHSA feature disappeared during read: {path.name}"
             ) from exc
-        identity = lambda entry: (  # noqa: E731
-            entry.st_dev,
-            entry.st_ino,
-            entry.st_size,
-            entry.st_mtime_ns,
-            entry.st_ctime_ns,
-        )
         if (
             total != opened.st_size
-            or identity(before) != identity(opened)
-            or identity(opened) != identity(after)
-            or identity(after) != identity(name_after)
+            or _stat_identity(before) != _stat_identity(opened)
+            or _stat_identity(opened) != _stat_identity(after)
+            or _stat_identity(after) != _stat_identity(name_after)
         ):
             raise BhsaParentFingerprintError(f"BHSA feature changed during read: {path.name}")
         return digest.hexdigest()
