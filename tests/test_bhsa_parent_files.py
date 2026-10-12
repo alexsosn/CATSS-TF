@@ -61,6 +61,7 @@ def test_wrong_or_unspecified_parent_version_rejected_before_read(
     version: str, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     parent = _parent(tmp_path / "parent")
+
     def no_open(*args: object, **kwargs: object) -> None:
         raise AssertionError("invalid version must fail before reading parent")
 
@@ -123,6 +124,7 @@ def test_invalid_expected_fingerprint_rejected_before_any_parent_read(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     parent = _parent(tmp_path / "parent")
+
     def no_open(*args: object, **kwargs: object) -> None:
         raise AssertionError("malformed fingerprint should fail before reads")
 
