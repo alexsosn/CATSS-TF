@@ -139,6 +139,7 @@ def test_verifier_uses_bounded_reads_not_path_read_bytes(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     parent = _parent(tmp_path / "parent")
+
     def no_read_bytes(_self: pathlib.Path) -> bytes:
         raise AssertionError("unbounded Path.read_bytes forbidden")
 
