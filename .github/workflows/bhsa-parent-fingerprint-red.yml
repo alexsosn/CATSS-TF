@@ -1,0 +1,17 @@
+name: BHSA parent fingerprint test-only RED (never merge)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest
+      - name: Expected RED before BHSA parent verifier exists
+        run: PYTHONPATH=src python -m pytest -q tests/test_bhsa_parent_files.py
