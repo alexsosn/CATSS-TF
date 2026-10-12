@@ -146,7 +146,8 @@ def test_verifier_uses_bounded_reads_not_path_read_bytes(
         raise AssertionError("unbounded Path.read_bytes forbidden")
 
     monkeypatch.setattr(pathlib.Path, "read_bytes", no_read_bytes)
-    assert _verify_fixture(parent, parent_version="2021", expected_blob_shas=_expected(_SAMPLE)) == _expected(_SAMPLE)
+    expected = _expected(_SAMPLE)
+    assert _verify_fixture(parent, parent_version="2021", expected_blob_shas=expected) == expected
 
 
 def test_parent_file_modified_during_streaming_is_rejected(
