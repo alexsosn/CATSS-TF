@@ -51,17 +51,7 @@ def test_agora_manifest_is_standalone_user_local_network_denied() -> None:
     assert item["execution"] == {
         "type": "python-module",
         "module": "catss_tf.agora_adapter",
-        "args": [
-            "{source}",
-            "--output",
-            "{output}",
-            "--allow",
-            "invalid_lxx_reference",
-            "--allow",
-            "malformed_continuation",
-            "--allow",
-            "unsplit_row",
-        ],
+        "args": ["{source}", "--output", "{output}"],
         "network": "deny",
     }
     assert item["output"]["format"] == "text-fabric"
