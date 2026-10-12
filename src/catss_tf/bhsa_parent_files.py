@@ -12,6 +12,7 @@ import os
 import pathlib
 import re
 import stat
+
 from catss_tf.bhsa_schema import BHSA_FEATURE_BLOB_SHAS, BHSA_VERSION
 
 _CHUNK_BYTES = 1024 * 1024
