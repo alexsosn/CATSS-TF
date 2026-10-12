@@ -8,10 +8,6 @@
 6. Independent adversarial exact-head review: force source/output overlap and symlink paths, staged partial failure, native success followed by forged invalid output, and absence of silent network/parent dependency; review actual CI synthetic TF readback. If defects, RED-fix-recheck-re-review.
 7. Squash merge with expected-head guard only after all gates pass; link Agora#221 and keep #16 open until the other two profiles are supported and downstream registration is verified.
 
-## Review correction — explicit full-source diagnostic policy
-
-Blocking research finding: the real native 46-file canonical CI requires explicit `invalid_lxx_reference`, `malformed_continuation`, and `unsplit_row` allow codes. A manifest without these fails normal full-source user-facing materialization. **RED before changing production:** tests that `--allow CODE` is accepted, forwarded unmodified to native, and that no option defaults to any allowance; demonstrate a source containing `invalid_lxx_reference` fails by default and passes only with that explicit code while still preserving diagnostic TSV. Keep `unknown_annotation` disallowed. **GREEN:** parser repeatable allow flag, manifest literals for the three reviewed codes, and run the actual adapter against 46 pinned files in full CI with TF load/assertions; documentation must disclose these flags and failure policy. Re-run full exact-head matrix and independent review.
-
 ## R16-2 review-fix RED → GREEN (strict registered source policy)
 
 The existing 46-file source reports **0 ignored validation findings**, so the

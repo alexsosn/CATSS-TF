@@ -145,18 +145,16 @@ The standalone adapter can be smoke-tested with an existing empty directory:
 ```sh
 mkdir -p ./generated/agora-staging
 python -m catss_tf.agora_adapter ./data/catss-parallel \
-  --output ./generated/agora-staging \
-  --allow invalid_lxx_reference \
-  --allow malformed_continuation \
-  --allow unsplit_row
+  --output ./generated/agora-staging
 ```
 
-The three `--allow` flags above explicitly acknowledge **documented parser
-diagnostics** on the pinned full 46-file source. They are present verbatim
-in the reviewed Agora manifest; they do not excuse unknown sigla, drop
-source lines, or remove `catss-diagnostics.tsv`. Calling the adapter
-without flags preserves the strict native default. If source diagnostics
-differ, materialization fails rather than guessing.
+The Agora manifest explicitly uses **strict validation**: no parser
+diagnostic is pre-authorized. A direct operator can use repeatable
+`--allow CODE` flags for a separately reviewed anomalous source, but
+those flags are not part of the registered default. The 46-file source
+audit observed **zero ignored validation findings**, so there is no
+evidence these allowances were needed for that snapshot. If the source
+has new diagnostics, default materialization fails rather than guessing.
 
 This is **upstream executability metadata**, not a claim that Agora has already
 registered or installed it. Agora must use an explicitly approved installation,

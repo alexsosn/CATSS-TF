@@ -1450,9 +1450,6 @@ jobs:
           staging.mkdir()  # Actual Agora contract: output is pre-created empty.
           assert agora_main([
               str(source), '--output', str(staging),
-              '--allow', 'invalid_lxx_reference',
-              '--allow', 'malformed_continuation',
-              '--allow', 'unsplit_row',
           ]) == 0
           assert not (staging / '.catss-agora-native-artifact').exists()
           original_files = {

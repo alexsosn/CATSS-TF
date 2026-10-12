@@ -30,13 +30,7 @@
         "args": [
           "{source}",
           "--output",
-          "{output}",
-          "--allow",
-          "invalid_lxx_reference",
-          "--allow",
-          "malformed_continuation",
-          "--allow",
-          "unsplit_row"
+          "{output}"
         ],
         "network": "deny"
       },
