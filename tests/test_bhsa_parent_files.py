@@ -11,7 +11,6 @@ from unittest.mock import patch
 import pytest
 
 import catss_tf.bhsa_parent_files as bhsa_parent_files
-
 from catss_tf.bhsa_parent_files import (
     BhsaParentFingerprintError,
     verify_bhsa_parent_feature_blobs,
