@@ -286,10 +286,13 @@ def test_agora_diagnostics_are_strict_by_default_and_explicitly_opt_in(
     tmp_path: pathlib.Path,
 ) -> None:
     source = _source(tmp_path / "source")
-    (source / "01.Genesis.par").write_text("Gen 1:1\nHB\tLOGOS [6x7]\n", encoding="utf-8")
+    # A physically unsplit row is a parser diagnostic, not an unknown
+    # semantic siglum. The earlier [6x7] fixture had BOTH diagnostics,
+    # correctly refusing to publish when only one was acknowledged.
+    (source / "01.Genesis.par").write_text("Gen 1:1\nHBONLY\n", encoding="utf-8")
     output = tmp_path / "staging"
     output.mkdir()
-    with pytest.raises(CanonicalMaterializationError, match="invalid_lxx_reference"):
+    with pytest.raises(CanonicalMaterializationError, match="unsplit_row"):
         _run(source, output)
     assert list(output.iterdir()) == []
 
@@ -300,13 +303,13 @@ def test_agora_diagnostics_are_strict_by_default_and_explicitly_opt_in(
                 "--output",
                 str(output),
                 "--allow",
-                "invalid_lxx_reference",
+                "unsplit_row",
             ]
         )
         == 0
     )
     diagnostics = (output / "catss-diagnostics.tsv").read_text(encoding="utf-8")
-    assert "invalid_lxx_reference" in diagnostics
+    assert "unsplit_row" in diagnostics
 
 
 def test_agora_known_diagnostic_allowance_does_not_mask_unknown_annotations(
