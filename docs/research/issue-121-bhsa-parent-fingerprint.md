@@ -9,3 +9,41 @@
 
 ## Implementation boundary
 This ticket creates a reusable, **read-only** exact-feature-content preflight function. It has NO right to declare arbitrary source paths `trusted`, NO new registered `catss-bhsa` materializer ID, no BHSA data download, no duplicate warp. Test with an injected tiny set of expected fixture blob hashes for a positive streaming roundtrip; also test production constants are selected by default and that a synthetic 8-file parent cannot fool them. A real immutable BHSA 2021 mount, exact node/count readback, and full managed host integration still must be tested before enabling an executable producer on the manifest.
+
+## Grounded immutable upstream Git object verification (2026-10-12)
+
+Used the GitHub Git Trees API on `ETCBC/bhsa` to follow exact pinned commit
+`b112c161cfd21eae403d51a2733740d8743460e7` → `tf/` tree
+`0070f11a59187cc60d581ffe03bd50585459b0c0` → `tf/2021/` tree
+`572fd11e9f11a1488ee94191e64b57e654e4e037`. Compared all **eight**
+mapping-critical feature blob object IDs (not merely the five entries without
+numeric digits in their names) against `BHSA_FEATURE_BLOB_SHAS`:
+
+| feature | Git blob ID from pinned tree | expected pinned ID match |
+| --- | --- | --- |
+| otype | ecc4d0ecd388bd673d0aebfa8ab2a81508bec23c | yes |
+| oslots | b389833f7624bb252dd2cf25cf798d4a6a82cc1b | yes |
+| book | 70407385b60568eaeb44dbeb45f3a7dfafd2a6af | yes |
+| chapter | 7834c771c0a42fe81b21a8284e95e4226a448108 | yes |
+| verse | 06046e58967de2a46b6e976584bd29c98fe2fdab | yes |
+| g_cons_utf8 | 8b1b0513cb7ae061ba180c8d6cdbfdb496aa4d44 | yes |
+| g_word_utf8 | f78cce06300190ed5c8ef9ca1fa72b16cdfca5eb | yes |
+| qere_utf8 | c4540df6d0068776ac4bb4475a28c7a403a8904e | yes |
+
+Reference: `https://api.github.com/repos/ETCBC/bhsa/git/trees/572fd11e9f11a1488ee94191e64b57e654e4e037`.
+This is direct **Git object metadata**, not a download of licensed BHSA
+content or a positive run of this verifier on a local 2021 Text-Fabric parent.
+Actual consumer-facing loading still requires Agora's trusted immutable
+read-only source snapshot and a separate real parent-run test.
+
+## Independent security correction after initial implementation
+
+The first candidate exposed `expected_blob_shas` as a public keyword argument,
+which would let an integration caller accidentally substitute its own hashes
+and thereby defeat the reason for a **pinned** parent. A RED-first regression
+in `tests/test_bhsa_parent_files.py` now inspects the public signature and
+asserts it cannot accept this override. Only unit fixtures patch the module's
+constant in an isolated test process; the production entrypoint always
+compares against the module-imported pinned `BHSA_FEATURE_BLOB_SHAS`.
+This does not turn arbitrary parent directories into trusted sources:
+provenance is separately authenticated by Agora's `ParentBinding`.
