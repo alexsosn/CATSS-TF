@@ -218,7 +218,7 @@ def test_agora_partial_hardlink_failure_rolls_back_without_touching_source(
             raise OSError("injected link failure")
         original_link(source_file, target_file, follow_symlinks=follow_symlinks)
 
-    monkeypatch.setattr(agora_adapter.os, "link", fail_second)
+    monkeypatch.setattr(os, "link", fail_second)
     with pytest.raises(OSError, match="injected link failure"):
         _run(source, output)
     assert list(output.iterdir()) == []
@@ -274,7 +274,7 @@ def test_agora_no_replace_if_other_writer_claims_destination(
         claimed.write_text("FOREIGN")
         raise FileExistsError("concurrent claim")
 
-    monkeypatch.setattr(agora_adapter.os, "link", concurrent_claim)
+    monkeypatch.setattr(os, "link", concurrent_claim)
     with pytest.raises(FileExistsError, match="concurrent claim"):
         _run(source, output)
     assert claimed is not None
