@@ -12,8 +12,6 @@ import os
 import pathlib
 import re
 import stat
-from collections.abc import Mapping
-
 from catss_tf.bhsa_schema import BHSA_FEATURE_BLOB_SHAS, BHSA_VERSION
 
 _CHUNK_BYTES = 1024 * 1024
@@ -89,12 +87,12 @@ def verify_bhsa_parent_feature_blobs(
     parent_directory: str | os.PathLike[str],
     *,
     parent_version: str,
-    expected_blob_shas: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Verify selected BHSA TF raw features against their pinned Git blob IDs.
 
-    By default this checks ALL eight immutable mapping-critical BHSA 2021
-    features; the injectable expectation supports synthetic unit fixtures only.
+    This always checks ALL eight immutable mapping-critical BHSA 2021
+    features. The caller CANNOT substitute expected fingerprints. Synthetic
+    unit tests patch module constants; production code never does.
     This function never creates a parent binding or approves an arbitrary
     directory as trusted. The later Agora adapter must require a trusted
     read-only parent from Agora and a compatible exact source revision.
@@ -104,7 +102,7 @@ def verify_bhsa_parent_feature_blobs(
             f"BHSA parent version must be {BHSA_VERSION}, got {parent_version!r}"
         )
 
-    expected = dict(BHSA_FEATURE_BLOB_SHAS if expected_blob_shas is None else expected_blob_shas)
+    expected = dict(BHSA_FEATURE_BLOB_SHAS)
     if not expected or any(
         not isinstance(name, str)
         or _FEATURE_NAME.fullmatch(name) is None
