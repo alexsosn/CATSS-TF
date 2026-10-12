@@ -122,8 +122,6 @@ def verify_bhsa_parent_feature_blobs(
     for feature in sorted(expected):
         value = _fingerprint_file(root / f"{feature}.tf")
         if value != expected[feature]:
-            raise BhsaParentFingerprintError(
-                f"BHSA pinned feature fingerprint mismatch: {feature}"
-            )
+            raise BhsaParentFingerprintError(f"BHSA pinned feature fingerprint mismatch: {feature}")
         observed[feature] = value
     return observed
