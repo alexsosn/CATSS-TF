@@ -44,3 +44,12 @@ def test_colliding_glyphs_keep_both_distinct_meanings(
     assert general_kind != sirach_kind
     assert f"catss_sem_{general_kind}" in FEATURE_SPECS
     assert f"catss_sem_{sirach_kind}" in FEATURE_SPECS
+
+
+def test_patterned_samaritan_apparatus_semantics_are_queryable() -> None:
+    spec = notation_spec("<sp26.35ap>", book="Ge")
+    assert spec is not None
+    assert spec.kind == "samaritan_apparatus_reference"
+    assert spec.contextual
+    assert f"catss_sem_{spec.kind}" in FEATURE_SPECS
+    assert f"catss_sem_{spec.kind}_lxx_payload" in FEATURE_SPECS
