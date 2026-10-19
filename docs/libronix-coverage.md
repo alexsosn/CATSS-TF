@@ -32,10 +32,8 @@ api = Fabric(locations="./generated/catss", silent="deep").loadAll(silent="deep"
 
 def elements(slot, side):
     nodes = api.L.u(slot, otype=f"{side}_element")
-    return tuple(
-        api.F.catss_text.v(node)
-        for node in sorted(nodes, key=api.F.catss_index.v)
-    )
+    return tuple(api.F.catss_text.v(node) for node in sorted(nodes, key=api.F.catss_index.v))
+
 
 def aligned_pairs(hebrew_source, greek_source):
     for slot in api.F.otype.s("alignment"):
@@ -43,6 +41,7 @@ def aligned_pairs(hebrew_source, greek_source):
         greek = elements(slot, "lxx")
         if hebrew_source in hebrew and greek_source in greek:
             yield api.F.catss_alignment_id.v(slot), hebrew, greek
+
 
 # Replace with actual CCAT forms, e.g. from a specific alignment:
 # list(aligned_pairs("MLK", "BASILEU/S"))
