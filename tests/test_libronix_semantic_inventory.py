@@ -4,6 +4,8 @@ The source spelling can have different meanings in Sirach. Enumerating by
 raw glyph must not erase a general-CATSS meaning from the TF feature schema.
 """
 
+from pathlib import Path
+
 import pytest
 
 from catss_tf.notation import documented_notation, notation_spec
@@ -45,8 +47,10 @@ def test_every_documented_meaning_has_queryable_projection_features(book: str) -
 def test_colliding_glyphs_keep_both_distinct_meanings(
     raw: str, general_kind: str, sirach_kind: str
 ) -> None:
-    assert notation_spec(raw, book="Ge").kind == general_kind
-    assert notation_spec(raw, book="Sir").kind == sirach_kind
+    general = notation_spec(raw, book="Ge")
+    sirach = notation_spec(raw, book="Sir")
+    assert general is not None and general.kind == general_kind
+    assert sirach is not None and sirach.kind == sirach_kind
     assert general_kind != sirach_kind
     assert f"catss_sem_{general_kind}" in FEATURE_SPECS
     assert f"catss_sem_{sirach_kind}" in FEATURE_SPECS
@@ -72,7 +76,7 @@ def test_patterned_samaritan_apparatus_semantics_are_queryable() -> None:
     ),
 )
 def test_documented_semantics_survive_projection_compilation_and_tf_write(
-    tmp_path, source: str, book: str, raw: str
+    tmp_path: Path, source: str, book: str, raw: str
 ) -> None:
     spec = notation_spec(raw, book=book)
     assert spec is not None
