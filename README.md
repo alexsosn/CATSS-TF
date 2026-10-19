@@ -44,14 +44,15 @@ catss-tf --version
 Read:
 
 1. [docs/canonical-corpus.md](docs/canonical-corpus.md) — standalone CATSS corpus and node model
-2. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
-3. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
-4. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
-5. [CHANGELOG.md](CHANGELOG.md)
-6. [research.md](research.md)
-7. [design.md](design.md)
-8. [plan.md](plan.md)
-9. [AGENTS.md](AGENTS.md)
+2. [docs/libronix-coverage.md](docs/libronix-coverage.md) — 2003 CATSS/Libronix feature crosswalk and known limits
+3. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
+4. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
+5. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
+6. [CHANGELOG.md](CHANGELOG.md)
+7. [research.md](research.md)
+8. [design.md](design.md)
+9. [plan.md](plan.md)
+10. [AGENTS.md](AGENTS.md)
 
 ## Architectural boundary
 
