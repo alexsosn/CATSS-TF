@@ -21,21 +21,25 @@ class CanonicalAlignedGroup:
     lxx_elements: tuple[str, ...]
 
 
-def _matching_slots(api: Any, form: str, element_type: str) -> set[int]:
-    """Find alignment slots through TF feature-value lookup."""
+def _matching_slots(api: Any, mt_form: str, lxx_form: str) -> tuple[set[int], set[int]]:
+    """Scan only source lexical feature entries, once for both forms.
 
-    slots: set[int] = set()
-    for node in api.F.catss_text.s(form):
-        if api.F.otype.v(node) != element_type:
-            continue
-        for slot in api.L.d(node, otype="alignment"):
-            slots.add(int(slot))
-    return slots
+    Text-Fabric NodeFeature.s(value) is itself a linear scan, not an index.
+    A single pass over the feature data avoids repeating that scan.
+    """
 
+    mt_slots: set[int] = set()
+    lxx_slots: set[int] = set()
+    for node, value in api.F.catss_text.items():
+        if value == mt_form and api.F.otype.v(node) == "mt_element":
+            mt_slots.update(int(slot) for slot in api.L.d(node, otype="alignment"))
+        elif value == lxx_form and api.F.otype.v(node) == "lxx_element":
+            lxx_slots.update(int(slot) for slot in api.L.d(node, otype="alignment"))
+    return mt_slots, lxx_slots
 
 def _ordered_elements(api: Any, slot: int, element_type: str) -> tuple[str, ...]:
     nodes = api.L.u(slot, otype=element_type)
-    return tuple(str(api.F.catss_text.v(node)) for node in sorted(nodes, key=api.F.catss_index.v))
+    return tuple(str(api.F.catss_text.v(n)) for n in sorted(nodes, key=api.F.catss_index.v))
 
 
 def find_aligned_groups(
@@ -58,10 +62,7 @@ def find_aligned_groups(
     if api.F.otype.slotType != "alignment":
         raise ValueError("find_aligned_groups requires the standalone CATSS alignment-slot warp")
 
-    mt_slots = _matching_slots(api, mt_form, "mt_element")
-    if not mt_slots:
-        return
-    lxx_slots = _matching_slots(api, lxx_form, "lxx_element")
+    mt_slots, lxx_slots = _matching_slots(api, mt_form, lxx_form)
     for slot in sorted(mt_slots & lxx_slots):
         source_name = str(api.F.catss_source.v(slot))
         if source is not None and source_name != source:
