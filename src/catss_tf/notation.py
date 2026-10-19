@@ -149,6 +149,17 @@ def documented_specs() -> dict[str, NotationSpec]:
     return {**_GENERAL, **_SIRACH}
 
 
+def documented_semantic_specs() -> dict[str, NotationSpec]:
+    """Return every documented semantic kind across general and Sirach profiles.
+
+    Unlike documented_specs(), this catalogue is keyed by semantic identity,
+    so Sirach's alternate meanings of '*' and '[..]' cannot replace the
+    distinct general CATSS meanings in the Text-Fabric feature inventory.
+    """
+
+    return {spec.kind: spec for spec in (*_GENERAL.values(), *_SIRACH.values())}
+
+
 def semantic_feature_name(spec: NotationSpec) -> str:
     """Return the query-native scalar feature for one semantic notation kind."""
 
