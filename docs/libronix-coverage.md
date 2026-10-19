@@ -30,6 +30,7 @@ from tf.fabric import Fabric
 
 api = Fabric(locations="./generated/catss", silent="deep").loadAll(silent="deep")
 
+
 def elements(slot, side):
     nodes = api.L.u(slot, otype=f"{side}_element")
     return tuple(api.F.catss_text.v(node) for node in sorted(nodes, key=api.F.catss_index.v))
