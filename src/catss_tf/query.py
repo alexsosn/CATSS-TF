@@ -37,6 +37,7 @@ def _matching_slots(api: Any, mt_form: str, lxx_form: str) -> tuple[set[int], se
             lxx_slots.update(int(slot) for slot in api.L.d(node, otype="alignment"))
     return mt_slots, lxx_slots
 
+
 def _ordered_elements(api: Any, slot: int, element_type: str) -> tuple[str, ...]:
     nodes = api.L.u(slot, otype=element_type)
     return tuple(str(api.F.catss_text.v(n)) for n in sorted(nodes, key=api.F.catss_index.v))
