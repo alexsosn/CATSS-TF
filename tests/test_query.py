@@ -37,23 +37,15 @@ MLK\tBASILEU/S
 """,
     )
     materialize_corpus(source, tmp_path / "catss")
-    return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(
-        silent="deep"
-    )
+    return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(silent="deep")
 
 
 def _independent_oracle(api: Any, hebrew: str, greek: str) -> tuple[str, ...]:
     """Unindexed slot scan, deliberately separate from feature-value search."""
     result: list[str] = []
     for slot in api.F.otype.s("alignment"):
-        mt = {
-            api.F.catss_text.v(node)
-            for node in api.L.u(slot, otype="mt_element")
-        }
-        lxx = {
-            api.F.catss_text.v(node)
-            for node in api.L.u(slot, otype="lxx_element")
-        }
+        mt = {api.F.catss_text.v(node) for node in api.L.u(slot, otype="mt_element")}
+        lxx = {api.F.catss_text.v(node) for node in api.L.u(slot, otype="lxx_element")}
         if hebrew in mt and greek in lxx:
             result.append(api.F.catss_alignment_id.v(slot))
     return tuple(result)
@@ -64,9 +56,7 @@ def test_group_search_matches_independent_loaded_tf_oracle(tmp_path: Path) -> No
     hits = tuple(find_aligned_groups(api, "MLK", "BASILEU/S"))
 
     assert len(hits) == 3
-    assert tuple(hit.alignment_id for hit in hits) == _independent_oracle(
-        api, "MLK", "BASILEU/S"
-    )
+    assert tuple(hit.alignment_id for hit in hits) == _independent_oracle(api, "MLK", "BASILEU/S")
     assert hits[0].mt_elements == ("MLK", "DBR")
     assert hits[0].lxx_elements == ("BASILEU/S", "LOGOS")
     assert hits[0].source == "01.Genesis.par"
