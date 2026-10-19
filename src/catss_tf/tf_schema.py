@@ -4,7 +4,7 @@ import dataclasses
 import pathlib
 import typing
 
-from catss_tf.notation import documented_specs, semantic_feature_name
+from catss_tf.notation import documented_semantic_specs, semantic_feature_name
 from catss_tf.source import CATSS_PARALLEL_FILENAMES
 from catss_tf.technique import TECHNIQUE_SCHEMA_VERSION, TechniqueError, derive_technique_state
 
@@ -298,7 +298,7 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
             lane_description = description if lane == 1 else f"{description} (membership lane 2)"
             specs[lane_name] = TfFeatureSpec(lane_name, "str", lane_description)
 
-    semantic_specs = {spec.kind: spec for spec in documented_specs().values()}
+    semantic_specs = documented_semantic_specs()
     semantic_kinds = set(semantic_specs) | set(_RAW_SEMANTIC_KINDS)
     for kind in sorted(semantic_kinds):
         semantic = semantic_specs.get(kind)

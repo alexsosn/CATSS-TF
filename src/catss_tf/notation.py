@@ -125,6 +125,11 @@ _SIRACH: dict[str, NotationSpec] = {
 }
 
 
+_SAMARITAN_APPARATUS_REFERENCE = _spec(
+    "samaritan_apparatus_reference", "reference", contextual=True
+)
+
+
 def notation_spec(raw: str, *, book: str) -> NotationSpec | None:
     """Return documented semantics for raw, with book-sensitive collisions."""
 
@@ -133,7 +138,7 @@ def notation_spec(raw: str, *, book: str) -> NotationSpec | None:
         if sirach is not None:
             return sirach
     if raw.startswith("<sp") and raw.endswith(">"):
-        return _spec("samaritan_apparatus_reference", "reference", contextual=True)
+        return _SAMARITAN_APPARATUS_REFERENCE
     return _GENERAL.get(raw)
 
 
@@ -147,6 +152,18 @@ def documented_specs() -> dict[str, NotationSpec]:
     """Return the documented exact notation catalogue with stable semantics."""
 
     return {**_GENERAL, **_SIRACH}
+
+
+def documented_semantic_specs() -> dict[str, NotationSpec]:
+    """Return every documented semantic kind across general and Sirach profiles.
+
+    Unlike documented_specs(), this catalogue is keyed by semantic identity,
+    so Sirach's alternate meanings of '*' and '[..]' cannot replace the
+    distinct general CATSS meanings in the Text-Fabric feature inventory.
+    """
+
+    specs = (*_GENERAL.values(), *_SIRACH.values(), _SAMARITAN_APPARATUS_REFERENCE)
+    return {spec.kind: spec for spec in specs}
 
 
 def semantic_feature_name(spec: NotationSpec) -> str:
