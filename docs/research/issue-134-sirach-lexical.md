@@ -32,13 +32,21 @@ tokens (down from 7,868). The number of witness-bearing groups reporting
 multiple MT tokens dropped from **7,312** to **1,293**. Groups with zero MT
 tokens rose from **46** to **117**.
 
-The same CI deliberately failed its old pinned canonical full-corpus assertion:
-unclassified translation-technique rows increased **31 → 102**. This is a
-correct fail-closed consequence of removing 71 source witness pseudo-words,
-not a reason to silently assign these rows `LXX+` or witness lacuna.
-The exact-head follow-up CI now guards both the zero leaked markers
-and the 71 newly unclassified witness-only rows (research issue #136).
-Leave these rows unresolved pending separate scholarly grounding.
+The same CI deliberately failed its historical full-corpus assertion:
+unclassified translation-technique rows increased **31 → 102**. A separate
+real-source transition comparison established the causal breakdown across
+**7,396** alignments with changed lexical counts: **7,324** remain classified,
+**43** become unclassified as Hebrew-empty/Greek-present, **28** become
+unclassified because an LXX-minus marker has no surviving lexical MT, and
+**one** remains an unresolved Sirach witness-lacuna conflict. The **net
+increase of 71** is precisely 43 + 28, not 71 Greek additions.
+
+All 71 newly unresolved technique judgments must stay visible rather than
+being silently assigned `LXX+`, omission or lacuna. Full CI pins the
+per-category transition counts and compares native `mt_element` totals
+with an independently parsed source-to-TF count, replacing the obsolete
+pre-repair count. Their textual-critical explanation remains research
+issue #136; witness-to-reading links remain #132.
 
 The newly unclassified groups preserve the stable source-derived
 `catss_alignment_id`, MT-A raw text, annotation nodes and raw physical
