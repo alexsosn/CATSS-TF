@@ -1403,8 +1403,8 @@ jobs:
           assert result.summary.mt_b_carriers == 6, result.summary.mt_b_carriers
           # Preserve all CATSS alignments without guessing formal translation technique.
           # 71 newly witness-only zero-MT Greek rows are now explicitly unclassified,
-# instead of being incorrectly treated as Hebrew lexical correspondences.
-assert result.summary.unclassified_techniques == 102, result.summary.unclassified_techniques
+          # instead of being incorrectly treated as Hebrew lexical correspondences.
+          assert result.summary.unclassified_techniques == 102, result.summary.unclassified_techniques
           assert result.summary.alignment_slots == result.summary.alignments
           assert result.summary.audit_ok
           assert (output / 'otype.tf').is_file()
