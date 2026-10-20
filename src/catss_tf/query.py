@@ -233,7 +233,7 @@ def find_unclassified_alignments(
 
     available = set(api.Fall())
     if "catss_tt_status" not in available:
-        return
+        raise ValueError("canonical TF API must load catss_tt_status before querying")
     statuses = [
         int(slot)
         for slot, status in api.F.catss_tt_status.items()
