@@ -21,3 +21,27 @@ The entire behavior is rooted in `_build_alignment` calling `_mt_lexical_reading
 
 ## Research exclusions
 The source `>12` partial-match risk is separately auditable: existing `_extract_annotations` matches `>1` inside `>12` because it lacks a digit boundary. This ticket does not grant permission to discard unvalidated attached or out-of-range notation. Keep such material visible and address it only with explicit RED coverage and source evidence.
+
+## Empirical GREEN audit (full CCAT snapshot, 2026-10-20)
+
+The first complete 46-file run after the source-sensitive lexical fix (PR #135,
+CI 39386302504, head `a81a50d`) recorded **14,106** Sirach alignments,
+**8,119** typed witness markers, unchanged manuscript counts (7,868 MT-A
+and 251 MT-B), and **zero** witness label spellings retained in MT lexical
+tokens (down from 7,868). The number of witness-bearing groups reporting
+multiple MT tokens dropped from **7,312** to **1,293**. Groups with zero MT
+tokens rose from **46** to **117**.
+
+The same CI deliberately failed its old pinned canonical full-corpus assertion:
+unclassified translation-technique rows increased **31 → 102**. This is a
+correct fail-closed consequence of removing 71 source witness pseudo-words,
+not a reason to silently assign these rows `LXX+` or witness lacuna.
+The exact-head follow-up CI now guards both the zero leaked markers
+and the 71 newly unclassified witness-only rows (research issue #136).
+Leave these rows unresolved pending separate scholarly grounding.
+
+The newly unclassified groups preserve the stable source-derived
+`catss_alignment_id`, MT-A raw text, annotation nodes and raw physical
+line provenance. The unrelated unmarked empty MT row at Sir 19:14 is still
+tracked in #60, and witness-to-reading links remain unverified under #132.
+No original CATSS text or generated TF artifacts are stored here.
