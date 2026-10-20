@@ -168,9 +168,7 @@ from tf.fabric import Fabric
 
 api = Fabric(locations="./generated/catss", silent="deep").loadAll(silent="deep")
 
-for group in find_unclassified_alignments(
-    api, source="27.Sirach.par", reason_contains="LXX-minus"
-):
+for group in find_unclassified_alignments(api, source="27.Sirach.par", reason_contains="LXX-minus"):
     print(group.book, group.chapter, group.verse, group.alignment_id)
     print(group.source_line_first, group.source_line_last, group.reason)
     print(group.mt_elements, group.lxx_elements)
