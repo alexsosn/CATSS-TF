@@ -179,14 +179,15 @@ jobs:
           assert audit.witness_groups_with_zero_mt == 117, audit
           print('SIRACH_WITNESS_RESEARCH', asdict(audit), flush=True)
 
-          # Compare the old and corrected parser on the same source rows.
-          # Legacy LXX-plus rows discarded MT candidates even before this fix;
-          # merely finding old lexical candidates is not a causal test.
+          # Compare historical and corrected lexical cardinalities per source
+          # alignment, not a coarse "old reader had a token" heuristic.
+          from collections import Counter
           from dataclasses import replace
           from catss_tf.parser import _mt_lexical_readings
           from catss_tf.technique import TechniqueError, derive_alignment_technique
 
-          newly_unclassified = []
+          transitions = Counter()
+          examples = {}
           changed_rows = 0
           for verse in document.verses:
               for row in verse.alignments:
@@ -196,39 +197,33 @@ jobs:
                   if old_mt_n == row.mt_count:
                       continue
                   changed_rows += 1
-                  assert old_mt_n > row.mt_count, (
-                      verse.chapter, verse.verse, min(row.source_lines)
-                  )
+                  identity = (verse.chapter, verse.verse, min(row.source_lines))
+                  assert old_mt_n > row.mt_count, identity
                   assert any(
                       a.side == 'mt_a' and (
                           a.kind.startswith('sirach_witness_')
                           or a.kind == 'sirach_reading_lacking_in_witness'
                       )
                       for a in row.annotations
-                  ), (verse.chapter, verse.verse, min(row.source_lines))
-                  old_row = replace(row, mt_count=old_mt_n)
-                  try:
-                      old_technique = derive_alignment_technique(document.source_name, old_row)
-                  except TechniqueError:
-                      old_technique = None
-                  try:
-                      new_technique = derive_alignment_technique(document.source_name, row)
-                  except TechniqueError as exc:
-                      if (
-                          old_technique is not None
-                          and 'Hebrew-empty Greek alignment' in str(exc)
-                      ):
-                          newly_unclassified.append(
-                              (verse.chapter, verse.verse, min(row.source_lines))
-                          )
-                  else:
-                      assert new_technique is not None
-          assert len(newly_unclassified) == 71, (
-              len(newly_unclassified), newly_unclassified[:12]
-          )
+                  ), identity
+
+                  def status(candidate):
+                      try:
+                          derive_alignment_technique(document.source_name, candidate)
+                          return 'derived'
+                      except TechniqueError as exc:
+                          return 'unclassified:' + str(exc).split(' requires')[0].split(' contradicts')[0]
+
+                  pair = (status(replace(row, mt_count=old_mt_n)), status(row))
+                  transitions[pair] += 1
+                  examples.setdefault(pair, [])
+                  if len(examples[pair]) < 4:
+                      examples[pair].append(identity)
+          assert changed_rows >= audit.witness_groups_with_zero_mt
           print('SIRACH_CORRECTED_MT_GROUPS', changed_rows, flush=True)
-          print('SIRACH_NEWLY_UNCLASSIFIED_WITNESS_ROWS',
-                len(newly_unclassified), newly_unclassified[:12], flush=True)
+          for pair, count in sorted(transitions.items()):
+              print('SIRACH_TECHNIQUE_TRANSITION', pair, count,
+                    examples[pair], flush=True)
           # Anomalous Sir 19:14 from #60: only expose counts and annotation
           # kinds; never print licensed textual or reconstructed source cells.
           for verse in document.verses:
