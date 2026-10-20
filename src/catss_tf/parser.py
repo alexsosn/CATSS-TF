@@ -929,7 +929,10 @@ def _extract_annotations(
                 annotations.append(
                     Annotation(side=side, kind=spec.kind, raw=raw, family=spec.family)
                 )
-        for match in re.finditer(r">(?:10|[1-9])", cell):
+        # Require the *whole* numeric witness ID: >12 is not a >1 marker,
+        # nor may >101 silently turn into >10. Attached lexical notation
+        # remains accepted until source grammar research proves otherwise.
+        for match in re.finditer(r">(?:10|[1-9])(?![0-9])", cell):
             raw = match.group(0)
             spec = notation_spec(">", book=book)
             if spec is not None:
