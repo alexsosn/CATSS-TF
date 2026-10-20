@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from tf.fabric import Fabric  # type: ignore[import-untyped]
 
-from catss_tf import find_unclassified_alignments, materialize_corpus  # type: ignore[attr-defined]
+from catss_tf import find_unclassified_alignments, materialize_corpus
 
 
 def _loaded(tmp_path: Path, *, unresolved: bool = True) -> Any:
