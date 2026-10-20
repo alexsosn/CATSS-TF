@@ -224,6 +224,14 @@ jobs:
           for pair, count in sorted(transitions.items()):
               print('SIRACH_TECHNIQUE_TRANSITION', pair, count,
                     examples[pair], flush=True)
+          assert changed_rows == 7396, changed_rows
+          assert transitions[('derived', 'derived')] == 7324, transitions
+          assert transitions[('derived', 'unclassified:CATSS LXX-minus')] == 28, transitions
+          assert transitions[('derived', 'unclassified:Hebrew-empty Greek alignment')] == 43, transitions
+          assert transitions[(
+              'unclassified:Sirach witness lacuna',
+              'unclassified:Sirach witness lacuna'
+          )] == 1, transitions
           # Anomalous Sir 19:14 from #60: only expose counts and annotation
           # kinds; never print licensed textual or reconstructed source cells.
           for verse in document.verses:
@@ -1418,8 +1426,8 @@ jobs:
           assert result.summary.reference_ranges == 1, result.summary.reference_ranges
           assert result.summary.mt_b_carriers == 6, result.summary.mt_b_carriers
           # Preserve all CATSS alignments without guessing formal translation technique.
-          # 71 newly witness-only zero-MT Greek rows are now explicitly unclassified,
-          # instead of being incorrectly treated as Hebrew lexical correspondences.
+          # 43 Hebrew-empty/Greek-present and 28 Greek-minus/MT-empty
+          # source rows are now explicitly unclassified, not fabricated matches.
           assert result.summary.unclassified_techniques == 102, result.summary.unclassified_techniques
           assert result.summary.alignment_slots == result.summary.alignments
           assert result.summary.audit_ok
@@ -1458,7 +1466,20 @@ jobs:
           )
           assert api is not None
           assert len(api.F.otype.s('alignment')) == 349670
-          assert len(api.F.otype.s('mt_element')) == 350219
+          # An independently parsed source-to-TF inventory catches dropped
+          # lexical elements, including the former Sirach witness pseudo-words.
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          expected_mt = sum(
+              row.mt_count
+              for filename in CATSS_PARALLEL_FILENAMES
+              for verse in parse_parallel_file(Path('/tmp/catss-parallel') / filename).verses
+              for row in verse.alignments
+          )
+          actual_mt = len(api.F.otype.s('mt_element'))
+          assert actual_mt == expected_mt, (actual_mt, expected_mt)
+          print('CANONICAL_MT_LEXICAL_ELEMENTS', actual_mt, flush=True)
           carriers = tuple(api.F.otype.s('mt_b_carrier'))
           assert len(carriers) == 6, carriers
           from collections import Counter
