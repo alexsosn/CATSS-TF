@@ -25,8 +25,8 @@ Thus **four** old annotations represented partial numeric matches on real
 CATSS data. These were not missing manuscript readings and must not be
 counted in witness-absence analyses.
 
-The follow-up CI assertion pins `(legacy, complete, typed) == (92, 88, 88)`
-against the same source snapshot and emits only four source locations without
+The follow-up CI assertion pins `(legacy, complete, independent-oracle, typed) == (92, 88, 88, 88)`
+against the same source snapshot, independently counts full numeric digit runs, and emits only four source locations without
 text. All 46 files materialized successfully, the canonical TF corpus
 reloaded, and the Agora smoke passed in the discovery run. Source bytes,
 lexical cells, reconstructions, and TF generated data remain outside git.
