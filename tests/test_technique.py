@@ -194,8 +194,8 @@ def test_alignment_apparent_minus_evidence_is_taken_from_typed_annotation() -> N
     ("source_name", "header", "mt_cell", "lxx_cell", "expected_cardinality"),
     (
         ("23.Prov.par", "Prov 28:18", "B/)XT", "{p} ---", "one_zero"),
-        ("27.Sirach.par", "Sir 5:2", ")XRY 3", "{p} ---", "many_zero"),
-        ("27.Sirach.par", "Sir 23:17", "B/W 3", "{p}", "many_zero"),
+        ("27.Sirach.par", "Sir 5:2", ")XRY 3", "{p} ---", "one_zero"),
+        ("27.Sirach.par", "Sir 23:17", "B/W 3", "{p}", "one_zero"),
     ),
 )
 def test_zero_token_greek_preverb_carriers_are_not_omissions(

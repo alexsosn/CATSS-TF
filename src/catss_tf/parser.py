@@ -646,7 +646,23 @@ def _build_alignment(
         ]
     )
 
-    mt_readings = _mt_lexical_readings(mt_col_a)
+    # Sirach witness numbers and >n absence labels are textual apparatus,
+    # not source Hebrew words. Match only exact, already-typed MT-A markers:
+    # never remove ambiguous attached forms or reconstructed MT-B content.
+    witness_markup = (
+        frozenset(
+            annotation.raw
+            for annotation in annotations
+            if annotation.side == "mt_a"
+            and (
+                annotation.kind.startswith("sirach_witness_")
+                or annotation.kind == "sirach_reading_lacking_in_witness"
+            )
+        )
+        if source_name == "27.Sirach.par" and verse.book == "Sir"
+        else frozenset()
+    )
+    mt_readings = _mt_lexical_readings(mt_col_a, ignore_exact_tokens=witness_markup)
     mt_tokens = tuple(reading.primary for reading in mt_readings)
     mt_ketiv_tokens = tuple(reading.ketiv for reading in mt_readings if reading.ketiv is not None)
     mt_qere_tokens = tuple(reading.qere for reading in mt_readings if reading.qere is not None)
@@ -1201,14 +1217,20 @@ def _brace_kind(raw: str) -> str:
     return "unknown"
 
 
-def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
+def _mt_lexical_readings(
+    cell: str, *, ignore_exact_tokens: frozenset[str] = frozenset()
+) -> tuple[MtReading, ...]:
     text = _prepare_lexical_text(cell)
     readings: list[MtReading] = []
     pending_aramaic = False
     pending_doubt = False
 
     for raw_token in text.split():
-        if _is_alignment_marker(raw_token) or raw_token.startswith("."):
+        if (
+            raw_token in ignore_exact_tokens
+            or _is_alignment_marker(raw_token)
+            or raw_token.startswith(".")
+        ):
             continue
 
         token = raw_token
