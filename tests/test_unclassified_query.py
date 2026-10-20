@@ -93,12 +93,14 @@ def test_unclassified_query_rejects_wrong_slot_warp() -> None:
         tuple(find_unclassified_alignments(fake))
 
 
-def test_partially_loaded_tf_cannot_silently_claim_no_unclassified_alignments() -> None:
-    partial: Any = SimpleNamespace(
-        F=SimpleNamespace(
-            otype=SimpleNamespace(slotType="alignment"),
-            Fall=lambda: ["catss_alignment_id"],
-        )
-    )
+def test_partially_loaded_tf_cannot_silently_claim_no_unclassified_alignments(
+    tmp_path: Path,
+) -> None:
+    _loaded(tmp_path)
+    fabric = Fabric(locations=str(tmp_path), modules=("catss",), silent="deep")
+    partial: Any = fabric.load("catss_alignment_id", silent="deep")
+    assert partial is not None
+    assert partial.F.otype.slotType == "alignment"
+    assert "catss_tt_status" not in partial.Fall()
     with pytest.raises(ValueError, match="catss_tt_status"):
         tuple(find_unclassified_alignments(partial))
