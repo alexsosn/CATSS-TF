@@ -171,9 +171,43 @@ jobs:
 
           document = parse_parallel_file(Path('/tmp/catss-parallel/27.Sirach.par'))
           audit = audit_sirach_witnesses(document)
-          assert audit.witness_markers > 0
-          assert audit.witness_groups > 0
+          # Exact pinned-source evidence from issue #132 / #134. A manuscript
+          # marker must not silently appear as a Hebrew lexical word again.
+          assert audit.witness_markers == 8119, audit.witness_markers
+          assert audit.witness_groups == 7565, audit.witness_groups
+          assert audit.witness_markers_lexically_retained == 0, audit
+          assert audit.witness_groups_with_zero_mt == 117, audit
           print('SIRACH_WITNESS_RESEARCH', asdict(audit), flush=True)
+
+          # Independently compare with the pre-fix lexical extraction rule,
+          # which did not omit typed witness labels. Only count *newly*
+          # Hebrew-empty alignments that remain explicitly unclassified.
+          from catss_tf.parser import _mt_lexical_readings
+          from catss_tf.technique import TechniqueError, derive_alignment_technique
+          newly_unclassified = []
+          for verse in document.verses:
+              for row in verse.alignments:
+                  if row.mt_count or row.lxx_count == 0:
+                      continue
+                  if not _mt_lexical_readings(row.mt_col_a):
+                      continue
+                  assert any(
+                      a.side == 'mt_a' and (
+                          a.kind.startswith('sirach_witness_')
+                          or a.kind == 'sirach_reading_lacking_in_witness'
+                      )
+                      for a in row.annotations
+                  ), (verse.chapter, verse.verse, min(row.source_lines))
+                  try:
+                      derive_alignment_technique(document.source_name, row)
+                  except TechniqueError as exc:
+                      if 'Hebrew-empty Greek alignment' in str(exc):
+                          newly_unclassified.append(
+                              (verse.chapter, verse.verse, min(row.source_lines))
+                          )
+          assert len(newly_unclassified) == 71, newly_unclassified[:12]
+          print('SIRACH_NEWLY_UNCLASSIFIED_WITNESS_ROWS',
+                len(newly_unclassified), newly_unclassified[:12], flush=True)
           # Anomalous Sir 19:14 from #60: only expose counts and annotation
           # kinds; never print licensed textual or reconstructed source cells.
           for verse in document.verses:
@@ -1368,7 +1402,9 @@ jobs:
           assert result.summary.reference_ranges == 1, result.summary.reference_ranges
           assert result.summary.mt_b_carriers == 6, result.summary.mt_b_carriers
           # Preserve all CATSS alignments without guessing formal translation technique.
-          assert result.summary.unclassified_techniques == 31, result.summary.unclassified_techniques
+          # 71 newly witness-only zero-MT Greek rows are now explicitly unclassified,
+# instead of being incorrectly treated as Hebrew lexical correspondences.
+assert result.summary.unclassified_techniques == 102, result.summary.unclassified_techniques
           assert result.summary.alignment_slots == result.summary.alignments
           assert result.summary.audit_ok
           assert (output / 'otype.tf').is_file()
