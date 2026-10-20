@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from tf.fabric import Fabric  # type: ignore[import-untyped]
 
-from catss_tf import find_unclassified_alignments, materialize_corpus
+from catss_tf import find_unclassified_alignments, materialize_corpus  # type: ignore[attr-defined]
 
 
 def _loaded(tmp_path: Path, *, unresolved: bool = True) -> Any:
@@ -24,14 +24,10 @@ HB 7\tLOGOS
             encoding="utf-8",
         )
     else:
-        (source / "27.Sirach.par").write_text(
-            "Sir 2:13\nHB\tLOGOS\n", encoding="utf-8"
-        )
+        (source / "27.Sirach.par").write_text("Sir 2:13\nHB\tLOGOS\n", encoding="utf-8")
     (source / "01.Genesis.par").write_text("Gen 1:1\nHB\tLOGOS\n", encoding="utf-8")
     materialize_corpus(source, tmp_path / "catss")
-    return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(
-        silent="deep"
-    )
+    return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(silent="deep")
 
 
 def _oracle(api: Any) -> tuple[tuple[int, str, str, tuple[str, ...]], ...]:
@@ -40,15 +36,15 @@ def _oracle(api: Any) -> tuple[tuple[int, str, str, tuple[str, ...]], ...]:
     for slot in api.F.otype.s("alignment"):
         if api.F.catss_tt_status.v(slot) != "unclassified":
             continue
-        annotations = tuple(
-            api.F.catss_kind.v(node) for node in api.L.u(slot, otype="annotation")
+        annotations = tuple(api.F.catss_kind.v(node) for node in api.L.u(slot, otype="annotation"))
+        rows.append(
+            (
+                slot,
+                api.F.catss_alignment_id.v(slot),
+                api.F.catss_tt_unclassified_reason.v(slot),
+                annotations,
+            )
         )
-        rows.append((
-            slot,
-            api.F.catss_alignment_id.v(slot),
-            api.F.catss_tt_unclassified_reason.v(slot),
-            annotations,
-        ))
     return tuple(rows)
 
 
