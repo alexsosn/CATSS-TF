@@ -91,3 +91,14 @@ def test_unclassified_query_rejects_wrong_slot_warp() -> None:
     fake: Any = SimpleNamespace(F=SimpleNamespace(otype=SimpleNamespace(slotType="word")))
     with pytest.raises(ValueError, match="alignment"):
         tuple(find_unclassified_alignments(fake))
+
+
+def test_partially_loaded_tf_cannot_silently_claim_no_unclassified_alignments() -> None:
+    partial: Any = SimpleNamespace(
+        F=SimpleNamespace(
+            otype=SimpleNamespace(slotType="alignment"),
+            Fall=lambda: ["catss_alignment_id"],
+        )
+    )
+    with pytest.raises(ValueError, match="catss_tt_status"):
+        tuple(find_unclassified_alignments(partial))
