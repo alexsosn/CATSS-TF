@@ -29,9 +29,7 @@ def test_sirach_absence_annotations_do_not_accept_numeric_prefixes(
 ) -> None:
     document = parse_parallel_text(f"Sir 2:13\n{cell}\tLOGOS\n", source_name="27.Sirach.par")
     row = document.verses[0].alignments[0]
-    markers = tuple(
-        a for a in row.annotations if a.kind == "sirach_reading_lacking_in_witness"
-    )
+    markers = tuple(a for a in row.annotations if a.kind == "sirach_reading_lacking_in_witness")
     assert tuple(a.raw for a in markers) == expected
     assert tuple(a.payload for a in markers) == tuple(raw[1:] for raw in expected)
 
@@ -42,7 +40,8 @@ def test_witness_absence_detection_keeps_mt_b_scope_and_non_sirach_negative() ->
         source_name="27.Sirach.par",
     )
     annotations = [
-        a for a in sirach.verses[0].alignments[0].annotations
+        a
+        for a in sirach.verses[0].alignments[0].annotations
         if a.kind == "sirach_reading_lacking_in_witness"
     ]
     assert [(a.raw, a.side, a.payload) for a in annotations] == [(">8", "mt_b", "8")]
