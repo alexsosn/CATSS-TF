@@ -39,8 +39,7 @@ HB 10\tGR6
         "7",
     ]
     assert any(
-        a.kind == "sirach_reading_lacking_in_witness" and a.raw == ">8"
-        for a in rows[3].annotations
+        a.kind == "sirach_reading_lacking_in_witness" and a.raw == ">8" for a in rows[3].annotations
     )
 
     lacuna = rows[2]
