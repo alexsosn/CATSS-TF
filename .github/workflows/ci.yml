@@ -1460,7 +1460,8 @@ jobs:
           ).load(
               'catss_alignment_id catss_source catss_raw catss_mt_col_b '
               'catss_range_start_verse catss_range_end_subverse '
-              'catss_kind catss_target_side catss_target_index catss_text catss_index '
+              'catss_kind catss_side catss_payload catss_target_side '
+              'catss_target_index catss_text catss_index book chapter verse '
               'catss_annotation_target catss_mt_b_raw catss_retro_kind',
               silent='deep',
           )
@@ -1531,6 +1532,16 @@ jobs:
           jonah_slots = tuple(api.L.d(scope, otype='alignment'))
           assert len(jonah_slots) == 1
           assert api.F.catss_source.v(jonah_slots[0]) == '32.Jonah.par'
+          # Independent researcher-facing Sirach marker smoke on real data:
+          # compare typed Masada annotations with the complete-source count
+          # from #132/#133, without assigning them to individual words.
+          from catss_tf import find_sirach_witness_annotations
+          masada = tuple(find_sirach_witness_annotations(api, 7, mode='marked'))
+          assert len(masada) == 254, len(masada)
+          assert all(hit.source == '27.Sirach.par' and hit.witness == 7 for hit in masada)
+          missing = tuple(find_sirach_witness_annotations(api, 7, mode='lacking'))
+          print('SIRACH_MASADA_MARKED', len(masada), flush=True)
+          print('SIRACH_MASADA_LACKING', len(missing), flush=True)
           print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
                 'alignments, single JoshB contextual reference_range')
           PY
