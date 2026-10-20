@@ -129,7 +129,8 @@ def test_sparse_canonical_features_and_greek_column_do_not_create_false_witnesse
     root.mkdir()
     (root / "27.Sirach.par").write_text(f"Sir 2:13\n{row}\n", encoding="utf-8")
     materialize_corpus(root, tmp_path / "catss")
-    api: Any = Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(silent="deep")
+    fabric = Fabric(locations=str(tmp_path), modules=("catss",), silent="deep")
+    api: Any = fabric.loadAll(silent="deep")
     assert "catss_payload" not in api.Fall()
     hits = tuple(find_sirach_witness_annotations(api, 7))
     assert len(hits) == expected
