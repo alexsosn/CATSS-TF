@@ -26,8 +26,12 @@ def test_sirach_newly_unclassified_groups_have_source_safe_context() -> None:
 
     assert report.source == "27.Sirach.par"
     assert report.newly_unclassified == 3
+    hebrew_empty_reason = (
+        "Hebrew-empty Greek alignment requires CATSS LXX-plus, apparent MT minus, "
+        "or transposition evidence"
+    )
     assert dict(report.transition_reasons) == {
-        "Hebrew-empty Greek alignment requires CATSS LXX-plus, apparent MT minus, or transposition evidence": 2,
+        hebrew_empty_reason: 2,
         "CATSS LXX-minus requires MT lexical material": 1,
     }
     counts = dict(report.context_counts)
