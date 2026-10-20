@@ -161,6 +161,32 @@ jobs:
               assert not technique.addition_vs_mt and not technique.omission_vs_mt
           print('SIRACH_WITNESS_LACUNAE_DERIVED', len(witnessed), flush=True)
           PY
+      - name: Read-only Sirach witness attribution research (no CATSS text)
+        run: |
+          python - <<'PY'
+          from dataclasses import asdict
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.sirach_research import audit_sirach_witnesses
+
+          document = parse_parallel_file(Path('/tmp/catss-parallel/27.Sirach.par'))
+          audit = audit_sirach_witnesses(document)
+          assert audit.witness_markers > 0
+          assert audit.witness_groups > 0
+          print('SIRACH_WITNESS_RESEARCH', asdict(audit), flush=True)
+          # Anomalous Sir 19:14 from #60: only expose counts and annotation
+          # kinds; never print licensed textual or reconstructed source cells.
+          for verse in document.verses:
+              if (verse.chapter, verse.verse) != (19, 14):
+                  continue
+              for row in verse.alignments:
+                  if row.mt_count == 0:
+                      print('SIRACH_19_14_ZERO_MT_SHAPE',
+                            (min(row.source_lines), row.mt_count, row.lxx_count,
+                             row.mt_col_b is not None,
+                             tuple(sorted(a.kind for a in row.annotations))),
+                            flush=True)
+          PY
       - name: Research actual column-A marker classes for MT-B-only carriers
         run: |
           python - <<'PY'
