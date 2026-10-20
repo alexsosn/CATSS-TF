@@ -73,17 +73,13 @@ def audit_sirach_witnesses(document: ParallelDocument) -> SirachWitnessAudit:
                     annotation_counts[kind] += 1
                     sample(kind, location)
             witness = [
-                annotation
-                for annotation in row.annotations
-                if annotation.kind in witness_kinds
+                annotation for annotation in row.annotations if annotation.kind in witness_kinds
             ]
             for item in witness:
                 marker_counts[item.kind] += 1
                 witness_side_counts[item.side] += 1
             absent = [
-                item
-                for item in row.annotations
-                if item.kind == "sirach_reading_lacking_in_witness"
+                item for item in row.annotations if item.kind == "sirach_reading_lacking_in_witness"
             ]
             counts["absence_markers"] += len(absent)
             if absent:
