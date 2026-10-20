@@ -134,13 +134,28 @@ def find_sirach_witness_annotations(
         raise ValueError("Sirach witness notation is unavailable")
     target_kind = spec.kind if mode == "marked" else "sirach_reading_lacking_in_witness"
 
+    available = set(api.Fall())
+    # Native TF omits an entire feature when no source node has a value.
+    # A sparse Sirach corpus can have markers but no annotation payloads,
+    # or even no annotations whatsoever; neither warrants fabricated data.
+    if "catss_kind" not in available:
+        return
+    if mode == "lacking" and "catss_payload" not in available:
+        return
+    if not {"catss_side", "catss_raw"} <= available:
+        raise ValueError("loaded canonical Sirach annotations require side and raw features")
+    has_payload = "catss_payload" in available
+
     matched: list[tuple[int, int]] = []
     for node, kind in api.F.catss_kind.items():
         if kind != target_kind or api.F.otype.v(node) != "annotation":
             continue
         if mode == "lacking" and api.F.catss_payload.v(node) != str(witness):
             continue
-        if side is not None and api.F.catss_side.v(node) != side:
+        original_side = api.F.catss_side.v(node)
+        if original_side not in {"mt_a", "mt_b"}:
+            continue
+        if side is not None and original_side != side:
             continue
         slots = tuple(api.L.d(node, otype="alignment"))
         if len(slots) != 1:
@@ -163,7 +178,7 @@ def find_sirach_witness_annotations(
             mode=mode,
             source_side=str(api.F.catss_side.v(node)),
             raw=str(api.F.catss_raw.v(node)),
-            payload=api.F.catss_payload.v(node),
+            payload=api.F.catss_payload.v(node) if has_payload else None,
             mt_elements=_ordered_elements(api, slot, "mt_element"),
             lxx_elements=_ordered_elements(api, slot, "lxx_element"),
         )
