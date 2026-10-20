@@ -46,7 +46,9 @@ def test_sirach_newly_unclassified_groups_have_source_safe_context() -> None:
         len(positions) <= 3 and all(len(location) == 4 for location in positions)
         for _kind, positions in report.samples
     )
-    assert all(location[0] == "Sir" for _kind, positions in report.samples for location in positions)
+    assert all(
+        location[0] == "Sir" for _kind, positions in report.samples for location in positions
+    )
     assert "LOGOS" not in repr(report)
     assert "RETRO" not in repr(report)
     assert "QEOS" not in repr(report)
