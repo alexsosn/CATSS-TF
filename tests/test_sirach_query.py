@@ -27,9 +27,7 @@ HB 10\tLOGOS
     )
     (root / "01.Genesis.par").write_text("Gen 1:1\nHB 7\tQEOS\n", encoding="utf-8")
     materialize_corpus(root, tmp_path / "catss")
-    return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(
-        silent="deep"
-    )
+    return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(silent="deep")
 
 
 def _oracle(api: Any, witness: int, mode: str, side: str | None) -> tuple[tuple[int, int], ...]:
@@ -96,7 +94,7 @@ def test_lacking_marker_and_exact_source_column_are_distinct(tmp_path: Path) -> 
 
 
 @pytest.mark.parametrize("witness", (0, 11, 12, -1, True, "7"))
-def test_unknown_witness_fails_closed(tmp_path: Path, witness: object) -> None:
+def test_unknown_witness_fails_closed(tmp_path: Path, witness: Any) -> None:
     api = _api(tmp_path)
     with pytest.raises(ValueError, match="witness"):
         tuple(find_sirach_witness_annotations(api, witness))
@@ -104,7 +102,7 @@ def test_unknown_witness_fails_closed(tmp_path: Path, witness: object) -> None:
 
 @pytest.mark.parametrize(("mode", "side"), (("negative", None), ("marked", "lxx")))
 def test_unknown_query_mode_or_side_fails_closed(
-    tmp_path: Path, mode: str, side: str | None
+    tmp_path: Path, mode: Any, side: Any
 ) -> None:
     api = _api(tmp_path)
     with pytest.raises(ValueError):
