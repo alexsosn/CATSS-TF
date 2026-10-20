@@ -188,6 +188,7 @@ jobs:
           complete_total = 0
           parsed_total = 0
           mismatches = []
+          excluded_numeric_prefixes = []
           for verse in document.verses:
               for row in verse.alignments:
                   cells = (row.mt_col_a, row.mt_col_b or '', row.lxx_raw)
@@ -200,18 +201,27 @@ jobs:
                   legacy_total += old_n
                   complete_total += complete_n
                   parsed_total += typed_n
+                  if old_n != complete_n:
+                      excluded_numeric_prefixes.append((
+                          verse.chapter, verse.verse, min(row.source_lines),
+                          old_n - complete_n,
+                      ))
                   if complete_n != typed_n:
                       mismatches.append((
                           verse.chapter, verse.verse, min(row.source_lines),
                           complete_n, typed_n,
                       ))
           assert not mismatches, mismatches[:12]
-          assert legacy_total >= complete_total
-          assert parsed_total == complete_total
+          assert (legacy_total, complete_total, parsed_total) == (92, 88, 88), (
+              legacy_total, complete_total, parsed_total,
+          )
+          assert sum(item[3] for item in excluded_numeric_prefixes) == 4
           print('SIRACH_ABSENCE_BOUNDARY_AUDIT',
                 {'legacy': legacy_total, 'complete': complete_total,
                  'typed': parsed_total, 'excluded_prefixes': legacy_total - complete_total},
                 flush=True)
+          print('SIRACH_EXCLUDED_ABSENCE_PREFIX_LOCATIONS',
+                excluded_numeric_prefixes, flush=True)
 
           # Compare historical and corrected lexical cardinalities per source
           # alignment, not a coarse "old reader had a token" heuristic.
