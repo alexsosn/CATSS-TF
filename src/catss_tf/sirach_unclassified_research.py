@@ -21,6 +21,7 @@ class SirachUnclassifiedContextAudit:
     changed_groups: int
     newly_unclassified: int
     unexpected_transitions: int
+    preexisting_unclassified_reason_changes: int
     transition_reasons: tuple[tuple[str, int], ...]
     context_counts: tuple[tuple[str, int], ...]
     witness_kind_counts: tuple[tuple[str, int], ...]
@@ -47,6 +48,7 @@ def audit_sirach_unclassified_context(
     ids: list[tuple[str, str]] = []
     changed = 0
     unexpected = 0
+    prior_reason_changes = 0
 
     for verse in document.verses:
         rows = verse.alignments
@@ -54,6 +56,17 @@ def audit_sirach_unclassified_context(
             legacy_count = 0 if row.is_lxx_plus else len(_mt_lexical_readings(row.mt_col_a))
             if legacy_count == row.mt_count:
                 continue
+            if legacy_count < row.mt_count:
+                raise ValueError("Sirach lexical repair cannot create extra MT source words")
+            if not any(
+                annotation.side == "mt_a"
+                and (
+                    annotation.kind.startswith("sirach_witness_")
+                    or annotation.kind == "sirach_reading_lacking_in_witness"
+                )
+                for annotation in row.annotations
+            ):
+                raise ValueError("changed MT cardinality has no source-witness annotation")
             changed += 1
             historical = replace(row, mt_count=legacy_count)
 
@@ -69,7 +82,10 @@ def audit_sirach_unclassified_context(
                 current_reason = str(error)
 
             if historical_reason is not None or current_reason is None:
-                if historical_reason != current_reason:
+                if historical_reason is not None and current_reason is not None:
+                    if historical_reason != current_reason:
+                        prior_reason_changes += 1
+                elif historical_reason is not None and current_reason is None:
                     unexpected += 1
                 continue
 
@@ -137,6 +153,7 @@ def audit_sirach_unclassified_context(
         changed_groups=changed,
         newly_unclassified=sum(reasons.values()),
         unexpected_transitions=unexpected,
+        preexisting_unclassified_reason_changes=prior_reason_changes,
         transition_reasons=tuple(sorted(reasons.items())),
         context_counts=tuple(sorted(contexts.items())),
         witness_kind_counts=tuple(sorted(kinds.items())),
