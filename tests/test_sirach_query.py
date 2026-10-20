@@ -119,7 +119,7 @@ def test_incompatible_word_slot_warp_fails_before_scanning(tmp_path: Path) -> No
     (
         ("HB 7\tLOGOS", 1),
         ("HB\tLOGOS", 0),
-        ("HB\t7", 0),
+        ("HB\t7 QEOS", 0),
     ),
 )
 def test_sparse_canonical_features_and_greek_column_do_not_create_false_witnesses(
