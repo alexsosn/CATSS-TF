@@ -1,9 +1,9 @@
 """Bounded, metadata-only Sirach witness audit on parsed CATSS source."""
 
 import pytest
-from catss_tf.sirach_research import audit_sirach_witnesses  # type: ignore[import-untyped]
 
 from catss_tf.parser import parse_parallel_text
+from catss_tf.sirach_research import audit_sirach_witnesses
 
 
 def test_sirach_witness_audit_counts_markers_without_inventing_lexical_edges() -> None:
