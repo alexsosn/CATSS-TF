@@ -28,6 +28,7 @@ class SirachWitnessAudit:
     witness_groups_with_zero_mt: int
     witness_groups_with_column_b: int
     witness_groups_with_continuations: int
+    witness_markers_lexically_retained: int
     absence_markers: int
     absence_groups: int
     annotation_counts: tuple[tuple[str, int], ...]
@@ -78,6 +79,9 @@ def audit_sirach_witnesses(document: ParallelDocument) -> SirachWitnessAudit:
             for item in witness:
                 marker_counts[item.kind] += 1
                 witness_side_counts[item.side] += 1
+                if item.side == "mt_a" and item.raw in row.mt_tokens:
+                    counts["witness_markers_lexically_retained"] += 1
+                    sample("witness_marker_in_mt_tokens", location)
             absent = [
                 item for item in row.annotations if item.kind == "sirach_reading_lacking_in_witness"
             ]
@@ -120,6 +124,7 @@ def audit_sirach_witnesses(document: ParallelDocument) -> SirachWitnessAudit:
         witness_groups_with_zero_mt=counts["witness_groups_with_zero_mt"],
         witness_groups_with_column_b=counts["witness_groups_with_column_b"],
         witness_groups_with_continuations=counts["witness_groups_with_continuations"],
+        witness_markers_lexically_retained=counts["witness_markers_lexically_retained"],
         absence_markers=counts["absence_markers"],
         absence_groups=counts["absence_groups"],
         annotation_counts=tuple(sorted(annotation_counts.items())),
