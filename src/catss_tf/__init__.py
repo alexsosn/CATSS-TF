@@ -12,20 +12,26 @@ from catss_tf.consistency import (
 from catss_tf.lxx_materializer import materialize_lxx
 from catss_tf.lxx_resolver import TextFabricLxxProvider
 from catss_tf.query import (
+    AlignmentAnnotationEvidence,
     CanonicalAlignedGroup,
     SirachWitnessAnnotation,
+    UnclassifiedAlignment,
     find_aligned_groups,
     find_sirach_witness_annotations,
+    find_unclassified_alignments,
 )
 
 __all__ = [
     "__version__",
     "compare_canonical_projection_bundle",
     "compare_projection_bundles",
+    "AlignmentAnnotationEvidence",
     "CanonicalAlignedGroup",
     "SirachWitnessAnnotation",
+    "UnclassifiedAlignment",
     "find_aligned_groups",
     "find_sirach_witness_annotations",
+    "find_unclassified_alignments",
     "materialize_bhsa",
     "materialize_corpus",
     "materialize_lxx",
