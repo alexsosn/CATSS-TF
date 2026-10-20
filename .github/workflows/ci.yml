@@ -179,6 +179,40 @@ jobs:
           assert audit.witness_groups_with_zero_mt == 117, audit
           print('SIRACH_WITNESS_RESEARCH', asdict(audit), flush=True)
 
+          # Verify >n boundaries independently against the source columns.
+          # No raw lexical content or source cell text is printed.
+          import re
+          legacy_re = re.compile(r'>(?:10|[1-9])')
+          complete_re = re.compile(r'>(?:10|[1-9])(?![0-9])')
+          legacy_total = 0
+          complete_total = 0
+          parsed_total = 0
+          mismatches = []
+          for verse in document.verses:
+              for row in verse.alignments:
+                  cells = (row.mt_col_a, row.mt_col_b or '', row.lxx_raw)
+                  old_n = sum(len(legacy_re.findall(c)) for c in cells)
+                  complete_n = sum(len(complete_re.findall(c)) for c in cells)
+                  typed_n = sum(
+                      a.kind == 'sirach_reading_lacking_in_witness'
+                      for a in row.annotations
+                  )
+                  legacy_total += old_n
+                  complete_total += complete_n
+                  parsed_total += typed_n
+                  if complete_n != typed_n:
+                      mismatches.append((
+                          verse.chapter, verse.verse, min(row.source_lines),
+                          complete_n, typed_n,
+                      ))
+          assert not mismatches, mismatches[:12]
+          assert legacy_total >= complete_total
+          assert parsed_total == complete_total
+          print('SIRACH_ABSENCE_BOUNDARY_AUDIT',
+                {'legacy': legacy_total, 'complete': complete_total,
+                 'typed': parsed_total, 'excluded_prefixes': legacy_total - complete_total},
+                flush=True)
+
           # Compare historical and corrected lexical cardinalities per source
           # alignment, not a coarse "old reader had a token" heuristic.
           from collections import Counter
