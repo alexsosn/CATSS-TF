@@ -182,3 +182,103 @@ def find_sirach_witness_annotations(
             mt_elements=_ordered_elements(api, slot, "mt_element"),
             lxx_elements=_ordered_elements(api, slot, "lxx_element"),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class AlignmentAnnotationEvidence:
+    """A typed CATSS annotation co-occurring within one alignment group."""
+
+    annotation_node: int
+    kind: str
+    side: str
+    raw: str
+
+
+@dataclass(frozen=True, slots=True)
+class UnclassifiedAlignment:
+    """Unresolved technique state, with verbatim source evidence and provenance."""
+
+    alignment_slot: int
+    alignment_id: str
+    source: str
+    book: str
+    chapter: int
+    verse: int
+    source_line_first: int
+    source_line_last: int
+    reason: str
+    mt_count: int
+    lxx_count: int
+    mt_elements: tuple[str, ...]
+    lxx_elements: tuple[str, ...]
+    annotations: tuple[AlignmentAnnotationEvidence, ...]
+
+
+def find_unclassified_alignments(
+    api: Any,
+    *,
+    source: str | None = None,
+    reason_contains: str | None = None,
+) -> Iterator[UnclassifiedAlignment]:
+    """Inspect precisely unclassified native CATSS MT/LXX alignment groups.
+
+    Reasons are returned unchanged; annotation membership says nothing about
+    a manuscript's attestation of an individual lexical element. Neither
+    unmarked Hebrew-empty Greek nor witness-only rows are assigned a false
+    addition or omission status.
+    """
+
+    if api.F.otype.slotType != "alignment":
+        raise ValueError("unclassified queries require the standalone CATSS alignment-slot warp")
+
+    available = set(api.Fall())
+    if "catss_tt_status" not in available:
+        raise ValueError("canonical TF API must load catss_tt_status before querying")
+    statuses = [
+        int(slot)
+        for slot, status in api.F.catss_tt_status.items()
+        if status == "unclassified" and api.F.otype.v(slot) == "alignment"
+    ]
+    if not statuses:
+        return
+    if "catss_tt_unclassified_reason" not in available:
+        raise ValueError("unclassified CATSS alignments must retain their source reason")
+
+    for slot in sorted(statuses):
+        original_source = str(api.F.catss_source.v(slot))
+        if source is not None and original_source != source:
+            continue
+        reason = api.F.catss_tt_unclassified_reason.v(slot)
+        if not reason:
+            raise ValueError("unclassified CATSS alignment is missing its source reason")
+        if reason_contains is not None and reason_contains not in reason:
+            continue
+
+        annotation_nodes = tuple(api.L.u(slot, otype="annotation"))
+        if annotation_nodes and not {"catss_kind", "catss_side", "catss_raw"} <= available:
+            raise ValueError("canonical annotation evidence is missing native TF features")
+        annotations = tuple(
+            AlignmentAnnotationEvidence(
+                annotation_node=int(node),
+                kind=str(api.F.catss_kind.v(node)),
+                side=str(api.F.catss_side.v(node)),
+                raw=str(api.F.catss_raw.v(node)),
+            )
+            for node in annotation_nodes
+        )
+        yield UnclassifiedAlignment(
+            alignment_slot=slot,
+            alignment_id=str(api.F.catss_alignment_id.v(slot)),
+            source=original_source,
+            book=str(api.F.book.v(slot)),
+            chapter=int(api.F.chapter.v(slot)),
+            verse=int(api.F.verse.v(slot)),
+            source_line_first=int(api.F.catss_line_first.v(slot)),
+            source_line_last=int(api.F.catss_line_last.v(slot)),
+            reason=str(reason),
+            mt_count=int(api.F.catss_mt_n.v(slot)),
+            lxx_count=int(api.F.catss_lxx_n.v(slot)),
+            mt_elements=_ordered_elements(api, slot, "mt_element"),
+            lxx_elements=_ordered_elements(api, slot, "lxx_element"),
+            annotations=annotations,
+        )

@@ -1516,7 +1516,9 @@ jobs:
               'catss_range_start_verse catss_range_end_subverse '
               'catss_kind catss_side catss_payload catss_target_side '
               'catss_target_index catss_text catss_index book chapter verse '
-              'catss_annotation_target catss_mt_b_raw catss_retro_kind',
+              'catss_annotation_target catss_mt_b_raw catss_retro_kind '
+              'catss_tt_status catss_tt_unclassified_reason '
+              'catss_line_first catss_line_last catss_mt_n catss_lxx_n',
               silent='deep',
           )
           assert api is not None
@@ -1596,6 +1598,48 @@ jobs:
           missing = tuple(find_sirach_witness_annotations(api, 7, mode='lacking'))
           print('SIRACH_MASADA_MARKED', len(masada), flush=True)
           print('SIRACH_MASADA_LACKING', len(missing), flush=True)
+
+          # A user-facing source-grounded unresolved-case query: compare
+          # every TF slot's stable ID + literal reason to independent
+          # source parser and conservative technique-deriver output.
+          from catss_tf import find_unclassified_alignments
+          from catss_tf.technique import TechniqueError, derive_alignment_technique
+
+          unresolved = tuple(find_unclassified_alignments(api))
+          assert len(unresolved) == 102, len(unresolved)
+          source_reasons = {}
+          for filename in CATSS_PARALLEL_FILENAMES:
+              doc = parse_parallel_file(Path('/tmp/catss-parallel') / filename)
+              for verse in doc.verses:
+                  for row in verse.alignments:
+                      try:
+                          derive_alignment_technique(filename, row)
+                      except TechniqueError as exc:
+                          assert row.alignment_id not in source_reasons
+                          source_reasons[row.alignment_id] = str(exc)
+          assert len(source_reasons) == 102, len(source_reasons)
+          assert {
+              hit.alignment_id: hit.reason for hit in unresolved
+          } == source_reasons
+          assert all(api.F.catss_tt_status.v(hit.alignment_slot) == 'unclassified'
+                     for hit in unresolved)
+          assert all(hit.mt_count == len(hit.mt_elements)
+                     and hit.lxx_count == len(hit.lxx_elements)
+                     for hit in unresolved)
+          sirach_unresolved = tuple(find_unclassified_alignments(
+              api, source='27.Sirach.par'
+          ))
+          assert len(sirach_unresolved) >= 71, len(sirach_unresolved)
+          assert all(hit.source == '27.Sirach.par' for hit in sirach_unresolved)
+          assert tuple(find_unclassified_alignments(
+              api, reason_contains='intentionally-nonexistent-reason'
+          )) == ()
+          print('CATSS_UNCLASSIFIED_SOURCE_TF_PARITY', len(unresolved),
+                'Sirach', len(sirach_unresolved), flush=True)
+          print('CATSS_UNCLASSIFIED_EXAMPLE_IDENTITIES', [
+              (hit.source, hit.chapter, hit.verse, hit.source_line_first)
+              for hit in unresolved[:3]
+          ], flush=True)
           print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
                 'alignments, single JoshB contextual reference_range')
           PY

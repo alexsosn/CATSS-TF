@@ -151,6 +151,42 @@ Alignment slots expose group-level facts including:
 Detailed lexical elements and annotations are nodes rather than delimiter-packed
 strings.
 
+## Inspecting unresolved alignment evidence
+
+The full 46-file corpus currently retains **102** alignment groups for which
+a formal MT/LXX translation-technique judgment cannot be safely derived. Of
+these, **71** were exposed by correcting Sirach witness numerals that had
+previously masqueraded as Hebrew words: 43 are Hebrew-empty/Greek-present,
+and 28 carry LXX-minus notation but have no surviving Hebrew lexical item.
+These are source/data ambiguities, not additions or omissions to infer.
+
+Use the native TF API to examine exactly the affected source groups:
+
+```python
+from catss_tf import find_unclassified_alignments
+from tf.fabric import Fabric
+
+api = Fabric(locations="./generated/catss", silent="deep").loadAll(silent="deep")
+
+for group in find_unclassified_alignments(api, source="27.Sirach.par", reason_contains="LXX-minus"):
+    print(group.book, group.chapter, group.verse, group.alignment_id)
+    print(group.source_line_first, group.source_line_last, group.reason)
+    print(group.mt_elements, group.lxx_elements)
+    print(tuple((a.side, a.kind, a.raw) for a in group.annotations))
+```
+
+Each result contains the **verbatim** `catss_tt_unclassified_reason`,
+stable source alignment ID, physical line range, native MT-A and Greek
+lexical element groups, and typed annotation evidence. An annotation belongs
+to its alignment group: it does **not** attest any particular word or
+prove a manuscript-to-reading edge. Returning `mt_count=0` does not establish
+that Greek text was added by the translator. Filtering reasons uses literal
+substring matching, not a newly invented scholarly classification.
+
+The query scans existing Text-Fabric feature data without a secondary index.
+It requires the standalone canonical `alignment`-slot corpus, not BHSA/LXX
+parent word warps. The 71 Sirach source questions remain under issue #136.
+
 ## Sirach manuscript lacunae are not Greek additions
 
 The Hebrew column-A `[..]` marker in `27.Sirach.par` denotes
