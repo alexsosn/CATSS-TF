@@ -125,10 +125,7 @@ def audit_sirach_unclassified_context(
             if row.lxx_count:
                 contexts["has_lxx_lexical"] += 1
                 contexts[f"lxx_count_{row.lxx_count if row.lxx_count <= 3 else 'gt3'}"] += 1
-            if any(
-                item.kind == "sirach_reading_lacking_in_witness"
-                for item in row.annotations
-            ):
+            if any(item.kind == "sirach_reading_lacking_in_witness" for item in row.annotations):
                 contexts["has_absence_marker"] += 1
             if any(item.kind == "sirach_lacuna_or_illegible" for item in row.annotations):
                 contexts["has_lacuna"] += 1
@@ -157,8 +154,6 @@ def audit_sirach_unclassified_context(
         transition_reasons=tuple(sorted(reasons.items())),
         context_counts=tuple(sorted(contexts.items())),
         witness_kind_counts=tuple(sorted(kinds.items())),
-        samples=tuple(
-            (reason, tuple(locations)) for reason, locations in sorted(samples.items())
-        ),
+        samples=tuple((reason, tuple(locations)) for reason, locations in sorted(samples.items())),
         new_unclassified_id_reasons=tuple(ids),
     )
