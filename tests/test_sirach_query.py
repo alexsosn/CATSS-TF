@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from tf.fabric import Fabric  # type: ignore[import-untyped]
 
-from catss_tf import find_sirach_witness_annotations
+from catss_tf import find_sirach_witness_annotations  # type: ignore[attr-defined]
 from catss_tf.canonical_materializer import materialize_corpus
 
 
@@ -101,9 +101,7 @@ def test_unknown_witness_fails_closed(tmp_path: Path, witness: Any) -> None:
 
 
 @pytest.mark.parametrize(("mode", "side"), (("negative", None), ("marked", "lxx")))
-def test_unknown_query_mode_or_side_fails_closed(
-    tmp_path: Path, mode: Any, side: Any
-) -> None:
+def test_unknown_query_mode_or_side_fails_closed(tmp_path: Path, mode: Any, side: Any) -> None:
     api = _api(tmp_path)
     with pytest.raises(ValueError):
         tuple(find_sirach_witness_annotations(api, 7, mode=mode, side=side))
