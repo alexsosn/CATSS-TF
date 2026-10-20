@@ -176,6 +176,42 @@ verse anchor is introduced. Reconstructed letters `[]`, mere
 physical empty cells, and Greek-side witness annotations are not
 silently treated as the `[..]` class.
 
+## Querying Sirach manuscript markers
+
+The standalone canonical corpus stores Sirach manuscript numbers 1–10 as
+native `annotation` nodes with an explicit `catss_side`. The helper below
+queries **annotation occurrences**, not inferred manuscript-to-word or
+manuscript-to-reconstructed-reading edges:
+
+```python
+from catss_tf import find_sirach_witness_annotations
+from tf.fabric import Fabric
+
+api = Fabric(locations="./generated/catss", silent="deep").loadAll(silent="deep")
+
+# Manuscript 7 (Masada): direct numeric markers, both MT source columns.
+for hit in find_sirach_witness_annotations(api, 7, mode="marked"):
+    print(hit.chapter, hit.verse, hit.source_side, hit.raw, hit.alignment_id)
+
+# Manuscript 7: explicit >7 reading-lacking marks in MT-A only.
+for hit in find_sirach_witness_annotations(api, 7, mode="lacking", side="mt_a"):
+    print(hit.chapter, hit.verse, hit.raw, hit.mt_elements, hit.lxx_elements)
+```
+
+Each hit retains source filename, reference, original raw marker and source
+column (`mt_a` or `mt_b`), with its containing ordered MT-A and Greek
+alignment group. The `alignment_id` is stable across re-materializations;
+the annotation node and alignment slot numbers are local to the loaded TF
+warp. Duplicate annotations are returned as separate occurrences. A marker
+associated with a multiword group does **not** show which individual Hebrew
+word that manuscript attests. A `>n` mark says a reading is lacking in
+witness n but does not identify a lost lexical word by positional guess.
+
+Lookup scans existing TF annotation-kind feature data once per query; it
+does not advertise or build an inverse index. Only the standalone canonical
+`alignment`-slot warp is supported. The partial witness-to-reading
+modeling limitation remains tracked in issue #132.
+
 ## Auditing scalar Greek reference candidates
 
 For source-level research without guessing LXX destination nodes, inspect
