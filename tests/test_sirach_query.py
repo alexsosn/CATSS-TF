@@ -112,3 +112,26 @@ def test_incompatible_word_slot_warp_fails_before_scanning(tmp_path: Path) -> No
     fake: Any = SimpleNamespace(F=SimpleNamespace(otype=SimpleNamespace(slotType="word")))
     with pytest.raises(ValueError, match="alignment"):
         tuple(find_sirach_witness_annotations(fake, 7))
+
+
+@pytest.mark.parametrize(
+    ("row", "expected"),
+    (
+        ("HB 7\tLOGOS", 1),
+        ("HB\tLOGOS", 0),
+        ("HB\t7", 0),
+    ),
+)
+def test_sparse_canonical_features_and_greek_column_do_not_create_false_witnesses(
+    tmp_path: Path, row: str, expected: int
+) -> None:
+    root = tmp_path / "source"
+    root.mkdir()
+    (root / "27.Sirach.par").write_text(f"Sir 2:13\n{row}\n", encoding="utf-8")
+    materialize_corpus(root, tmp_path / "catss")
+    api: Any = Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(silent="deep")
+    assert "catss_payload" not in api.Fall()
+    hits = tuple(find_sirach_witness_annotations(api, 7))
+    assert len(hits) == expected
+    assert all(h.payload is None and h.source_side == "mt_a" for h in hits)
+    assert tuple(find_sirach_witness_annotations(api, 7, mode="lacking")) == ()
