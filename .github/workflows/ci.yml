@@ -184,8 +184,13 @@ jobs:
           import re
           legacy_re = re.compile(r'>(?:10|[1-9])')
           complete_re = re.compile(r'>(?:10|[1-9])(?![0-9])')
+          # Independently parse the complete numeric run, then test the
+          # canonical witness catalogue. This oracle is not the regex under test.
+          digits_re = re.compile(r'>([0-9]+)')
+          valid_witness_ids = {str(n) for n in range(1, 11)}
           legacy_total = 0
           complete_total = 0
+          oracle_total = 0
           parsed_total = 0
           mismatches = []
           excluded_numeric_prefixes = []
@@ -200,6 +205,10 @@ jobs:
                   )
                   legacy_total += old_n
                   complete_total += complete_n
+                  oracle_total += sum(
+                      m.group(1) in valid_witness_ids
+                      for cell in cells for m in digits_re.finditer(cell)
+                  )
                   parsed_total += typed_n
                   if old_n != complete_n:
                       excluded_numeric_prefixes.append((
@@ -212,13 +221,14 @@ jobs:
                           complete_n, typed_n,
                       ))
           assert not mismatches, mismatches[:12]
-          assert (legacy_total, complete_total, parsed_total) == (92, 88, 88), (
-              legacy_total, complete_total, parsed_total,
-          )
+          assert (legacy_total, complete_total, oracle_total, parsed_total) == (
+              92, 88, 88, 88,
+          ), (legacy_total, complete_total, oracle_total, parsed_total)
           assert sum(item[3] for item in excluded_numeric_prefixes) == 4
           print('SIRACH_ABSENCE_BOUNDARY_AUDIT',
                 {'legacy': legacy_total, 'complete': complete_total,
-                 'typed': parsed_total, 'excluded_prefixes': legacy_total - complete_total},
+                 'independent_oracle': oracle_total, 'typed': parsed_total,
+                 'excluded_prefixes': legacy_total - complete_total},
                 flush=True)
           print('SIRACH_EXCLUDED_ABSENCE_PREFIX_LOCATIONS',
                 excluded_numeric_prefixes, flush=True)
