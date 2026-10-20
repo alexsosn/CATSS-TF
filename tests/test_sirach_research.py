@@ -42,7 +42,10 @@ HB\tGR
         "sirach_witness_2q18": 0,
     }
     assert audit.witness_groups_with_multiple_mt >= 1
-    assert audit.witness_groups_with_zero_mt >= 1
+    # Parser currently counts standalone witness numerals as MT lexical tokens.
+    assert document.verses[0].alignments[2].mt_tokens == ("7",)
+    assert audit.witness_groups_with_zero_mt == 0
+    assert audit.witness_markers_lexically_retained == 5
     assert audit.witness_groups_with_column_b == 0
     assert audit.witness_groups_with_continuations == 0
     assert all(len(identity) == 4 for _, identity in audit.examples)
