@@ -1,8 +1,8 @@
 """Bounded, metadata-only Sirach witness audit on parsed CATSS source."""
 
 import pytest
-
 from catss_tf.sirach_research import audit_sirach_witnesses
+
 from catss_tf.parser import parse_parallel_text
 
 
