@@ -2,11 +2,11 @@
 
 import pytest
 
-from catss_tf.parser import parse_parallel_text
+from catss_tf.parser import ParallelDocument, parse_parallel_text
 from catss_tf.sirach_unclassified_research import audit_sirach_unclassified_context
 
 
-def _sample():
+def _sample() -> ParallelDocument:
     return parse_parallel_text(
         """Sir 2:13
 HB\tLOGOS
