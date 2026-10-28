@@ -21,3 +21,64 @@ Merged #135 removed 7,868 source manuscript numerals from Sirach MT-A lexical to
 ## Explicit limits
 
 Historical lexical cardinality is reconstructed via the old _generic lexical reader_ as before #135, not a complete checkout of the former parser. The audit establishes causal parser-status transitions, **not** original manuscript witness scope, reading reconstruction, or actual Greek/Hebrew omission. A neighboring word in the same verse cannot be imputed as the target of an otherwise unbound manuscript number. Issue #132 and broader Libronix #126 stay open.
+
+## Empirical 46-file source and native TF acceptance (2026-10-20)
+
+CI run [39464002549](https://github.com/alexsosn/CATSS-TF/actions/runs/39464002549)
+on branch head `ecd9b5f` completed **complete-catss-audit**, including
+the full 46-file source scan, canonical TF materialization and readback,
+Agora E2E adapter smoke, and exact identity/reason parity between the
+**71** newly unresolved source rows and canonical TF. The Python 3.13
+unit job failed on a missing *test fixture return annotation* at mypy,
+so that run is **not** an all-green release gate; the fixture was typed
+on the subsequent branch commit and awaits exact-head CI.
+
+The source-side audit counted **7,396** changed lexical cardinalities and
+**71** newly unresolved alignments, of which **43** are currently
+Hebrew-empty/Greek-present and **28** carry LXX-minus notation without
+surviving Hebrew lexical material.
+
+| Evidence among 71 newly unresolved alignment groups | Groups |
+| --- | ---: |
+| MT-A witness annotation present | 70 |
+| MT-B source column present | 5 |
+| MT-B witness annotation present | 0 |
+| More than one MT-A witness annotation | 1 |
+| Any Sirach lacuna/illegibility annotation | 61 |
+| Reconstructed letters annotation | 8 |
+| Exact >n reading-absence annotation | 1 |
+| LXX-minus status | 28 |
+| Greek lexical elements present | 43 |
+| One Greek lexical element | 28 |
+| Two Greek lexical elements | 7 |
+| Three Greek lexical elements | 7 |
+| More than three Greek lexical elements | 1 |
+| Prior immediate same-verse group has MT words | 21 |
+| Following immediate same-verse group has MT words | 37 |
+| Both immediate same-verse groups have MT words | 14 |
+| Neither immediate same-verse group has MT words | 27 |
+
+Counts are **overlapping groups**, not mutually exclusive readings or word
+attestations. They are parser-observed evidence from CCAT source, not
+claims that a manuscript contains or omits a specific Hebrew word.
+The neighboring-group signal may assist manual source inspection, but
+must **never** create a word-specific connection in TF.
+
+Source witnesses among these alignments (counts of *annotations*, not groups):
+Geniza B **42**, Geniza C **13**, Geniza E **6**, Geniza A **5**,
+Masada **4**, and 11QPs(a) **1**. This totals 71 annotations over 70
+MT-A-marker-bearing groups, owing to one group with multiple markers.
+A source witness annotation must not be interpreted as a lexical
+reading or an absence in a different manuscript.
+
+The first three source-only identities in each unresolved-technique
+category, suitable for licensed-source follow-up, are:
+- LXX-minus without MT: Sir 3:20, physical line 856; Sir 9:3, line 2606;
+  Sir 10:25, line 3085.
+- Hebrew-empty/Greek-present: Sir 6:26, line 1814; Sir 9:13, line 2736;
+  Sir 10:25, line 3072.
+
+The new research audit deliberately **does not** resolve the 71 cases.
+Before any representation of Sirach manuscript-specific readings is added
+to the corpus, a separate source-grounded study must determine the syntax,
+scope, and provenance of manuscript variants on real examples (#132).
