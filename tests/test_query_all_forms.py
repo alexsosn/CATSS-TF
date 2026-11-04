@@ -78,12 +78,13 @@ def test_all_forms_match_independent_loaded_tf_oracle(
 
 def test_all_forms_preserve_order_and_exact_source_scope(tmp_path: Path) -> None:
     api = _loaded(tmp_path)
-    hits = tuple(find_groups_with_all_forms(
+    query = find_groups_with_all_forms(
         api,
         mt_forms=("MLK", "DBR"),
         lxx_forms=("BASILEU/S", "LOGOS"),
         source="01.Genesis.par",
-    ))
+    )
+    hits = tuple(query)
     assert len(hits) == 1
     assert hits[0].mt_elements == ("MLK", "DBR")
     assert hits[0].lxx_elements == ("BASILEU/S", "LOGOS")
@@ -91,14 +92,14 @@ def test_all_forms_preserve_order_and_exact_source_scope(tmp_path: Path) -> None
     assert tuple(hit.alignment_id for hit in hits) == _oracle(
         api, ("MLK", "DBR"), ("BASILEU/S", "LOGOS"), "01.Genesis.par"
     )
-    joshb = tuple(find_groups_with_all_forms(
+    joshb_query = find_groups_with_all_forms(
         api, mt_forms=("MLK",), lxx_forms=("BASILEU/S",), source="06.JoshB.par"
-    ))
+    )
+    joshb = tuple(joshb_query)
     assert len(joshb) == 1
     assert joshb[0].book == "JoshB"
-    assert tuple(find_groups_with_all_forms(
-        api, mt_forms=("MLK",), source="07.JoshA.par"
-    )) == ()
+    absent = find_groups_with_all_forms(api, mt_forms=("MLK",), source="07.JoshA.par")
+    assert tuple(absent) == ()
 
 
 def test_duplicate_requested_spellings_are_membership_not_multiplicity(tmp_path: Path) -> None:
@@ -113,13 +114,14 @@ def test_empty_and_malformed_form_inputs_fail_explicitly(tmp_path: Path) -> None
     api = _loaded(tmp_path)
     with pytest.raises(ValueError, match="at least one"):
         tuple(find_groups_with_all_forms(api))
-    for kwargs in (
+    cases: tuple[dict[str, Any], ...] = (
         {"mt_forms": ("",)},
         {"lxx_forms": (" ",)},
         {"mt_forms": cast(Any, "MLK")},
         {"lxx_forms": cast(Any, b"LOGOS")},
         {"mt_forms": cast(Any, (42,))},
-    ):
+    )
+    for kwargs in cases:
         with pytest.raises(ValueError):
             tuple(find_groups_with_all_forms(api, **kwargs))
 
