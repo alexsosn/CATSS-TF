@@ -3,7 +3,7 @@
 Results represent complete alignment groups, not pairwise MT/Greek lexical edges.
 """
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -67,6 +67,69 @@ def find_aligned_groups(
 
     mt_slots, lxx_slots = _matching_slots(api, mt_form, lxx_form)
     for slot in sorted(mt_slots & lxx_slots):
+        source_name = str(api.F.catss_source.v(slot))
+        if source is not None and source_name != source:
+            continue
+        yield CanonicalAlignedGroup(
+            source=source_name,
+            alignment_id=str(api.F.catss_alignment_id.v(slot)),
+            book=str(api.F.book.v(slot)),
+            chapter=int(api.F.chapter.v(slot)),
+            verse=int(api.F.verse.v(slot)),
+            mt_elements=_ordered_elements(api, slot, "mt_element"),
+            lxx_elements=_ordered_elements(api, slot, "lxx_element"),
+        )
+
+
+def find_groups_with_all_forms(
+    api: Any,
+    *,
+    mt_forms: Sequence[str] = (),
+    lxx_forms: Sequence[str] = (),
+    source: str | None = None,
+) -> Iterator[CanonicalAlignedGroup]:
+    """Find alignment groups containing every requested exact lexical form.
+
+    Requested forms have AND/set-membership semantics; repeated query forms
+    do not require repeated tokens. MT is only column A, never speculative
+    column-B reconstruction. A co-member is not a pairwise or phrase edge.
+    """
+    if api.F.otype.slotType != "alignment":
+        raise ValueError("all-forms query requires the standalone CATSS alignment-slot warp")
+
+    for label, forms in (("mt_forms", mt_forms), ("lxx_forms", lxx_forms)):
+        if isinstance(forms, (str, bytes)) or not isinstance(forms, Sequence):
+            raise ValueError(f"{label} must be a sequence of exact source forms")
+        if any(not isinstance(form, str) or not form.strip() for form in forms):
+            raise ValueError(f"{label} must contain only nonempty source forms")
+
+    required = {
+        *(("mt_element", form) for form in mt_forms),
+        *(("lxx_element", form) for form in lxx_forms),
+    }
+    if not required:
+        raise ValueError("at least one MT or LXX source form is required")
+    if "catss_text" not in set(api.Fall()):
+        return
+
+    matching: dict[tuple[str, str], set[int]] = {key: set() for key in required}
+    wanted_text = {form for _side, form in required}
+    for node, value in api.F.catss_text.items():
+        if value not in wanted_text:
+            continue
+        key = (api.F.otype.v(node), value)
+        if key in matching:
+            matching[key].update(int(slot) for slot in api.L.d(node, otype="alignment"))
+
+    slots: set[int] | None = None
+    for candidates in matching.values():
+        slots = candidates.copy() if slots is None else slots & candidates
+        if not slots:
+            return
+    if slots is None:
+        return
+
+    for slot in sorted(slots):
         source_name = str(api.F.catss_source.v(slot))
         if source is not None and source_name != source:
             continue

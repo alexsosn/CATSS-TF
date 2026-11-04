@@ -187,6 +187,35 @@ The query scans existing Text-Fabric feature data without a secondary index.
 It requires the standalone canonical `alignment`-slot corpus, not BHSA/LXX
 parent word warps. The 71 Sirach source questions remain under issue #136.
 
+## Multi-form lexical co-membership query
+
+The standalone warp supports conjunctions of several **exact** MT-A and/or
+Greek source forms within the same canonical alignment group:
+
+```python
+from catss_tf import find_groups_with_all_forms
+
+for group in find_groups_with_all_forms(
+    api,
+    mt_forms=("MLK",),
+    lxx_forms=("O(", "BASILEU/S"),
+    source="01.Genesis.par",
+):
+    print(group.alignment_id, group.mt_elements, group.lxx_elements)
+```
+
+The spellings above are illustrative; query the values actually present in
+`catss_text` of the installed, user-acquired CATSS snapshot. The search
+accepts either side alone and matches **all distinct requested forms** in one
+alignment slot. Duplicate requested spellings do not require multiple
+occurrences of that word. It never crosses alignment boundaries, guesses
+consecutive phrase spans or treats source MT column B as MT-A lexical
+material. The returned `CanonicalAlignedGroup` preserves original element
+order for further investigation, but multiple Greek forms being co-members
+does not prove adjacency or a word-specific MT correspondence. It performs
+one scan of the existing TF lexical feature; no persistent full-text index
+or normalization is supplied.
+
 ## Sirach manuscript lacunae are not Greek additions
 
 The Hebrew column-A `[..]` marker in `27.Sirach.par` denotes

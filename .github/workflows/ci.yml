@@ -27,7 +27,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
       - run: ruff check .
-      - run: ruff format --check .
+      - run: ruff format --check --diff .
       - run: mypy
       - run: pytest -q
       - name: Reproduce canonical Jonah RED on preimplementation head
@@ -1672,6 +1672,54 @@ jobs:
               (hit.source, hit.chapter, hit.verse, hit.source_line_first)
               for hit in unresolved[:3]
           ], flush=True)
+          # #144: real 46-file researcher-facing multi-form membership test.
+          # Select exact forms from an actual multiword source group in memory,
+          # then compare the public query with a DIFFERENT complete slot scan
+          # limited to that source. Do not print CATSS lexical strings.
+          from catss_tf import find_groups_with_all_forms
+          seed = None
+          for slot in api.F.otype.s('alignment'):
+              mt_nodes = api.L.u(slot, otype='mt_element')
+              greek_nodes = api.L.u(slot, otype='lxx_element')
+              if not mt_nodes or len(greek_nodes) < 2:
+                  continue
+              greek_distinct = tuple(dict.fromkeys(
+                  str(api.F.catss_text.v(node)) for node in greek_nodes
+              ))
+              if len(greek_distinct) >= 2:
+                  seed = (
+                      str(api.F.catss_text.v(mt_nodes[0])),
+                      greek_distinct[:2],
+                      str(api.F.catss_source.v(slot)),
+                  )
+                  break
+          assert seed is not None, 'No mixed multi-Greek alignment in 46-file corpus'
+          mt_term, greek_terms, source_name = seed
+          found = tuple(find_groups_with_all_forms(
+              api, mt_forms=(mt_term,), lxx_forms=greek_terms, source=source_name
+          ))
+          expected_ids = []
+          for slot, slot_source in api.F.catss_source.items():
+              if slot_source != source_name or api.F.otype.v(slot) != 'alignment':
+                  continue
+              mt_seen = {
+                  api.F.catss_text.v(node)
+                  for node in api.L.u(slot, otype='mt_element')
+              }
+              greek_seen = {
+                  api.F.catss_text.v(node)
+                  for node in api.L.u(slot, otype='lxx_element')
+              }
+              if mt_term in mt_seen and set(greek_terms) <= greek_seen:
+                  expected_ids.append(str(api.F.catss_alignment_id.v(slot)))
+          assert expected_ids
+          assert tuple(hit.alignment_id for hit in found) == tuple(expected_ids)
+          assert all(
+              set(greek_terms) <= set(hit.lxx_elements)
+              and mt_term in hit.mt_elements
+              for hit in found
+          )
+          print('CANONICAL_ALL_FORMS_ORACLE_GROUPS', len(found), flush=True)
           print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
                 'alignments, single JoshB contextual reference_range')
           PY
