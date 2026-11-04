@@ -112,9 +112,8 @@ def test_same_spelling_on_opposite_sides_never_cross_joins(tmp_path: Path) -> No
     assert hits[0].mt_elements == ("SAME",)
     assert hits[0].lxx_elements == ("SAME",)
     assert tuple(hit.alignment_id for hit in hits) == _oracle(api, ("SAME",), ("SAME",))
-    assert tuple(find_groups_with_all_forms(
-        api, mt_forms=("OTHER",), lxx_forms=("OTHER",)
-    )) == ()
+    other = find_groups_with_all_forms(api, mt_forms=("OTHER",), lxx_forms=("OTHER",))
+    assert tuple(other) == ()
 
 
 def test_duplicate_requested_spellings_are_membership_not_multiplicity(tmp_path: Path) -> None:
