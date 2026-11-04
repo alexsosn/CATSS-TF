@@ -24,9 +24,7 @@ MLK MLK\tLOGOS BASILEU/S
 """,
         encoding="utf-8",
     )
-    (source / "06.JoshB.par").write_text(
-        "JoshB 1:1\nMLK\tBASILEU/S\n", encoding="utf-8"
-    )
+    (source / "06.JoshB.par").write_text("JoshB 1:1\nMLK\tBASILEU/S\n", encoding="utf-8")
     materialize_corpus(source, tmp_path / "catss")
     return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(silent="deep")
 
