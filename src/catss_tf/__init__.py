@@ -17,6 +17,7 @@ from catss_tf.query import (
     SirachWitnessAnnotation,
     UnclassifiedAlignment,
     find_aligned_groups,
+    find_groups_with_all_forms,
     find_sirach_witness_annotations,
     find_unclassified_alignments,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "SirachWitnessAnnotation",
     "UnclassifiedAlignment",
     "find_aligned_groups",
+    "find_groups_with_all_forms",
     "find_sirach_witness_annotations",
     "find_unclassified_alignments",
     "materialize_bhsa",
