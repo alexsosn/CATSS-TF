@@ -26,6 +26,8 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
+      - name: Demonstrate deliberately failing #144 query test before mypy
+        run: pytest -q tests/test_query_all_forms.py
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy
