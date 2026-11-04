@@ -286,6 +286,29 @@ jobs:
               'unclassified:Sirach witness lacuna',
               'unclassified:Sirach witness lacuna'
           )] == 1, transitions
+
+          # #136 research: bounded metadata-only source-context evidence for
+          # newly unclassified (not merely lexically changed) Sirach rows.
+          from catss_tf.sirach_unclassified_research import audit_sirach_unclassified_context
+          context = audit_sirach_unclassified_context(document)
+          assert context.changed_groups == 7396, context.changed_groups
+          assert context.newly_unclassified == 71, context
+          assert context.unexpected_transitions == 0, context.unexpected_transitions
+          assert dict(context.transition_reasons) == {
+              'Hebrew-empty Greek alignment requires CATSS LXX-plus, apparent MT minus, or transposition evidence': 43,
+              'CATSS LXX-minus requires MT lexical material': 28,
+          }, context.transition_reasons
+          assert len({
+              alignment_id for alignment_id, reason in context.new_unclassified_id_reasons
+          }) == 71
+          assert all(count >= 0 for _, count in context.context_counts)
+          print('SIRACH_UNCLASSIFIED_CONTEXT_GROUPS', context.changed_groups,
+                context.newly_unclassified, flush=True)
+          print('SIRACH_UNCLASSIFIED_CONTEXT_COUNTS', dict(context.context_counts), flush=True)
+          print('SIRACH_UNCLASSIFIED_WITNESS_KINDS',
+                dict(context.witness_kind_counts), flush=True)
+          print('SIRACH_UNCLASSIFIED_CONTEXT_SAMPLES', context.samples, flush=True)
+
           # Anomalous Sir 19:14 from #60: only expose counts and annotation
           # kinds; never print licensed textual or reconstructed source cells.
           for verse in document.verses:
@@ -1631,6 +1654,15 @@ jobs:
           ))
           assert len(sirach_unresolved) >= 71, len(sirach_unresolved)
           assert all(hit.source == '27.Sirach.par' for hit in sirach_unresolved)
+          # Independent native-TF replay of the **exact** 71 newly
+          # unclassified source alignments, with unchanged source reasons.
+          from catss_tf.sirach_unclassified_research import audit_sirach_unclassified_context
+          sirach_source = parse_parallel_file(Path('/tmp/catss-parallel/27.Sirach.par'))
+          context = audit_sirach_unclassified_context(sirach_source)
+          tf_sirach = {hit.alignment_id: hit.reason for hit in sirach_unresolved}
+          assert len(context.new_unclassified_id_reasons) == 71
+          for alignment_id, reason in context.new_unclassified_id_reasons:
+              assert tf_sirach[alignment_id] == reason, alignment_id
           assert tuple(find_unclassified_alignments(
               api, reason_contains='intentionally-nonexistent-reason'
           )) == ()
