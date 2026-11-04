@@ -45,7 +45,9 @@ from catss_tf import find_groups_with_all_forms
 
 # Replace with exact `catss_text` spellings observed in your local source.
 for group in find_groups_with_all_forms(
-    api, mt_forms=("MLK",), lxx_forms=("O(", "BASILEU/S"),
+    api,
+    mt_forms=("MLK",),
+    lxx_forms=("O(", "BASILEU/S"),
     source="01.Genesis.par",
 ):
     print(group.chapter, group.verse, group.alignment_id, group.lxx_elements)
