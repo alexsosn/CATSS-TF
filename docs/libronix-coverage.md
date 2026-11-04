@@ -37,7 +37,25 @@ for group in find_aligned_groups(api, "MLK", "BASILEU/S", source="01.Genesis.par
     print(group.mt_elements, group.lxx_elements)
 ```
 
-The query is a group-level correspondence query. It does **not** assert word-to-word alignment inside a many-to-many group. Nor does it reproduce Libronix's indexed search or locale-specific Greek/Hebrew wildcard handling. Article + noun membership in one group can similarly be tested by requiring both Greek forms in `greek`; strict adjacency and textual running order require separate tests.
+The query is a group-level correspondence query. It does **not** assert word-to-word alignment inside a many-to-many group. Nor does it reproduce Libronix's indexed search or locale-specific Greek/Hebrew wildcard handling. For an exact same-alignment article+noun (or other multi-form) query, use the
+public `find_groups_with_all_forms` helper:
+
+```python
+from catss_tf import find_groups_with_all_forms
+
+# Replace with exact `catss_text` spellings observed in your local source.
+for group in find_groups_with_all_forms(
+    api, mt_forms=("MLK",), lxx_forms=("O(", "BASILEU/S"),
+    source="01.Genesis.par",
+):
+    print(group.chapter, group.verse, group.alignment_id, group.lxx_elements)
+```
+
+The query requires **all distinct forms** on their respective sides in one
+CATSS alignment slot; Hebrew-only and Greek-only searches also work. Repeated
+requested spellings are set-membership, not token multiplicity. Co-membership
+does not imply phrase adjacency, running-text order, pairwise lexical matches
+or links to reconstructed MT-B forms; such claims need separate evidence.
 
 To compare MT against reconstructed Hebrew, use `api.F.catss_mt_col_a` and `api.F.catss_mt_col_b` on alignment slots. These are raw evidence strings: an MT-B lexical query like Libronix `Reconst:` cannot yet be presumed equivalent to a regularized token search. Query scopes and raw source provenance are distinct from semantic/morphological inference.
 
