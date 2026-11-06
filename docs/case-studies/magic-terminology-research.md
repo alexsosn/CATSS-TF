@@ -127,3 +127,13 @@ The committed notebook should contain code, scholarly references, aggregate
 observations, and a small number of ordinary biblical references/forms as needed
 for explanation. It must not commit CATSS raw rows, generated modules, parent
 corpora, or a large extracted concordance.
+
+## Current-main reconciliation and reproducibility evidence (2026-11-07)
+
+The 2018 Oxford report supplies claims, not counts for every possible definition of the Septuagint. Current main's grounded case study `docs/case-studies/magic-terminology.md` records **10** occurrences of `μάγος` in the CenterBLC/LXX 1935 parent, split into **2 Old Greek Daniel** and **8 Daniel Theodotion**, and **12** occurrences of `φάρμακον` across the full parent, split **6 singular / 6 plural**. These counts must **not** be presented as empirically reproduced by this notebook until an actual pinned-parent run is complete.
+
+PR #42 was reconciled with current main by merge commit `d4bd121`; only the notebook and this research note were retained from its original branch. Its two historical `curl --insecure` CI workflows were intentionally dropped, not endorsed as authenticated source acquisition. The documented full CATSS canonical corpus CI does not prove the two BHSA/LXX projections can materialize, and the complete LXX projection has a known JoshB reference-range parent limitation.
+
+The notebook preflight now takes explicit, absolute `CATSS_LXX_MODULE` and `CATSS_BHSA_MODULE` directories, and its Hebrew index uses source + stable alignment ID with a single pass through both possible TF membership lanes. This is a scoped notebook convenience; no extra public library index was introduced. The original inverse `F.catss_alignment_id.s(value)` lookup in a Greek occurrence loop would scan a large feature map repeatedly.
+
+RED-first offline checks of notebook configuration, non-colliding source keys, two membership lanes and code compilation were committed before behavior changes and executed in GitHub Actions. The notebook has **no saved corpus outputs**, and source/parent E2E still has to be run with user-acquired licensed data and exact supported parent versions before the draft can merge.
