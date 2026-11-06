@@ -118,3 +118,26 @@ def test_index_rejects_alignment_with_missing_source_provenance(
     build = _function("build_hebrew_alignment_index", membership_rows=membership_rows)
     with pytest.raises(ValueError, match="source"):
         build(app)
+
+
+def test_projection_preflight_checks_exact_bundle_paths(tmp_path: Path) -> None:
+    seen: list[tuple[Path, Path]] = []
+
+    def compare(left: Path, right: Path) -> SimpleNamespace:
+        seen.append((left, right))
+        return SimpleNamespace(ok=True, summary=SimpleNamespace(source_files=46), findings=())
+
+    bhsa, lxx = tmp_path / "catss-bhsa", tmp_path / "catss-lxx"
+    validate = _function("require_matching_projections", compare_projection_bundles=compare)
+    validate(bhsa, lxx)
+    assert seen == [(bhsa, lxx)]
+
+
+def test_projection_preflight_rejects_fingerprint_mismatch(tmp_path: Path) -> None:
+    def compare(_left: Path, _right: Path) -> SimpleNamespace:
+        issue = SimpleNamespace(code="source_fingerprint_mismatch")
+        return SimpleNamespace(ok=False, findings=(issue,))
+
+    validate = _function("require_matching_projections", compare_projection_bundles=compare)
+    with pytest.raises(RuntimeError, match="source_fingerprint_mismatch"):
+        validate(tmp_path / "catss-bhsa", tmp_path / "catss-lxx")
