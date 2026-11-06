@@ -20,3 +20,9 @@ Merge resolution `d4bd121` uses the current main tree, retaining only the notebo
 ## Definition of done and non-goals
 
 This narrow repair episode does not close #41 or finalize PR #42 by itself. It fixes deterministic reproducibility/performance in the notebook, without new TF feature model, downloader behavior or speculative lexicon alignment. Full-source projection may remain blocked on pinned JoshB subverse constraints. Keep the broader #126 open.
+
+## Preflight extension — existing projection consistency API
+
+A separate implementation review found that the documented same-snapshot requirement was not mechanically enforced. The library already has `compare_projection_bundles(bhsa_directory, lxx_directory)` in `consistency.py`. Its production code independently reads both `catss-sources.tsv` tables, rejects mismatched size/SHA-256 fingerprints, and compares canonical alignment/annotation/technique sidecars for supported shared sources. This is the existing cross-projection contract; do **not** reinvent a manifest or run positional joins.
+
+RED-first tests of a small notebook `require_matching_projections` function must assert the exact two paths reach the comparator and that `ok=False` raises with bounded diagnostic *codes* instead of permitting silently inconsistent corpora. GREEN: call the existing comparator before loading either pinned parent, report only a successful numeric source count and keep the notebook source/output-free. Re-run the focused and full offline CI and obtain fresh failure-oriented review. This verifies **internal bundle agreement**, not independent authentication of the upstream CATSS bytes or an E2E parent-corpus run.
