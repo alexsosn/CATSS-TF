@@ -1,12 +1,13 @@
 """Offline RED-first notebook preflight and alignment-join tests."""
 
 import ast
+from collections.abc import Callable
 import json
 import os
 from collections import defaultdict
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 import pytest
 
