@@ -67,6 +67,10 @@ def derive_technique_state(
     trans_local: bool,
     trans_remote: bool,
     trans_style: bool,
+    apparent_mt_minus: bool = False,
+    scoped_apparent_mt_minus: bool = False,
+    greek_preverb_carrier: bool = False,
+    sirach_witness_lacuna: bool = False,
 ) -> TechniqueState:
     """Derive conservative MT↔LXX technique facts from canonical scalar state."""
 
@@ -81,14 +85,46 @@ def derive_technique_state(
         raise TechniqueError("CATSS LXX-minus contradicts a non-empty Greek side")
     if is_lxx_minus and mt_n == 0:
         raise TechniqueError("CATSS LXX-minus requires MT lexical material")
-    transposition_marked = trans_local or trans_remote or trans_style
-    if mt_n == 0 and lxx_n > 0 and not is_lxx_plus and not transposition_marked:
+    if scoped_apparent_mt_minus and not apparent_mt_minus:
+        raise TechniqueError("scoped apparent MT minus requires explicit marker evidence")
+    if scoped_apparent_mt_minus and (mt_n != 1 or lxx_n != 2):
         raise TechniqueError(
-            "Hebrew-empty Greek alignment requires CATSS LXX-plus or transposition evidence"
+            "scoped apparent MT minus requires exactly one MT and two Greek elements"
         )
-    if mt_n > 0 and lxx_n == 0 and not is_lxx_minus and not transposition_marked:
+    if apparent_mt_minus and mt_n != 0 and not scoped_apparent_mt_minus:
+        raise TechniqueError("CATSS apparent MT minus contradicts a non-empty MT side")
+    if apparent_mt_minus and lxx_n == 0:
+        raise TechniqueError("CATSS apparent MT minus requires Greek lexical material")
+    if apparent_mt_minus and is_lxx_plus:
+        raise TechniqueError("CATSS alignment cannot be both LXX-plus and apparent MT minus")
+    if sirach_witness_lacuna:
+        if mt_n != 0 or lxx_n == 0:
+            raise TechniqueError("Sirach witness lacuna requires empty MT and nonempty Greek")
+        if is_lxx_plus or is_lxx_minus or apparent_mt_minus:
+            raise TechniqueError("Sirach witness lacuna cannot assert Greek addition or omission")
+    transposition_marked = trans_local or trans_remote or trans_style
+    if (
+        mt_n == 0
+        and lxx_n > 0
+        and not is_lxx_plus
+        and not apparent_mt_minus
+        and not sirach_witness_lacuna
+        and not transposition_marked
+    ):
         raise TechniqueError(
-            "Greek-empty MT alignment requires CATSS LXX-minus or transposition evidence"
+            "Hebrew-empty Greek alignment requires CATSS LXX-plus, apparent MT minus, "
+            "or transposition evidence"
+        )
+    if (
+        mt_n > 0
+        and lxx_n == 0
+        and not is_lxx_minus
+        and not transposition_marked
+        and not greek_preverb_carrier
+    ):
+        raise TechniqueError(
+            "Greek-empty MT alignment requires CATSS LXX-minus, transposition, "
+            "or Greek-preverb carrier evidence"
         )
     if is_lxx_plus and is_lxx_minus:
         raise TechniqueError("CATSS alignment cannot be both LXX-plus and LXX-minus")
@@ -148,6 +184,31 @@ def derive_alignment_technique(source: str, alignment: AlignmentRecord) -> Techn
         trans_local=alignment.is_transposition_local,
         trans_remote=alignment.is_transposition_remote,
         trans_style=alignment.is_transposition_stylistic,
+        apparent_mt_minus=any(
+            annotation.side == "mt_a" and annotation.kind == "apparent_minus"
+            for annotation in alignment.annotations
+        ),
+        scoped_apparent_mt_minus=any(
+            annotation.side == "mt_a"
+            and annotation.kind == "apparent_minus"
+            and annotation.target_side == "lxx"
+            and annotation.target_index == 1
+            for annotation in alignment.annotations
+        ),
+        greek_preverb_carrier=any(
+            annotation.side == "lxx" and annotation.kind == "greek_preverb"
+            for annotation in alignment.annotations
+        ),
+        # Sirach's Hebrew witness is physically lacunose, not a Greek plus.
+        # Require exact source, first MT-A marker, and typed MT-A evidence.
+        sirach_witness_lacuna=(
+            source == "27.Sirach.par"
+            and alignment.mt_col_a.split()[:1] == ["[..]"]
+            and any(
+                annotation.side == "mt_a" and annotation.kind == "sirach_lacuna_or_illegible"
+                for annotation in alignment.annotations
+            )
+        ),
     )
     return TechniqueRecord(
         source=source,

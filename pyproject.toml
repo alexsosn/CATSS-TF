@@ -19,14 +19,14 @@ catss-tf = "catss_tf.cli:main"
 
 [project.optional-dependencies]
 tf = [
-  "text-fabric>=13.1,<14",
+  "text-fabric[github]>=13.1,<14",
 ]
 dev = [
   "build>=1.2",
   "mypy>=1.11",
   "pytest>=8",
   "ruff>=0.8",
-  "text-fabric>=13.1,<14",
+  "text-fabric[github]>=13.1,<14",
   "twine>=5",
 ]
 

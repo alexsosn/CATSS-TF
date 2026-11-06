@@ -6,18 +6,132 @@ import pathlib
 import re
 import typing
 
+from catss_tf.notation import notation_spec
+
 _VERSE_HEADER = re.compile(r"^\s*([0-9A-Za-z][0-9A-Za-z/]*)\s+(?:(\d+):)?(\d+)\s*$")
 _COLUMN_SPACES = re.compile(r"\s{2,}")
 _BRACE_BLOCK = re.compile(r"\{[^{}]*\}")
+_SIRACH_DOUBLE_BRACE = re.compile(r"\{\{[^{}]*\}\}")
 _ANGLE_NOTE = re.compile(r"<[^<>]*>")
 _SQUARE_GROUP = re.compile(r"\[\[?[^\[\]]*\]\]?")
 _GREEK_REFERENCE_VALUE = re.compile(r"^(?:(\d+):)?(\d+)([A-Za-z]?)$")
+_GREEK_REFERENCE_RANGE_VALUE = re.compile(r"^(\d+)[.](\d+)([A-Za-z])-(\d+)([A-Za-z])$")
+_CONTEXTUAL_REFERENCE_VALUE = re.compile(
+    r"^(?:[A-Za-z]{1,3}[.]?[ ]*)?[0-9]+(?:[.:][ ]*[0-9]+)?[A-Za-z]{0,2}"
+    r"(?:[ ,]+[A-Za-z]{0,3}[.]?[0-9]+(?:[.:][ ]*[0-9]+)?[A-Za-z]{0,2})*[?]?$"
+)
 _SINGLE_CARET = re.compile(r"(?<!\^)\^(?!\^)")
 _CONTINUATION_TOKEN = re.compile(r"(?:(?<=^)|(?<=\s))#(?=\s|$)")
-_MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s]+)")
+_MT_DOT_SIGLUM = re.compile(r"(?<!\S)(\.[^\s<>{}\[\]]+)")
 _DOUBT_MARKER = re.compile(r"\?+")
 _LXX_PLUS_MARKERS = frozenset({"--+", "-+", "---+"})
 _LXX_MINUS_MARKERS = frozenset({"---", "--", "----"})
+_KNOWN_MT_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
+    ("01.Genesis.par", 6, 19, "--= '' =H/BHMH", "TW=N KTHNW=N"): "--+ '' =H/BHMH",
+    (
+        "01.Genesis.par",
+        22,
+        16,
+        "--=;M/MN/Y <22.12> <sp>",
+        "DI' E)ME/",
+    ): "--+=;M/MN/Y <22.12> <sp>",
+    (
+        "01.Genesis.par",
+        48,
+        13,
+        "-- =;)T/M <48.10>",
+        "AU)TOU\\S",
+    ): "--+ =;)T/M <48.10>",
+    (
+        "02.Exodus.par",
+        10,
+        24,
+        "--=;)LH/YKM <10.8>",
+        "TW=| QEW=| U(MW=N",
+    ): "--+=;)LH/YKM <10.8>",
+    (
+        "15.1Chron.par",
+        11,
+        20,
+        "-- =B/P(M )XT",
+        "E)N KAIRW=| E(NI/",
+    ): "--+ =B/P(M )XT",
+}
+
+_KNOWN_LXX_SOURCE_ROW_REPAIRS: dict[tuple[str, int, int, str, str], str] = {
+    ("01.Genesis.par", 34, 29, "KL", "--+"): "---",
+    ("18.Esther.par", 7, 4, "W/)LW", "--+"): "---",
+    ("23.Prov.par", 11, 31, ")P KY", "--+"): "---",
+    ("23.Prov.par", 24, 5, "GBR", "--+"): "---",
+    ("23.Prov.par", 30, 32, "L/PH", "--+ {x}"): "--- {x}",
+    ("41.Jer.par", 51, 57, "PXWT/YH", "--+ [28.57]"): "--- [28.57]",
+    ("13.1Kings.par", 22, 50, ")X)B", "[16.28g]"): "--- [16.28g]",
+    ("17.1Esdras.par", 6, 4, "L/KM", "[e5.3]"): "{..^U(MI=N} [e5.3]",
+}
+
+
+_KNOWN_SOURCE_LAYOUT_REPAIRS: dict[tuple[str, int, int, str], tuple[str, str]] = {
+    (
+        "06.JoshB.par",
+        3,
+        10,
+        "W/)T H/GRG$Y ^ =W/)T W/H/)MRY KAI\\ TO\\N AMORRAI=ON",
+    ): (
+        "W/)T H/GRG$Y ^ =W/)T W/H/)MRY",
+        "KAI\\ TO\\N AMORRAI=ON",
+    ),
+    (
+        "06.JoshB.par",
+        4,
+        11,
+        "W/H/KHNYM =W/H/)BNYM .m .kb # KAI\\ OI( LI/QOI",
+    ): (
+        "W/H/KHNYM =W/H/)BNYM .m .kb #",
+        "KAI\\ OI( LI/QOI",
+    ),
+    (
+        "06.JoshB.par",
+        9,
+        4,
+        "W/YC+YRW =;W/YC+YDW .rd <9.12 E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+    ): (
+        "W/YC+YRW =;W/YC+YDW .rd <9.12>",
+        "E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+    ),
+    (
+        "06.JoshB.par",
+        21,
+        42,
+        "--+ '' =;L/GBWLWT/YHM <19.49> E)N TOI=S O(RI/OIS AU)TW=N",
+    ): (
+        "--+ '' =;L/GBWLWT/YHM <19.49>",
+        "E)N TOI=S O(RI/OIS AU)TW=N",
+    ),
+}
+
+
+def _exact_exodus_35_19_corruption(lines: list[str], start: int) -> bool:
+    """Recognize only the known seven-line Exod 35:19 source-layout corruption."""
+
+    if start + 7 > len(lines):
+        return False
+    window = lines[start : start + 7]
+    head, blank1, false_header, hash_row, blank2, duplicate_header, tail = window
+    head_mt, head_lxx, head_split = _split_raw_columns(head)
+    tail_mt, tail_lxx, tail_split = _split_raw_columns(tail)
+    return (
+        head_split
+        and tail_split
+        and " ".join(head_mt.split()) == "^ ^^^ =L/$RT {...?H/&RD} #"
+        and " ".join(head_lxx.split()) == "{+} E)N AI(=S LEITOURGH/SOUSIN"
+        and not blank1.strip()
+        and false_header == "Exod 1:10"
+        and hash_row.strip() == "#"
+        and not blank2.strip()
+        and duplicate_header == "Exod 35:19"
+        and tail_mt.strip() == "--+"
+        and " ".join(tail_lxx.split()) == "E)N AU)TAI=S"
+    )
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -27,6 +141,11 @@ class Annotation:
     side: typing.Literal["mt_a", "mt_b", "lxx"]
     kind: str
     raw: str
+    family: str | None = None
+    contextual: bool = False
+    payload: str | None = None
+    target_side: typing.Literal["mt", "lxx"] | None = None
+    target_index: int | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -46,6 +165,19 @@ class GreekReference:
     chapter: int | None
     verse: int
     subverse: str | None
+    raw: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class GreekReferenceRange:
+    """Structured inclusive CATSS Greek-side contextual reference range."""
+
+    start_chapter: int | None
+    start_verse: int
+    start_subverse: str
+    end_chapter: int | None
+    end_verse: int
+    end_subverse: str
     raw: str
 
 
@@ -78,6 +210,7 @@ class AlignmentRecord:
     mt_qere_tokens: tuple[str, ...]
     lxx_tokens: tuple[str, ...]
     lxx_references: tuple[GreekReference, ...]
+    lxx_reference_ranges: tuple[GreekReferenceRange, ...]
     mt_count: int
     lxx_count: int
     is_lxx_plus: bool
@@ -115,12 +248,22 @@ class ParallelDocument:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class _SourceRepair:
+    side: typing.Literal["mt_a", "lxx"]
+    original: str
+    semantic: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class _PhysicalRow:
     line_no: int
     raw: str
+    source_mt: str
+    source_lxx: str
     mt: str
     lxx: str
     column_split: bool
+    layout_dummy: bool = False
 
     @property
     def continues(self) -> bool:
@@ -160,6 +303,11 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
     verses: list[VerseRecord] = []
     current: _VerseBuilder | None = None
     pending: list[_PhysicalRow] = []
+    # Only the exact seven-line Exodus corruption may cross its false headers.
+    # Dummy lines are retained verbatim on the resulting alignment for provenance.
+    corrupt_dummies: set[int] = set()
+    corrupt_tail: int | None = None
+    physical_lines = [line.rstrip("\r") for line in text.splitlines()]
 
     def flush_pending() -> None:
         nonlocal pending
@@ -201,8 +349,21 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
         )
         current = None
 
-    for line_no, raw_with_end in enumerate(text.splitlines(), start=1):
-        raw = raw_with_end.rstrip("\r")
+    for line_no, raw in enumerate(physical_lines, start=1):
+        if line_no in corrupt_dummies:
+            # Preserve blank lines and both false/redundant headers exactly as
+            # alignment evidence; never interpret these as lexical material.
+            assert current is not None and pending
+            data_line_numbers.append(line_no)
+            pending.append(
+                _layout_dummy(
+                    _parse_physical_row(
+                        raw, line_no, canonical_source, current.chapter, current.verse
+                    )
+                )
+            )
+            continue
+
         if not raw.strip():
             continue
 
@@ -232,12 +393,41 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             )
             continue
 
-        physical = _parse_physical_row(raw, line_no)
-        if pending:
-            if pending[-1].continues:
-                pending.append(physical)
-                if not physical.continues:
+        physical = _parse_physical_row(
+            raw,
+            line_no,
+            canonical_source,
+            current.chapter,
+            current.verse,
+        )
+
+        if (
+            canonical_source == "02.Exodus.par"
+            and (current.book, current.chapter, current.verse) == ("Exod", 35, 19)
+            and _exact_exodus_35_19_corruption(physical_lines, line_no - 1)
+        ):
+            corrupt_dummies.update(range(line_no + 1, line_no + 6))
+            corrupt_tail = line_no + 6
+
+        if not physical.column_split:
+            if canonical_source == "20.Psalms.par":
+                if pending and not _pending_psalms_orphans(pending):
                     flush_pending()
+                pending.append(physical)
+                continue
+            if pending and _append_export_orphan_to_previous_lxx(pending, physical):
+                continue
+        elif canonical_source == "20.Psalms.par" and _pending_psalms_orphans(pending):
+            pending = _attach_psalms_orphans_to_following_mt(pending, physical)
+            continue
+
+        if pending:
+            if (
+                pending[-1].continues
+                or physical.starts_with_continuation
+                or line_no == corrupt_tail
+            ):
+                pending.append(physical)
                 continue
             flush_pending()
 
@@ -252,8 +442,6 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
             )
 
         pending = [physical]
-        if not physical.continues:
-            flush_pending()
 
     flush_verse()
     return ParallelDocument(
@@ -264,34 +452,134 @@ def parse_parallel_text(text: str, *, source_name: str) -> ParallelDocument:
     )
 
 
-def _parse_physical_row(raw: str, line_no: int) -> _PhysicalRow:
-    if "\t" in raw:
-        mt, lxx = raw.split("\t", 1)
-        return _PhysicalRow(
-            line_no=line_no,
-            raw=raw,
-            mt=mt.strip(),
-            lxx=lxx.strip(),
-            column_split=True,
-        )
+def _parse_physical_row(
+    raw: str,
+    line_no: int,
+    source_name: str,
+    chapter: int,
+    verse: int,
+) -> _PhysicalRow:
+    layout_repair = _KNOWN_SOURCE_LAYOUT_REPAIRS.get((source_name, chapter, verse, raw.strip()))
+    if layout_repair is not None:
+        mt, lxx = layout_repair
+        column_split = True
+    else:
+        mt, lxx, column_split = _split_raw_columns(raw)
 
-    parts = _COLUMN_SPACES.split(raw, maxsplit=1)
-    if len(parts) == 2:
-        return _PhysicalRow(
-            line_no=line_no,
-            raw=raw,
-            mt=parts[0].strip(),
-            lxx=parts[1].strip(),
-            column_split=True,
-        )
-
+    source_mt = mt.strip()
+    source_lxx = lxx.strip()
     return _PhysicalRow(
         line_no=line_no,
         raw=raw,
-        mt=raw.strip(),
-        lxx="",
-        column_split=False,
+        source_mt=source_mt,
+        source_lxx=source_lxx,
+        mt=source_mt,
+        lxx=source_lxx,
+        column_split=column_split,
     )
+
+
+def _split_raw_columns(raw: str) -> tuple[str, str, bool]:
+    if "\t" in raw:
+        mt, lxx = raw.split("\t", 1)
+        return mt, lxx, True
+    match = _COLUMN_SPACES.search(raw)
+    if match is not None:
+        return raw[: match.start()], raw[match.end() :], True
+    return raw, "", False
+
+
+def _layout_dummy(row: _PhysicalRow) -> _PhysicalRow:
+    return dataclasses.replace(
+        row,
+        source_mt="",
+        source_lxx="",
+        mt="",
+        lxx="",
+        column_split=True,
+        layout_dummy=True,
+    )
+
+
+def _pending_psalms_orphans(pending: list[_PhysicalRow]) -> bool:
+    return bool(pending) and all(not row.column_split for row in pending)
+
+
+def _append_export_orphan_to_previous_lxx(
+    pending: list[_PhysicalRow],
+    orphan: _PhysicalRow,
+) -> bool:
+    target_index = None
+    for index in range(len(pending) - 1, -1, -1):
+        if not pending[index].layout_dummy:
+            target_index = index
+            break
+    if target_index is None or not pending[target_index].column_split:
+        return False
+
+    target = pending[target_index]
+    has_prior_orphan = any(row.layout_dummy for row in pending[target_index + 1 :])
+    if has_prior_orphan:
+        source_lxx = target.source_lxx
+    else:
+        _raw_mt, raw_lxx, raw_split = _split_raw_columns(target.raw)
+        source_lxx = raw_lxx if raw_split else target.source_lxx
+
+    repaired_lxx = source_lxx + orphan.raw
+    pending[target_index] = dataclasses.replace(
+        target,
+        source_lxx=repaired_lxx,
+        lxx=repaired_lxx,
+    )
+    pending.append(_layout_dummy(orphan))
+    return True
+
+
+def _attach_psalms_orphans_to_following_mt(
+    pending: list[_PhysicalRow],
+    target: _PhysicalRow,
+) -> list[_PhysicalRow]:
+    prefix = "".join(row.raw for row in pending)
+    raw_mt, _raw_lxx, raw_split = _split_raw_columns(target.raw)
+    source_mt = prefix + (raw_mt if raw_split else target.source_mt)
+    semantic_mt = prefix + target.mt
+    repaired_target = dataclasses.replace(
+        target,
+        source_mt=source_mt,
+        mt=semantic_mt,
+    )
+    return [*(_layout_dummy(row) for row in pending), repaired_target]
+
+
+def _repair_source_row(
+    source_name: str,
+    chapter: int,
+    verse: int,
+    mt: str,
+    lxx: str,
+) -> tuple[str, str, tuple[_SourceRepair, ...]]:
+    identity = (source_name, chapter, verse, mt, lxx)
+    semantic_mt = _KNOWN_MT_SOURCE_ROW_REPAIRS.get(identity, mt)
+    semantic_lxx = _KNOWN_LXX_SOURCE_ROW_REPAIRS.get(identity, lxx)
+
+    repairs: list[_SourceRepair] = []
+    if semantic_mt != mt:
+        repairs.append(
+            _SourceRepair(
+                side="mt_a",
+                original=mt,
+                semantic=semantic_mt,
+            )
+        )
+    if semantic_lxx != lxx:
+        repairs.append(
+            _SourceRepair(
+                side="lxx",
+                original=lxx,
+                semantic=semantic_lxx,
+            )
+        )
+    return semantic_mt, semantic_lxx, tuple(repairs)
 
 
 def _build_alignment(
@@ -301,8 +589,15 @@ def _build_alignment(
     physical_rows: tuple[_PhysicalRow, ...],
 ) -> tuple[AlignmentRecord, tuple[ParseDiagnostic, ...]]:
     row_diagnostics: list[ParseDiagnostic] = []
-    mt_raw = _join_continued_cells(row.mt for row in physical_rows)
-    lxx_raw = _join_continued_cells(row.lxx for row in physical_rows)
+    mt_raw = _join_continued_cells(row.source_mt for row in physical_rows)
+    lxx_raw = _join_continued_cells(row.source_lxx for row in physical_rows)
+    semantic_mt, semantic_lxx, repairs = _repair_source_row(
+        source_name,
+        verse.chapter,
+        verse.verse,
+        mt_raw,
+        lxx_raw,
+    )
     column_split = all(row.column_split for row in physical_rows)
 
     if not column_split:
@@ -316,12 +611,12 @@ def _build_alignment(
             )
         )
 
-    mt_col_a, mt_col_b = _split_mt_columns(mt_raw)
+    mt_col_a, mt_col_b = _split_mt_columns(semantic_mt)
     is_lxx_plus = _first_token(mt_col_a) in _LXX_PLUS_MARKERS
-    is_lxx_minus = _first_token(lxx_raw) in _LXX_MINUS_MARKERS
+    is_lxx_minus = _is_lxx_minus_marker(_first_token(semantic_lxx))
 
-    lxx_references, reference_diagnostics = _extract_greek_references(
-        lxx_raw,
+    lxx_references, lxx_reference_ranges, reference_diagnostics = _extract_greek_references(
+        semantic_lxx,
         line_no=physical_rows[0].line_no,
         raw_line=physical_rows[0].raw,
     )
@@ -329,25 +624,57 @@ def _build_alignment(
 
     annotations = tuple(
         [
-            *_extract_annotations("mt_a", mt_col_a),
-            *(_extract_annotations("mt_b", mt_col_b) if mt_col_b is not None else []),
-            *_extract_annotations("lxx", lxx_raw),
+            *_mt_alignment_marker_annotations(mt_col_a, book=verse.book),
+            *_extract_annotations("mt_a", mt_col_a, book=verse.book),
+            *(
+                _extract_annotations("mt_b", mt_col_b, book=verse.book)
+                if mt_col_b is not None
+                else []
+            ),
+            *_extract_annotations("lxx", semantic_lxx, book=verse.book),
+            *(
+                Annotation(
+                    side=repair.side,
+                    kind="source_repair",
+                    raw=repair.original,
+                    family="provenance",
+                    contextual=True,
+                    payload=repair.semantic,
+                )
+                for repair in repairs
+            ),
         ]
     )
 
-    mt_readings = _mt_lexical_readings(mt_col_a)
+    # Sirach witness numbers and >n absence labels are textual apparatus,
+    # not source Hebrew words. Match only exact, already-typed MT-A markers:
+    # never remove ambiguous attached forms or reconstructed MT-B content.
+    witness_markup = (
+        frozenset(
+            annotation.raw
+            for annotation in annotations
+            if annotation.side == "mt_a"
+            and (
+                annotation.kind.startswith("sirach_witness_")
+                or annotation.kind == "sirach_reading_lacking_in_witness"
+            )
+        )
+        if source_name == "27.Sirach.par" and verse.book == "Sir"
+        else frozenset()
+    )
+    mt_readings = _mt_lexical_readings(mt_col_a, ignore_exact_tokens=witness_markup)
     mt_tokens = tuple(reading.primary for reading in mt_readings)
     mt_ketiv_tokens = tuple(reading.ketiv for reading in mt_readings if reading.ketiv is not None)
     mt_qere_tokens = tuple(reading.qere for reading in mt_readings if reading.qere is not None)
     is_ketiv = bool(mt_ketiv_tokens)
     is_qere = bool(mt_qere_tokens)
 
-    joined_raw = f"{mt_raw}\t{lxx_raw}"
-    no_braces = _BRACE_BLOCK.sub(" ", joined_raw)
+    joined_semantic = f"{semantic_mt}\t{semantic_lxx}"
+    no_braces = _BRACE_BLOCK.sub(" ", joined_semantic)
     is_transposition_stylistic = any(
         annotation.kind == "transposition_stylistic" for annotation in annotations
     )
-    is_transposition_remote = "^^^" in joined_raw or any(
+    is_transposition_remote = "^^^" in joined_semantic or any(
         annotation.kind == "transposition_remote" for annotation in annotations
     )
     is_transposition_local = "~" in no_braces or _SINGLE_CARET.search(no_braces) is not None
@@ -358,7 +685,24 @@ def _build_alignment(
         mt_tokens = ()
         mt_ketiv_tokens = ()
         mt_qere_tokens = ()
-    lxx_tokens = () if is_lxx_minus else _lxx_lexical_candidates(lxx_raw)
+    lxx_tokens = () if is_lxx_minus else _lxx_lexical_candidates(semantic_lxx)
+
+    # Exact research-backed mixed apparent-minus from 32.Jonah.par 4:3.
+    # The same 1:2 ratio in arbitrary data is NOT sufficient to infer scope.
+    if (
+        source_name == "32.Jonah.par"
+        and (verse.chapter, verse.verse) == (4, 3)
+        and mt_col_a == "--- YHWH"
+        and semantic_lxx == "DE/SPOTA KU/RIE"
+        and mt_tokens == ("YHWH",)
+        and lxx_tokens == ("DE/SPOTA", "KU/RIE")
+    ):
+        annotations = tuple(
+            dataclasses.replace(annotation, target_side="lxx", target_index=1)
+            if annotation.side == "mt_a" and annotation.kind == "apparent_minus"
+            else annotation
+            for annotation in annotations
+        )
 
     source_lines = tuple(row.line_no for row in physical_rows)
     raw_lines = tuple(row.raw for row in physical_rows)
@@ -385,6 +729,7 @@ def _build_alignment(
             mt_qere_tokens=mt_qere_tokens,
             lxx_tokens=lxx_tokens,
             lxx_references=lxx_references,
+            lxx_reference_ranges=lxx_reference_ranges,
             mt_count=len(mt_tokens),
             lxx_count=len(lxx_tokens),
             is_lxx_plus=is_lxx_plus,
@@ -419,27 +764,241 @@ def _join_continued_cells(cells: typing.Iterable[str]) -> str:
     return " ".join(parts)
 
 
+def _mt_alignment_marker_annotations(cell: str, *, book: str) -> list[Annotation]:
+    if _first_token(cell) != "---":
+        return []
+    spec = notation_spec("Ap-", book=book)
+    if spec is None:
+        raise ValueError("documented apparent-minus notation is unavailable")
+    return [
+        Annotation(
+            side="mt_a",
+            kind=spec.kind,
+            raw="---",
+            family=spec.family,
+            contextual=spec.contextual,
+        )
+    ]
+
+
 def _extract_annotations(
-    side: typing.Literal["mt_a", "mt_b", "lxx"], cell: str
+    side: typing.Literal["mt_a", "mt_b", "lxx"], cell: str, *, book: str
 ) -> list[Annotation]:
     annotations: list[Annotation] = []
+    double_brace_spans: set[tuple[int, int]] = set()
+    if book == "Sir":
+        for match in _SIRACH_DOUBLE_BRACE.finditer(cell):
+            raw = match.group(0)
+            double_brace_spans.add(match.span())
+            spec = notation_spec("{{}}", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw=raw, family=spec.family)
+                )
+
     for match in _BRACE_BLOCK.finditer(cell):
+        if any(start <= match.start() and match.end() <= end for start, end in double_brace_spans):
+            continue
         raw = match.group(0)
-        annotations.append(Annotation(side=side, kind=_brace_kind(raw), raw=raw))
+        if book == "Sir" and re.fullmatch(r"{[?0-9]+}", raw):
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind="sirach_manuscript_addition",
+                    raw=raw,
+                    family="sirach_manuscript",
+                    payload=raw[1:-1],
+                )
+            )
+            continue
+        if raw == "{!}":
+            suffix_match = re.match(r"[a-z+-]*", cell[match.end() :])
+            suffix = suffix_match.group(0) if suffix_match is not None else ""
+            inf_abs_raw = raw + suffix
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=_inf_abs_kind(suffix),
+                    raw=inf_abs_raw,
+                    family="infinitive_absolute",
+                    payload=suffix or None,
+                )
+            )
+            continue
+        spec = notation_spec(raw, book=book)
+        if spec is not None:
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=spec.kind,
+                    raw=raw,
+                    family=spec.family,
+                    contextual=spec.contextual,
+                )
+            )
+        else:
+            raw_kind = _brace_kind(raw)
+            raw_semantics = {
+                "possible_doublet": ("possible_doublet", "translation_technique", True),
+                "distributive": ("distributive", "translation_technique", True),
+                "preposition_added": ("preposition_added", "preposition", True),
+                "transposition_remote": ("transposition_remote", "transposition", True),
+                "transposition_stylistic": ("transposition_stylistic", "transposition", True),
+                "repetition": ("repetition", "translation_technique", True),
+                "greek_correction": ("greek_correction", "textual", True),
+                "greek_edition_difference": ("greek_edition_difference", "textual", True),
+                "contextual_reference": ("contextual_reference", "reference", True),
+                "contextual_greek_reading": ("contextual_greek_reading", "textual", True),
+                "source_format_note": ("source_format_note", "provenance", True),
+                "source_corruption_note": ("source_corruption_note", "provenance", True),
+            }.get(raw_kind)
+            if raw_semantics is None:
+                annotations.append(Annotation(side=side, kind=raw_kind, raw=raw))
+            else:
+                kind, family, contextual = raw_semantics
+                payload = _annotation_brace_payload(raw, raw_kind)
+                if payload is None and contextual:
+                    payload = raw[1:-1] or None
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=kind,
+                        raw=raw,
+                        family=family,
+                        contextual=contextual,
+                        payload=payload,
+                    )
+                )
     for match in _ANGLE_NOTE.finditer(cell):
-        annotations.append(Annotation(side=side, kind="note", raw=match.group(0)))
+        raw = match.group(0)
+        spec = notation_spec(raw, book=book)
+        if spec is not None:
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=spec.kind,
+                    raw=raw,
+                    family=spec.family,
+                    contextual=spec.contextual,
+                    payload=raw[1:-1] or None,
+                )
+            )
+        else:
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind="source_note",
+                    raw=raw,
+                    family="reference",
+                    contextual=True,
+                    payload=raw[1:-1] or None,
+                )
+            )
     if side in {"mt_a", "mt_b"}:
         for match in _MT_DOT_SIGLUM.finditer(cell):
             raw = match.group(1)
-            annotations.append(Annotation(side=side, kind=_mt_dot_kind(raw), raw=raw))
+            kind = _mt_dot_kind(raw)
+            annotations.append(
+                Annotation(
+                    side=side,
+                    kind=kind,
+                    raw=raw,
+                    family="segmentation" if kind != "letter_interchange" else "reconstruction",
+                    payload=raw[1:] if kind == "letter_interchange" else None,
+                )
+            )
+    if book == "Sir":
+        for match in _SQUARE_GROUP.finditer(cell):
+            raw = match.group(0)
+            key = "[..]" if raw == "[..]" else "[]"
+            spec = notation_spec(key, book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=spec.kind,
+                        raw=raw,
+                        family=spec.family,
+                        payload=raw.lstrip("[").rstrip("]") or None,
+                    )
+                )
+        for match in re.finditer(r"(?<!\S)(10|[1-9])(?=\s|$)", cell):
+            raw = match.group(1)
+            spec = notation_spec(raw, book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw=raw, family=spec.family)
+                )
+        # Require the *whole* numeric witness ID: >12 is not a >1 marker,
+        # nor may >101 silently turn into >10. Attached lexical notation
+        # remains accepted until source grammar research proves otherwise.
+        for match in re.finditer(r">(?:10|[1-9])(?![0-9])", cell):
+            raw = match.group(0)
+            spec = notation_spec(">", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind=spec.kind,
+                        raw=raw,
+                        family=spec.family,
+                        payload=raw[1:],
+                    )
+                )
+        for _match in re.finditer(r"(?<!\*)\*(?!\*)", cell):
+            spec = notation_spec("*", book=book)
+            if spec is not None:
+                annotations.append(
+                    Annotation(side=side, kind=spec.kind, raw="*", family=spec.family)
+                )
+
     if side == "lxx":
-        for match in _DOUBT_MARKER.finditer(cell):
+        doubt_text = _BRACE_BLOCK.sub(" ", cell)
+        for match in _DOUBT_MARKER.finditer(doubt_text):
             annotations.append(Annotation(side=side, kind="doubt", raw=match.group(0)))
         for match in _SQUARE_GROUP.finditer(cell):
             raw = match.group(0)
             inner = raw.lstrip("[").rstrip("]")
             if any(character.isdigit() for character in inner):
-                annotations.append(Annotation(side=side, kind="verse_reference", raw=raw))
+                if _GREEK_REFERENCE_VALUE.fullmatch(inner) is not None:
+                    annotations.append(
+                        Annotation(
+                            side=side,
+                            kind="verse_reference",
+                            raw=raw,
+                            family="reference",
+                            contextual=True,
+                            payload=inner,
+                        )
+                    )
+                elif _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is not None or (
+                    raw.startswith("[[") and raw.endswith("]]")
+                ):
+                    annotations.append(
+                        Annotation(
+                            side=side,
+                            kind="contextual_reference",
+                            raw=raw,
+                            family="reference",
+                            contextual=True,
+                            payload=inner,
+                        )
+                    )
+                else:
+                    annotations.append(Annotation(side=side, kind="unknown", raw=raw))
+            elif inner.startswith("c") and len(inner) > 1:
+                annotations.append(
+                    Annotation(
+                        side=side,
+                        kind="greek_correction",
+                        raw=raw,
+                        family="textual",
+                        contextual=True,
+                        payload=inner[1:],
+                    )
+                )
+            elif notation_spec(raw, book=book) is None:
+                annotations.append(Annotation(side=side, kind="unknown", raw=raw))
     return annotations
 
 
@@ -448,24 +1007,68 @@ def _extract_greek_references(
     *,
     line_no: int,
     raw_line: str,
-) -> tuple[tuple[GreekReference, ...], tuple[ParseDiagnostic, ...]]:
+) -> tuple[
+    tuple[GreekReference, ...],
+    tuple[GreekReferenceRange, ...],
+    tuple[ParseDiagnostic, ...],
+]:
     references: list[GreekReference] = []
+    ranges: list[GreekReferenceRange] = []
     diagnostics: list[ParseDiagnostic] = []
     for match in _SQUARE_GROUP.finditer(cell):
         raw = match.group(0)
         inner = raw.lstrip("[").rstrip("]")
         if not any(character.isdigit() for character in inner):
             continue
-        parsed = _GREEK_REFERENCE_VALUE.fullmatch(inner)
-        if parsed is None:
-            diagnostics.append(
-                ParseDiagnostic(
-                    code="invalid_lxx_reference",
-                    line_no=line_no,
-                    raw_line=raw_line,
-                    message=f"unsupported CATSS Greek reference syntax: {raw}",
+
+        range_match = (
+            _GREEK_REFERENCE_RANGE_VALUE.fullmatch(inner)
+            if raw.startswith("[[") and raw.endswith("]]")
+            else None
+        )
+        if range_match is not None:
+            start_chapter = int(range_match.group(1))
+            start_verse = int(range_match.group(2))
+            start_subverse = range_match.group(3).lower()
+            end_verse = int(range_match.group(4))
+            end_subverse = range_match.group(5).lower()
+            if end_verse != start_verse or end_subverse <= start_subverse:
+                diagnostics.append(
+                    ParseDiagnostic(
+                        code="invalid_lxx_reference_range",
+                        line_no=line_no,
+                        raw_line=raw_line,
+                        message=(
+                            "CATSS Greek reference range must be an increasing "
+                            f"same-verse subverse range: {raw}"
+                        ),
+                    )
+                )
+                continue
+            ranges.append(
+                GreekReferenceRange(
+                    start_chapter=start_chapter,
+                    start_verse=start_verse,
+                    start_subverse=start_subverse,
+                    end_chapter=start_chapter,
+                    end_verse=end_verse,
+                    end_subverse=end_subverse,
+                    raw=raw,
                 )
             )
+            continue
+
+        parsed = _GREEK_REFERENCE_VALUE.fullmatch(inner)
+        if parsed is None:
+            if _CONTEXTUAL_REFERENCE_VALUE.fullmatch(inner) is None:
+                diagnostics.append(
+                    ParseDiagnostic(
+                        code="invalid_lxx_reference",
+                        line_no=line_no,
+                        raw_line=raw_line,
+                        message=f"unsupported CATSS Greek reference syntax: {raw}",
+                    )
+                )
             continue
         suffix = parsed.group(3) or None
         references.append(
@@ -476,7 +1079,7 @@ def _extract_greek_references(
                 raw=raw,
             )
         )
-    return tuple(references), tuple(diagnostics)
+    return tuple(references), tuple(ranges), tuple(diagnostics)
 
 
 def _retroversion_kind(mt_col_b: str | None) -> str | None:
@@ -491,6 +1094,10 @@ def _retroversion_kind(mt_col_b: str | None) -> str | None:
         return "active_to_passive"
     if probe.startswith("%vpa"):
         return "passive_to_active"
+    if probe.startswith("%p-"):
+        return "preposition_omission"
+    if probe.startswith("%p+"):
+        return "preposition_addition"
     if probe.startswith("%p"):
         return "preposition_difference"
     if probe.startswith("@"):
@@ -501,33 +1108,91 @@ def _retroversion_kind(mt_col_b: str | None) -> str | None:
         return "vocalization"
     if probe.startswith("r"):
         return "incomplete"
+    if probe.startswith("+"):
+        return "number_difference"
     return "plain"
 
 
 def _mt_dot_kind(raw: str) -> str:
-    return {
+    exact = {
         ".m": "metathesis",
         ".s": "word_separation",
         ".j": "word_join",
         ".w": "word_division",
         ".z": "abbreviation",
-    }.get(raw, "mt_strategy_siglum")
+    }
+    if raw in exact:
+        return exact[raw]
+    if re.fullmatch(r"\.[A-Za-z$&()+\-]{1,4}", raw):
+        return "letter_interchange"
+    return "mt_strategy_siglum"
+
+
+def _inf_abs_kind(suffix: str) -> str:
+    return {
+        "": "infinitive_absolute",
+        "+": "inf_abs_without_mt_inf_abs",
+        "-": "inf_abs_rendered_finite_verb",
+        "--": "inf_abs_and_main_verb_omitted",
+        "ad": "inf_abs_rendered_finite_verb_adverb",
+        "aj": "inf_abs_rendered_finite_verb_adjective",
+        "n": "inf_abs_rendered_finite_verb_noun",
+        "na": "inf_abs_rendered_accusative_noun",
+        "na+": "inf_abs_accusative_without_mt_inf_abs",
+        "nad": "inf_abs_rendered_different_accusative_noun",
+        "nd": "inf_abs_rendered_dative_noun",
+        "nd+": "inf_abs_dative_without_mt_inf_abs",
+        "ndd": "inf_abs_rendered_different_dative_noun",
+        "p": "inf_abs_rendered_participle",
+        "p+": "inf_abs_participle_without_mt_inf_abs",
+        "pc": "inf_abs_rendered_participle_compositum",
+        "pd": "inf_abs_rendered_different_verb_participle",
+        "v": "inf_abs_rendered_verb",
+    }.get(suffix, "unknown")
+
+
+def _annotation_brace_payload(raw: str, kind: str) -> str | None:
+    """Extract contextual payload from encoded CATSS brace families."""
+
+    prefixes = {
+        "distributive": ("{..d",),
+        "preposition_added": ("{..p",),
+        "transposition_remote": ("{...",),
+        "transposition_stylistic": ("{..p^", "{?..^", "{..^", "{.."),
+        "repetition": ("{..r",),
+        "greek_correction": ("{c",),
+        "greek_edition_difference": ("{g",),
+    }
+    for prefix in prefixes.get(kind, ()):
+        if raw.startswith(prefix) and raw.endswith("}"):
+            payload = raw[len(prefix) : -1]
+            return payload or None
+    return None
 
 
 def _brace_kind(raw: str) -> str:
     exact = {
         "{d}": "doublet",
+        "{d?}": "possible_doublet",
+        "{?d}": "possible_doublet",
         "{t}": "transliteration",
+        "{t.}": "transliteration",
+        "{dt}": "doublet_transposed",
+        "{pm}": "preposition_marker",
+        "{z}": "ziegler_variant",
+        "{?}": "doubt",
         "{x}": "apparent_plus_minus",
         "{*}": "greek_agrees_ketiv",
         "{**}": "greek_agrees_qere",
+        "{**?}": "possible_greek_agrees_qere",
+        "{#}": "continuation_marker",
         "{p}": "greek_preverb",
         "{s}": "comparative_superlative",
         "{---%}": "asterisked_passage",
     }
     if raw in exact:
         return exact[raw]
-    if raw.startswith("{..^") or raw.startswith("{..p^"):
+    if raw.startswith(("{..^", "{..p^", "{?..^")):
         return "transposition_stylistic"
     if raw.startswith("{..."):
         return "transposition_remote"
@@ -537,21 +1202,38 @@ def _brace_kind(raw: str) -> str:
         return "distributive"
     if raw.startswith("{..r"):
         return "repetition"
+    if raw.startswith("{.."):
+        return "transposition_stylistic"
     if raw.startswith("{c"):
         return "greek_correction"
     if raw.startswith("{g"):
         return "greek_edition_difference"
+    inner = raw[1:-1]
+    if re.fullmatch(r"=[0-9]+", inner):
+        return "contextual_reference"
+    if re.fullmatch(r"[.][0-9]+[.]d.+", inner):
+        return "source_format_note"
+    if any(ord(character) < 32 for character in inner):
+        return "source_corruption_note"
+    if inner and inner[0].isupper() and re.search(r"[A-Z][A-Z()=/| ]+", inner):
+        return "contextual_greek_reading"
     return "unknown"
 
 
-def _mt_lexical_readings(cell: str) -> tuple[MtReading, ...]:
+def _mt_lexical_readings(
+    cell: str, *, ignore_exact_tokens: frozenset[str] = frozenset()
+) -> tuple[MtReading, ...]:
     text = _prepare_lexical_text(cell)
     readings: list[MtReading] = []
     pending_aramaic = False
     pending_doubt = False
 
     for raw_token in text.split():
-        if _is_alignment_marker(raw_token) or raw_token.startswith("."):
+        if (
+            raw_token in ignore_exact_tokens
+            or _is_alignment_marker(raw_token)
+            or raw_token.startswith(".")
+        ):
             continue
 
         token = raw_token
@@ -655,6 +1337,10 @@ def _square_payload(raw: str) -> str:
 def _first_token(cell: str) -> str:
     parts = cell.split(maxsplit=1)
     return parts[0] if parts else ""
+
+
+def _is_lxx_minus_marker(token: str) -> bool:
+    return token in _LXX_MINUS_MARKERS or token == "---?"
 
 
 def _is_alignment_marker(token: str) -> bool:

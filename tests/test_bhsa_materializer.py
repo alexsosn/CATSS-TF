@@ -191,6 +191,72 @@ def test_simple_bhsa_materialization_writes_query_native_module_and_sidecars(
     assert tuple(_read_tsv(output / "catss-diagnostics.tsv")) == ()
 
 
+def test_apparent_mt_minus_is_query_native_on_bhsa_verse_anchor(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        """Gen 1:1
+)B\tQEOS
+--- =;DBR\tLOGOS
+""",
+    )
+    output = tmp_path / "catss-bhsa"
+    provider = FakeBhsaProvider((_verse(),))
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=provider,
+        parent_probe=_probe(),
+    )
+
+    count = (output / "catss_apparent_mt_minus_n.tf").read_text(encoding="utf-8")
+    semantic = (output / "catss_sem_apparent_minus.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_apparent_minus_mt_a.tf").read_text(encoding="utf-8")
+
+    assert "2\t1" in count
+    assert "2\t1" in semantic
+    assert "2\t1" in scoped
+
+    anchors = _read_tsv(output / "catss-anchors.tsv")
+    apparent = [row for row in anchors if row["anchor_kind"] == "apparent_mt_minus"]
+    assert len(apparent) == 1
+    assert apparent[0]["parent_node"] == "2"
+    assert apparent[0]["token_n"] == "1"
+    assert [row["anchor_kind"] for row in anchors] == ["apparent_mt_minus"]
+
+
+def test_lxx_side_source_repair_is_query_native_on_bhsa_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        "Gen 34:29\nKL\t--+\n",
+    )
+    output = tmp_path / "catss-bhsa"
+    provider = FakeBhsaProvider((_verse(chapter=34, verse=29, g_cons="כל"),))
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=provider,
+        parent_probe=_probe(),
+    )
+
+    assert "1\t1" in (output / "catss_lxx_minus.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_source_repair_lxx.tf").read_text(encoding="utf-8")
+    assert "1\t---" in (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
+    assert "1\t---" in (output / "catss_sem_source_repair_lxx_payload.tf").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_generated_bhsa_module_loads_over_parent_warp_and_is_searchable(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -461,3 +527,129 @@ def test_bhsa_materializer_emits_queryable_technique_features_and_sidecar(
             "transposition_mt_lxx": "none_marked",
         }
     ]
+
+
+def test_bhsa_materializes_mt_scoped_annotation_semantics_as_node_features(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..d}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+
+    assert "1\t1" in (output / "catss_distributive.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
+
+
+def test_bhsa_exposes_canonical_semantic_feature_for_documented_notation(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..d)B}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider(
+            (
+                dataclasses.replace(
+                    _verse(),
+                    words=(
+                        _verse().words[0],
+                        dataclasses.replace(_verse().words[0], node=3),
+                    ),
+                ),
+            )
+        ),
+        parent_probe=_probe(),
+    )
+    assert "1\t1" in (output / "catss_sem_distributive.tf").read_text(encoding="utf-8")
+    payload_text = (output / "catss_sem_distributive_payload.tf").read_text(encoding="utf-8")
+    assert "1\t)B" in payload_text
+
+
+def test_bhsa_preserves_mt_a_vs_mt_b_semantic_scope(tmp_path: pathlib.Path) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B {..d} = )B {..r}\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+    assert "1\t1" in (output / "catss_sem_distributive_mt_a.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_repetition_mt_b.tf").read_text(encoding="utf-8")
+    assert not (output / "catss_sem_distributive_mt_b.tf").exists()
+    assert not (output / "catss_sem_repetition_mt_a.tf").exists()
+
+
+def test_bhsa_projects_column_b_retroversion_kind_into_complete_semantic_api(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\n)B = %vap )B\tQEOS\n")
+    output = tmp_path / "catss-bhsa"
+    materialize_bhsa(
+        source,
+        output,
+        provider=FakeBhsaProvider((_verse(),)),
+        parent_probe=_probe(),
+    )
+
+    assert "1\tactive_to_passive" in (output / "catss_retro_kind.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_active_to_passive.tf").read_text(encoding="utf-8")
+    assert "1\t1" in (output / "catss_sem_active_to_passive_mt_b.tf").read_text(encoding="utf-8")
+
+
+def test_scoped_jonah_minus_does_not_project_onto_bhsa_yhwh(
+    tmp_path: pathlib.Path,
+) -> None:
+    # CATSS Greek element 1 is apparently missing MT, but YHWH is real MT
+    # lexical material aligned to Greek element 2. No BHSA semantic spill.
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "32.Jonah.par",
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+    )
+    output = tmp_path / "catss-bhsa"
+    provider = FakeBhsaProvider((_verse(book="Jona", chapter=4, verse=3, g_cons="יהוה"),))
+
+    result = materialize_bhsa(source, output, provider=provider, parent_probe=_probe())
+
+    assert result.summary.word_mappings == 1
+    assert result.summary.verse_anchors == 0
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert [(row["parent_node"], row["mt_i"], row["mapping_kind"]) for row in mappings] == [
+        ("1", "1", "exact")
+    ]
+    for feature in (
+        "catss_sem_apparent_minus.tf",
+        "catss_sem_apparent_minus_mt_a.tf",
+        "catss_apparent_mt_minus_n.tf",
+    ):
+        assert not (output / feature).exists(), feature
+    cardinality = (output / "catss_tt_cardinality_mt_lxx.tf").read_text(encoding="utf-8")
+    assert "1\tone_many" in cardinality
+
+
+def test_scoped_jonah_minus_is_absent_from_bhsa_semantic_helpers() -> None:
+    from catss_tf.parser import parse_parallel_text
+
+    doc = parse_parallel_text(
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert "apparent_minus" not in bhsa_materializer._semantic_kinds(alignment, side="mt")
+    assert ("apparent_minus", "mt_a") not in bhsa_materializer._semantic_scopes(
+        alignment, side="mt"
+    )

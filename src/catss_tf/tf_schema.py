@@ -4,6 +4,7 @@ import dataclasses
 import pathlib
 import typing
 
+from catss_tf.notation import documented_semantic_specs, semantic_feature_name
 from catss_tf.source import CATSS_PARALLEL_FILENAMES
 from catss_tf.technique import TECHNIQUE_SCHEMA_VERSION, TechniqueError, derive_technique_state
 
@@ -46,6 +47,12 @@ class TfMembership:
     line_n: int
     retro_kind: str | None
     flags: frozenset[str] = frozenset()
+    annotation_payloads: tuple[tuple[str, str], ...] = ()
+    semantic_kinds: tuple[str, ...] = ()
+    semantic_scopes: tuple[tuple[str, str], ...] = ()
+    semantic_scoped_payloads: tuple[tuple[str, str, str], ...] = ()
+    semantic_payloads: tuple[tuple[str, str], ...] = ()
+    scoped_apparent_mt_minus: bool = False
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -55,8 +62,31 @@ class TfAnchorEvent:
     node: int
     source: str
     alignment_id: str
-    kind: typing.Literal["lxx_plus", "lxx_minus", "transposition_placeholder"]
+    kind: typing.Literal[
+        "lxx_plus",
+        "lxx_minus",
+        "transposition_placeholder",
+        "apparent_mt_minus",
+    ]
     token_n: int = 0
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class TfReferenceRangeEvent:
+    """One typed CATSS LXX contextual-reference range member on a parent subverse node."""
+
+    node: int
+    source: str
+    alignment_id: str
+    raw: str
+    member_i: int
+    member_n: int
+    start_chapter: int
+    start_verse: int
+    start_subverse: str
+    end_chapter: int
+    end_verse: int
+    end_subverse: str
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -139,6 +169,60 @@ _MEMBERSHIP_FLAGS: dict[str, str] = {
     "catss_repetition": "CATSS repetition annotation",
 }
 
+_RAW_SEMANTIC_KINDS = frozenset(
+    {
+        "abbreviation",
+        "active_to_passive",
+        "context",
+        "contextual_reference",
+        "contextual_greek_reading",
+        "continuation_marker",
+        "distributive",
+        "doublet_transposed",
+        "doubt",
+        "greek_correction",
+        "greek_edition_difference",
+        "inf_abs_accusative_without_mt_inf_abs",
+        "letter_interchange",
+        "metathesis",
+        "number_difference",
+        "passive_to_active",
+        "preposition_addition",
+        "preposition_difference",
+        "preposition_omission",
+        "proper_noun",
+        "possible_doublet",
+        "preposition_marker",
+        "possible_greek_agrees_qere",
+        "preposition_added",
+        "repetition",
+        "etymological",
+        "incomplete",
+        "sirach_lacuna_in_witness",
+        "source_corruption_note",
+        "source_format_note",
+        "source_note",
+        "source_repair",
+        "transposition_remote",
+        "transposition_stylistic",
+        "verse_reference",
+        "vocalization",
+        "vocalization_shin_sin",
+        "word_division",
+        "word_join",
+        "word_separation",
+        "ziegler_variant",
+    }
+)
+
+_ANNOTATION_PAYLOAD_SPECS: dict[str, str] = {
+    "catss_distributive_payload": "CATSS distributive-rendering contextual payload",
+    "catss_prep_added_payload": "CATSS added-preposition contextual payload",
+    "catss_repetition_payload": "CATSS repetition contextual payload",
+    "catss_trans_remote_payload": "CATSS remote-transposition contextual payload",
+    "catss_trans_style_payload": "CATSS stylistic-transposition contextual payload",
+}
+
 _AGGREGATE_BY_FLAG = {flag: f"{flag}_members" for flag in _MEMBERSHIP_FLAGS}
 
 _ANCHOR_SPECS: dict[str, tuple[ValueType, str]] = {
@@ -148,10 +232,28 @@ _ANCHOR_SPECS: dict[str, tuple[ValueType, str]] = {
         "total Greek lexical elements in CATSS LXX-plus groups on this verse",
     ),
     "catss_lxx_minus_n": ("int", "number of CATSS Greek-empty/LXX-minus groups"),
+    "catss_apparent_mt_minus_n": (
+        "int",
+        "number of CATSS Hebrew-empty apparent-MT-minus groups on this verse",
+    ),
     "catss_transposition_placeholder_n": (
         "int",
         "number of CATSS Greek-empty transposition placeholder groups",
     ),
+}
+
+_REFERENCE_RANGE_SPECS: dict[str, tuple[ValueType, str]] = {
+    "catss_lxx_reference_range_id": ("str", "stable CATSS alignment identity for this range"),
+    "catss_lxx_reference_range_source": ("str", "CATSS source filename for this range"),
+    "catss_lxx_reference_range_raw": ("str", "raw CATSS contextual-reference range spelling"),
+    "catss_lxx_reference_range_member_i": ("int", "1-based member ordinal within the range"),
+    "catss_lxx_reference_range_member_n": ("int", "number of parent subverse members in range"),
+    "catss_lxx_reference_range_start_chapter": ("int", "range start chapter"),
+    "catss_lxx_reference_range_start_verse": ("int", "range start verse"),
+    "catss_lxx_reference_range_start_subverse": ("str", "range start subverse"),
+    "catss_lxx_reference_range_end_chapter": ("int", "range end chapter"),
+    "catss_lxx_reference_range_end_verse": ("int", "range end verse"),
+    "catss_lxx_reference_range_end_subverse": ("str", "range end subverse"),
 }
 
 
@@ -190,6 +292,50 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
             lane_description = description if lane == 1 else f"{description} (membership lane 2)"
             specs[name] = TfFeatureSpec(name, "int", lane_description)
 
+    for name, description in _ANNOTATION_PAYLOAD_SPECS.items():
+        for lane in (1, 2):
+            lane_name = name if lane == 1 else f"{name}_2"
+            lane_description = description if lane == 1 else f"{description} (membership lane 2)"
+            specs[lane_name] = TfFeatureSpec(lane_name, "str", lane_description)
+
+    semantic_specs = documented_semantic_specs()
+    semantic_kinds = set(semantic_specs) | set(_RAW_SEMANTIC_KINDS)
+    for kind in sorted(semantic_kinds):
+        semantic = semantic_specs.get(kind)
+        base_name = semantic_feature_name(semantic) if semantic is not None else f"catss_sem_{kind}"
+        for lane in (1, 2):
+            name = base_name if lane == 1 else f"{base_name}_2"
+            suffix = "" if lane == 1 else " (membership lane 2)"
+            specs[name] = TfFeatureSpec(
+                name,
+                "int",
+                f"CATSS semantic annotation: {kind}{suffix}",
+            )
+            payload_base = f"{base_name}_payload"
+            payload_name = payload_base if lane == 1 else f"{payload_base}_2"
+            specs[payload_name] = TfFeatureSpec(
+                payload_name,
+                "str",
+                f"CATSS semantic payload for {kind}{suffix}",
+            )
+            for scope in ("mt_a", "mt_b", "lxx"):
+                scoped_base = f"{base_name}_{scope}"
+                scoped_name = scoped_base if lane == 1 else f"{scoped_base}_2"
+                specs[scoped_name] = TfFeatureSpec(
+                    scoped_name,
+                    "int",
+                    f"CATSS semantic annotation: {kind}, source scope {scope}{suffix}",
+                )
+                scoped_payload_base = f"{base_name}_{scope}_payload"
+                scoped_payload_name = (
+                    scoped_payload_base if lane == 1 else f"{scoped_payload_base}_2"
+                )
+                specs[scoped_payload_name] = TfFeatureSpec(
+                    scoped_payload_name,
+                    "str",
+                    f"CATSS semantic payload for {kind}, source scope {scope}{suffix}",
+                )
+
     specs["catss_alignment_n"] = TfFeatureSpec(
         "catss_alignment_n",
         "int",
@@ -204,6 +350,9 @@ def _make_feature_specs() -> dict[str, TfFeatureSpec]:
         )
 
     for name, (value_type, description) in _ANCHOR_SPECS.items():
+        specs[name] = TfFeatureSpec(name, value_type, description)
+
+    for name, (value_type, description) in _REFERENCE_RANGE_SPECS.items():
         specs[name] = TfFeatureSpec(name, value_type, description)
 
     return specs
@@ -252,6 +401,9 @@ SIDECAR_COLUMNS: dict[str, tuple[str, ...]] = {
         "alignment_id",
         "side",
         "kind",
+        "family",
+        "contextual",
+        "payload",
         "raw",
     ),
     "catss-mappings.tsv": (
@@ -314,7 +466,7 @@ _MAPPING_KINDS: dict[Projection, frozenset[str]] = {
     "lxx": frozenset({"exact", "transposition_alignment", "transposition_carrier"}),
 }
 _ANCHOR_KINDS: dict[Projection, frozenset[str]] = {
-    "bhsa": frozenset({"lxx_plus"}),
+    "bhsa": frozenset({"lxx_plus", "apparent_mt_minus"}),
     "lxx": frozenset({"lxx_minus", "transposition_placeholder"}),
 }
 
@@ -325,6 +477,7 @@ def compile_tf_features(
     max_node: int,
     memberships: tuple[TfMembership, ...],
     anchors: tuple[TfAnchorEvent, ...],
+    reference_ranges: tuple[TfReferenceRangeEvent, ...] = (),
 ) -> dict[str, dict[int, FeatureValue]]:
     """Compile generic resolver facts into sparse query-native TF node features."""
 
@@ -401,18 +554,55 @@ def compile_tf_features(
             )
         if anchor.token_n < 0:
             raise TfSchemaError(f"anchor token_n must be non-negative, got {anchor.token_n}")
-        if anchor.kind == "lxx_plus" and anchor.token_n < 1:
-            raise TfSchemaError("lxx_plus anchor requires token_n >= 1")
-        if anchor.kind != "lxx_plus" and anchor.token_n != 0:
+        if anchor.kind in {"lxx_plus", "apparent_mt_minus"} and anchor.token_n < 1:
+            raise TfSchemaError(f"{anchor.kind} anchor requires token_n >= 1")
+        if anchor.kind not in {"lxx_plus", "apparent_mt_minus"} and anchor.token_n != 0:
             raise TfSchemaError(f"{anchor.kind} anchor requires token_n=0")
 
         if anchor.kind == "lxx_plus":
             _increment(features, "catss_lxx_plus_n", anchor.node, 1)
             _increment(features, "catss_lxx_plus_token_n", anchor.node, anchor.token_n)
+        elif anchor.kind == "apparent_mt_minus":
+            _increment(features, "catss_apparent_mt_minus_n", anchor.node, 1)
+            _put(features, "catss_sem_apparent_minus", anchor.node, 1)
+            _put(features, "catss_sem_apparent_minus_mt_a", anchor.node, 1)
         elif anchor.kind == "lxx_minus":
             _increment(features, "catss_lxx_minus_n", anchor.node, 1)
         else:
             _increment(features, "catss_transposition_placeholder_n", anchor.node, 1)
+
+    seen_range_nodes: set[int] = set()
+    for event in reference_ranges:
+        if projection != "lxx":
+            raise TfSchemaError("contextual-reference ranges are only valid in the LXX projection")
+        _validate_parent_node(max_node, event.node)
+        if event.source not in _SOURCE_RANK:
+            raise TfSchemaError(f"unknown CATSS source {event.source!r}")
+        _validate_alignment_source(event.source, event.alignment_id)
+        if event.node in seen_range_nodes:
+            raise TfSchemaError(
+                "reference_range_overlap: "
+                f"parent node {event.node} carries more than one CATSS reference range"
+            )
+        seen_range_nodes.add(event.node)
+        if event.member_n < 1 or not (1 <= event.member_i <= event.member_n):
+            raise TfSchemaError(f"invalid reference range member {event.member_i}/{event.member_n}")
+
+        values: dict[str, FeatureValue] = {
+            "catss_lxx_reference_range_id": event.alignment_id,
+            "catss_lxx_reference_range_source": event.source,
+            "catss_lxx_reference_range_raw": event.raw,
+            "catss_lxx_reference_range_member_i": event.member_i,
+            "catss_lxx_reference_range_member_n": event.member_n,
+            "catss_lxx_reference_range_start_chapter": event.start_chapter,
+            "catss_lxx_reference_range_start_verse": event.start_verse,
+            "catss_lxx_reference_range_start_subverse": event.start_subverse,
+            "catss_lxx_reference_range_end_chapter": event.end_chapter,
+            "catss_lxx_reference_range_end_verse": event.end_verse,
+            "catss_lxx_reference_range_end_subverse": event.end_subverse,
+        }
+        for name, value in values.items():
+            _put(features, name, event.node, value)
 
     return features
 
@@ -437,6 +627,28 @@ def _compile_membership(
         "catss_line_n": membership.line_n,
         "catss_retro_kind": membership.retro_kind,
     }
+    for kind in membership.semantic_kinds:
+        feature_name = f"catss_sem_{kind}" if lane == 1 else f"catss_sem_{kind}_2"
+        _put(features, feature_name, node, 1)
+    for kind, scope in membership.semantic_scopes:
+        base_name = f"catss_sem_{kind}_{scope}"
+        feature_name = base_name if lane == 1 else f"{base_name}_2"
+        _put(features, feature_name, node, 1)
+    for kind, scope, payload in membership.semantic_scoped_payloads:
+        base_name = f"catss_sem_{kind}_{scope}_payload"
+        feature_name = base_name if lane == 1 else f"{base_name}_2"
+        _put(features, feature_name, node, payload)
+    for kind, payload in membership.semantic_payloads:
+        base_name = f"catss_sem_{kind}_payload"
+        feature_name = base_name if lane == 1 else f"{base_name}_2"
+        _put(features, feature_name, node, payload)
+
+    for payload_name, payload in membership.annotation_payloads:
+        if payload_name not in _ANNOTATION_PAYLOAD_SPECS:
+            raise TfSchemaError(f"unknown annotation payload feature {payload_name!r}")
+        feature_name = payload_name if lane == 1 else f"{payload_name}_2"
+        _put(features, feature_name, node, payload)
+
     for base_name, value in values.items():
         if value is not None:
             _put(features, lane_feature_name(base_name, lane), node, value)
@@ -453,6 +665,13 @@ def _compile_membership(
             trans_local="catss_trans_local" in membership.flags,
             trans_remote="catss_trans_remote" in membership.flags,
             trans_style="catss_trans_style" in membership.flags,
+            apparent_mt_minus="apparent_minus" in membership.semantic_kinds,
+            scoped_apparent_mt_minus=membership.scoped_apparent_mt_minus,
+            sirach_witness_lacuna=(
+                membership.source == "27.Sirach.par"
+                and "sirach_lacuna_or_illegible" in membership.semantic_kinds
+                and ("sirach_lacuna_or_illegible", "mt_a") in membership.semantic_scopes
+            ),
         )
     except TechniqueError as exc:
         raise TfSchemaError(f"technique derivation failed: {exc}") from exc
@@ -492,6 +711,16 @@ def _validate_membership(
             f"mapping kind {membership.mapping_kind!r} is invalid for {projection} projection"
         )
     _validate_alignment_source(membership.source, membership.alignment_id)
+
+    if membership.scoped_apparent_mt_minus and not (
+        projection == "lxx"
+        and membership.mt_n == 1
+        and membership.lxx_n == 2
+        and membership.lxx_i == 1
+        and "apparent_minus" in membership.semantic_kinds
+        and ("apparent_minus", "mt_a") in membership.semantic_scopes
+    ):
+        raise TfSchemaError("invalid scoped apparent MT-minus membership target or evidence")
 
     for name, value in (("mt_n", membership.mt_n), ("lxx_n", membership.lxx_n)):
         if value < 0:
@@ -564,7 +793,14 @@ def _put(
     node: int,
     value: FeatureValue,
 ) -> None:
-    features.setdefault(feature, {})[node] = value
+    data = features.setdefault(feature, {})
+    existing = data.get(node)
+    if existing is not None and existing != value:
+        raise TfSchemaError(
+            f"conflicting feature value for {feature} on parent node {node}: "
+            f"{existing!r} != {value!r}"
+        )
+    data[node] = value
 
 
 def _increment(

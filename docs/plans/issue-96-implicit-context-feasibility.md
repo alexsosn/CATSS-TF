@@ -1,0 +1,9 @@
+# R96-13 — full explicit-scope context feasibility (research → plan → RED → GREEN)
+
+1. Reconcile issue #96, current resolver/default-reference code, parser lexical/ref-range model, pinned 46-source baseline and open PR #42 (unrelated docs).
+2. Research (committed separately) which Greek rows are assumed to use default book/chapter/verse; keep a clearly conditional diagnostic rather than claiming source-verified reference meaning.
+3. RED commit of pytest fixtures proving explicit-only `joint_*` counters stay unchanged while `context_*` counts account for same-scope implicit lexical collisions, independent/disjoint groups, missing lexical candidates, and explicit overrides to a different key. Check failure on preimplementation Python CI for intended absent-field reason with Ruff/mypy green.
+4. GREEN: index only Greek lexical rows without either scalar refs or typed ranges under exact *default* parent key, augment each existing explicit group for a second `_classify_joint_intervals` call. Cache pinned parent lookups and normalized Greek surfaces. Missing contender => context incomplete; no context-only group or emitted mappings.
+5. Update researcher doc and CI invariant for second 671-group partition; run all Python versions, lint/type checks, release smoke, real pinned 46-source and CenterBLC/LXX, and canonical Text-Fabric materialize/readback. Record measured results explicitly.
+6. Independently adversarial review of final exact head; probe false confidence from MT-header default assumption, lexical normalization/missing parent, transposition overlaps, subverse distinctions, repeated stable IDs, generator/duplicate documents, and slow unbounded work. Repair new issues RED-first.
+7. Merge only if all five exact-head CI jobs green and independent review committed against that same SHA; keep #96 OPEN until semantics established.

@@ -133,6 +133,152 @@ def test_addition_and_omission_require_explicit_catss_source_evidence() -> None:
         )
 
 
+def test_apparent_mt_minus_admits_zero_mt_without_translation_addition() -> None:
+    state = derive_technique_state(
+        mt_n=0,
+        lxx_n=2,
+        is_lxx_plus=False,
+        is_lxx_minus=False,
+        apparent_mt_minus=True,
+        trans_local=False,
+        trans_remote=False,
+        trans_style=False,
+    )
+
+    assert state.cardinality_mt_lxx == "zero_many"
+    assert state.token_balance_mt_lxx == "not_applicable"
+    assert state.addition_vs_mt is False
+    assert state.omission_vs_mt is False
+
+
+@pytest.mark.parametrize(
+    ("mt_n", "lxx_n"),
+    (
+        (1, 1),
+        (1, 0),
+        (0, 0),
+    ),
+)
+def test_apparent_mt_minus_rejects_contradictory_cardinality(
+    mt_n: int,
+    lxx_n: int,
+) -> None:
+    with pytest.raises(TechniqueError, match="apparent MT minus"):
+        derive_technique_state(
+            mt_n=mt_n,
+            lxx_n=lxx_n,
+            is_lxx_plus=False,
+            is_lxx_minus=False,
+            apparent_mt_minus=True,
+            trans_local=False,
+            trans_remote=False,
+            trans_style=False,
+        )
+
+
+def test_alignment_apparent_minus_evidence_is_taken_from_typed_annotation() -> None:
+    doc = parse_parallel_text(
+        "Gen 8:7\n--- =;L/R)T <8.8>\tTOU= I)DEI=N\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    technique = derive_alignment_technique("01.Genesis.par", alignment)
+
+    assert technique.cardinality_mt_lxx == "zero_many"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+
+@pytest.mark.parametrize(
+    ("source_name", "header", "mt_cell", "lxx_cell", "expected_cardinality"),
+    (
+        ("23.Prov.par", "Prov 28:18", "B/)XT", "{p} ---", "one_zero"),
+        ("27.Sirach.par", "Sir 5:2", ")XRY 3", "{p} ---", "one_zero"),
+        ("27.Sirach.par", "Sir 23:17", "B/W 3", "{p}", "one_zero"),
+    ),
+)
+def test_zero_token_greek_preverb_carriers_are_not_omissions(
+    source_name: str,
+    header: str,
+    mt_cell: str,
+    lxx_cell: str,
+    expected_cardinality: str,
+) -> None:
+    doc = parse_parallel_text(
+        f"{header}\n{mt_cell}\t{lxx_cell}\n",
+        source_name=source_name,
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.lxx_count == 0
+    assert alignment.is_lxx_minus is False
+    assert any(
+        annotation.side == "lxx" and annotation.kind == "greek_preverb"
+        for annotation in alignment.annotations
+    )
+
+    technique = derive_alignment_technique(source_name, alignment)
+
+    assert technique.cardinality_mt_lxx == expected_cardinality
+    assert technique.token_balance_mt_lxx == "not_applicable"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+
+def test_greek_preverb_carrier_is_explicit_technique_evidence() -> None:
+    state = derive_technique_state(
+        mt_n=1,
+        lxx_n=0,
+        is_lxx_plus=False,
+        is_lxx_minus=False,
+        trans_local=False,
+        trans_remote=False,
+        trans_style=False,
+        greek_preverb_carrier=True,
+    )
+
+    assert state.cardinality_mt_lxx == "one_zero"
+    assert state.addition_vs_mt is False
+    assert state.omission_vs_mt is False
+
+
+def test_generic_greek_empty_alignment_still_fails_closed() -> None:
+    doc = parse_parallel_text(
+        "Test 1:1\nHB\t\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    with pytest.raises(TechniqueError, match="Greek-empty"):
+        derive_alignment_technique("99.Test.par", alignment)
+
+
+def test_jonah_mixed_apparent_minus_has_one_many_technique_without_addition() -> None:
+    doc = parse_parallel_text(
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    state = derive_alignment_technique("32.Jonah.par", alignment)
+    assert state.cardinality_mt_lxx == "one_many"
+    assert state.token_balance_mt_lxx == "lxx_more"
+    assert state.addition_vs_mt is False
+    assert state.omission_vs_mt is False
+
+
+def test_unscoped_one_many_apparent_minus_remains_fail_closed() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\n--- HB\tLOGOS LOGON\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    with pytest.raises(TechniqueError, match="apparent MT minus"):
+        derive_alignment_technique("01.Genesis.par", alignment)
+
+
 def test_source_flags_cannot_contradict_nonempty_sides() -> None:
     with pytest.raises(TechniqueError, match="non-empty MT"):
         derive_technique_state(
@@ -292,6 +438,36 @@ def test_plus_minus_flags_require_material_on_the_named_side() -> None:
             lxx_n=0,
             is_lxx_plus=False,
             is_lxx_minus=True,
+            trans_local=False,
+            trans_remote=False,
+            trans_style=False,
+        )
+
+
+def test_scoped_mixed_apparent_minus_derives_non_addition_technique() -> None:
+    doc = parse_parallel_text(
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    technique = derive_alignment_technique("32.Jonah.par", alignment)
+
+    assert technique.cardinality_mt_lxx == "one_many"
+    assert technique.token_balance_mt_lxx == "lxx_more"
+    assert technique.addition_vs_mt is False
+    assert technique.omission_vs_mt is False
+
+
+def test_scoped_minus_gate_rejects_missing_annotation_evidence() -> None:
+    with pytest.raises(TechniqueError, match="scoped apparent MT minus"):
+        derive_technique_state(
+            mt_n=1,
+            lxx_n=2,
+            is_lxx_plus=False,
+            is_lxx_minus=False,
+            apparent_mt_minus=False,
+            scoped_apparent_mt_minus=True,
             trans_local=False,
             trans_remote=False,
             trans_style=False,

@@ -11,6 +11,7 @@ from catss_tf.tf_schema import (
     TfAnchorEvent,
     TfMembership,
     TfModuleMetadata,
+    TfReferenceRangeEvent,
     TfSchemaError,
     compile_tf_features,
     lane_feature_name,
@@ -82,7 +83,8 @@ def test_feature_contract_uses_only_scalar_int_and_str_values() -> None:
     assert FEATURE_SPECS
     assert {spec.value_type for spec in FEATURE_SPECS.values()} <= {"int", "str"}
     assert not {"otype", "oslots", "otext"} & set(FEATURE_SPECS)
-    assert all("json" not in name and "list" not in name for name in FEATURE_SPECS)
+    assert all("json" not in name for name in FEATURE_SPECS)
+    assert all(not name.endswith(("_list", "_lists")) for name in FEATURE_SPECS)
 
 
 def test_lane_two_feature_names_are_explicit_scalars() -> None:
@@ -268,6 +270,9 @@ def test_sidecar_contracts_are_normalized_repeated_row_tables() -> None:
         "alignment_id",
         "side",
         "kind",
+        "family",
+        "contextual",
+        "payload",
         "raw",
     )
     assert "alignment_id" in SIDECAR_COLUMNS["catss-mappings.tsv"]
@@ -749,3 +754,233 @@ def test_technique_sidecar_contract_is_scalar_and_explicitly_based() -> None:
         "omission_vs_mt",
         "transposition_mt_lxx",
     )
+
+
+def test_annotation_sidecar_contract_exposes_typed_semantics_and_payload() -> None:
+    assert SIDECAR_COLUMNS["catss-annotations.tsv"] == (
+        "source",
+        "alignment_id",
+        "side",
+        "kind",
+        "family",
+        "contextual",
+        "payload",
+        "raw",
+    )
+
+
+def test_typed_annotation_payloads_compile_as_distinct_query_native_features() -> None:
+    membership = dataclasses.replace(
+        _membership(flags=frozenset({"catss_distributive", "catss_repetition"})),
+        annotation_payloads=(
+            ("catss_distributive_payload", "GRDIST"),
+            ("catss_repetition_payload", "GRREPEAT"),
+        ),
+    )
+
+    compiled = compile_tf_features(
+        projection="bhsa",
+        max_node=10,
+        memberships=(membership,),
+        anchors=(),
+    )
+
+    assert compiled["catss_distributive"] == {1: 1}
+    assert compiled["catss_repetition"] == {1: 1}
+    assert compiled["catss_distributive_payload"] == {1: "GRDIST"}
+    assert compiled["catss_repetition_payload"] == {1: "GRREPEAT"}
+
+
+def test_semantic_features_are_dynamic_scalar_tf_features_without_packing() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        semantic_kinds=("distributive_rendering", "gender_switch"),
+        semantic_payloads=(("distributive_rendering", "Gen 1:2"),),
+    )
+    compiled = compile_tf_features(
+        projection="bhsa", max_node=10, memberships=(membership,), anchors=()
+    )
+    assert compiled["catss_sem_distributive_rendering"] == {1: 1}
+    assert compiled["catss_sem_gender_switch"] == {1: 1}
+    assert compiled["catss_sem_distributive_rendering_payload"] == {1: "Gen 1:2"}
+
+
+def test_writer_accepts_registered_complete_semantic_features(tmp_path: pathlib.Path) -> None:
+    write_tf_module(
+        tmp_path / "module",
+        {
+            "catss_sem_distributive_rendering": {1: 1},
+            "catss_sem_distributive_rendering_payload": {1: "Gen 1:2"},
+        },
+        metadata=_metadata(),
+        max_node=10,
+    )
+    assert (tmp_path / "module" / "catss_sem_distributive_rendering.tf").exists()
+    assert (tmp_path / "module" / "catss_sem_distributive_rendering_payload.tf").exists()
+
+
+def test_conflicting_semantic_payloads_fail_closed_instead_of_overwriting() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        semantic_kinds=("repetition",),
+        semantic_payloads=(("repetition", "A"), ("repetition", "B")),
+    )
+    with pytest.raises(TfSchemaError, match="conflicting feature value"):
+        compile_tf_features(projection="bhsa", max_node=10, memberships=(membership,), anchors=())
+
+
+def test_researcher_can_load_and_query_semantic_features_with_text_fabric(
+    tmp_path: pathlib.Path,
+) -> None:
+    module = tmp_path / "module"
+    write_tf_module(
+        module,
+        {
+            "catss_sem_distributive_rendering": {1: 1},
+            "catss_sem_distributive_rendering_payload": {1: "Gen 1:2"},
+        },
+        metadata=_metadata(),
+        max_node=10,
+    )
+
+    api = Fabric(locations=str(module), silent="deep").load(
+        "catss_sem_distributive_rendering catss_sem_distributive_rendering_payload"
+    )
+    assert api.F.catss_sem_distributive_rendering.v(1) == 1
+    payload = api.F.catss_sem_distributive_rendering_payload.v(1)
+    assert payload == "Gen 1:2"
+
+
+def test_distinct_mt_a_mt_b_payloads_coexist_query_natively() -> None:
+    membership = dataclasses.replace(
+        _membership(),
+        semantic_kinds=("distributive",),
+        semantic_scopes=(("distributive", "mt_a"), ("distributive", "mt_b")),
+        semantic_scoped_payloads=(
+            ("distributive", "mt_a", "A"),
+            ("distributive", "mt_b", "B"),
+        ),
+    )
+    compiled = compile_tf_features(
+        projection="bhsa", max_node=10, memberships=(membership,), anchors=()
+    )
+    assert compiled["catss_sem_distributive_mt_a_payload"] == {1: "A"}
+    assert compiled["catss_sem_distributive_mt_b_payload"] == {1: "B"}
+
+
+def test_scoped_apparent_minus_compiles_only_on_targeted_lxx_word() -> None:
+    first = dataclasses.replace(
+        _membership(node=8, mt_i=None, mt_segment=None, lxx_i=1),
+        semantic_kinds=("apparent_minus",),
+        semantic_scopes=(("apparent_minus", "mt_a"),),
+        scoped_apparent_mt_minus=True,
+    )
+    second = dataclasses.replace(
+        _membership(node=9, mt_i=None, mt_segment=None, lxx_i=2),
+        alignment_id="catss:01.Genesis.par:bbb",
+    )
+    features = compile_tf_features(
+        projection="lxx", max_node=10, memberships=(first, second), anchors=()
+    )
+    assert features["catss_sem_apparent_minus"] == {8: 1}
+    assert features["catss_sem_apparent_minus_mt_a"] == {8: 1}
+    assert features["catss_tt_cardinality_mt_lxx"] == {8: "one_many", 9: "one_many"}
+    assert features["catss_tt_token_balance_mt_lxx"] == {
+        8: "lxx_more",
+        9: "lxx_more",
+    }
+
+
+def test_scoped_apparent_minus_rejects_wrong_target_or_projection() -> None:
+    valid = dataclasses.replace(
+        _membership(node=8, mt_i=None, mt_segment=None, lxx_i=1),
+        semantic_kinds=("apparent_minus",),
+        semantic_scopes=(("apparent_minus", "mt_a"),),
+        scoped_apparent_mt_minus=True,
+    )
+    for projection, event in (
+        ("lxx", dataclasses.replace(valid, lxx_i=2)),
+        ("bhsa", dataclasses.replace(valid, mt_i=1, mt_segment=1, lxx_i=None)),
+        ("lxx", dataclasses.replace(valid, semantic_kinds=())),
+    ):
+        with pytest.raises(TfSchemaError, match="scoped apparent"):
+            compile_tf_features(
+                projection=projection,  # type: ignore[arg-type]
+                max_node=10,
+                memberships=(event,),
+                anchors=(),
+            )
+
+
+def _range_member(
+    *,
+    node: int = 8,
+    alignment_id: str = "catss:06.JoshB.par:range",
+    member_i: int = 1,
+) -> TfReferenceRangeEvent:
+    return TfReferenceRangeEvent(
+        node=node,
+        source="06.JoshB.par",
+        alignment_id=alignment_id,
+        raw="[[9.2a-2f]]",
+        member_i=member_i,
+        member_n=6,
+        start_chapter=9,
+        start_verse=2,
+        start_subverse="a",
+        end_chapter=9,
+        end_verse=2,
+        end_subverse="f",
+    )
+
+
+def test_lxx_reference_range_features_are_query_native_on_parent_nodes() -> None:
+    features = compile_tf_features(
+        projection="lxx",
+        max_node=10,
+        memberships=(),
+        anchors=(),
+        reference_ranges=(_range_member(),),
+    )
+
+    assert features["catss_lxx_reference_range_id"] == {8: "catss:06.JoshB.par:range"}
+    assert features["catss_lxx_reference_range_raw"] == {8: "[[9.2a-2f]]"}
+    assert features["catss_lxx_reference_range_member_i"] == {8: 1}
+    assert features["catss_lxx_reference_range_member_n"] == {8: 6}
+    assert features["catss_lxx_reference_range_start_subverse"] == {8: "a"}
+    assert features["catss_lxx_reference_range_end_subverse"] == {8: "f"}
+    assert "otype" not in features
+    assert "oslots" not in features
+
+
+def test_lxx_reference_range_overlapping_parent_node_fails_closed() -> None:
+    first = _range_member()
+    second = _range_member(alignment_id="catss:06.JoshB.par:second")
+
+    with pytest.raises(TfSchemaError, match="reference_range_overlap"):
+        compile_tf_features(
+            projection="lxx",
+            max_node=10,
+            memberships=(),
+            anchors=(),
+            reference_ranges=(first, second),
+        )
+
+
+@pytest.mark.parametrize(
+    ("projection", "member_i", "error"),
+    (("bhsa", 1, "only valid in the LXX"), ("lxx", 0, "invalid reference range member")),
+)
+def test_reference_range_rejects_wrong_projection_or_member_index(
+    projection: Projection,
+    member_i: int,
+    error: str,
+) -> None:
+    with pytest.raises(TfSchemaError, match=error):
+        compile_tf_features(
+            projection=projection,
+            max_node=10,
+            memberships=(),
+            anchors=(),
+            reference_ranges=(_range_member(member_i=member_i),),
+        )

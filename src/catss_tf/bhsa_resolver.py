@@ -97,11 +97,11 @@ class _ExpandedPosition:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class BhsaVerseAnchor:
-    """A non-word anchor for a Hebrew-empty/LXX-plus CATSS alignment."""
+    """A non-word anchor for a Hebrew-empty CATSS alignment."""
 
     alignment_id: str
     bhsa_verse_node: int
-    kind: typing.Literal["lxx_plus"] = "lxx_plus"
+    kind: typing.Literal["lxx_plus", "apparent_mt_minus"] = "lxx_plus"
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -159,6 +159,15 @@ def split_catss_hebrew_words(value: str) -> tuple[str, ...]:
     if not parts or any(not part for part in parts):
         raise ValueError(f"invalid CATSS maqaf segmentation in {value!r}")
     return parts
+
+
+def _is_structural_reference_range_record(verse: VerseRecord) -> bool:
+    """Whether a CATSS verse record consists only of typed contextual-range carriers."""
+
+    return bool(verse.alignments) and all(
+        alignment.lxx_reference_ranges and not alignment.mt_tokens and not alignment.lxx_tokens
+        for alignment in verse.alignments
+    )
 
 
 def normalize_catss_hebrew(value: str) -> str:
@@ -294,6 +303,9 @@ def resolve_bhsa_document(
     normalization_errors = 0
 
     for verse in document.verses:
+        if _is_structural_reference_range_record(verse):
+            continue
+
         parent = provider.get_verse(
             classification.bhsa_book,
             verse.chapter,
@@ -322,6 +334,16 @@ def resolve_bhsa_document(
         )
         plus_alignments = tuple(
             alignment for alignment in verse.alignments if alignment.is_lxx_plus
+        )
+        apparent_minus_alignments = tuple(
+            alignment
+            for alignment in verse.alignments
+            if any(
+                annotation.side == "mt_a"
+                and annotation.kind == "apparent_minus"
+                and annotation.target_side is None
+                for annotation in alignment.annotations
+            )
         )
 
         if expansion_finding is not None:
@@ -568,8 +590,17 @@ def resolve_bhsa_document(
             BhsaVerseAnchor(
                 alignment_id=alignment.alignment_id,
                 bhsa_verse_node=parent.node,
+                kind="lxx_plus",
             )
             for alignment in plus_alignments
+        )
+        verse_anchors.extend(
+            BhsaVerseAnchor(
+                alignment_id=alignment.alignment_id,
+                bhsa_verse_node=parent.node,
+                kind="apparent_mt_minus",
+            )
+            for alignment in apparent_minus_alignments
         )
 
     return _report(

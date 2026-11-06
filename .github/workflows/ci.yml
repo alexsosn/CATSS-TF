@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: catss-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,10 +27,26 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
       - run: ruff check .
-      - run: ruff format --check .
+      - run: ruff format --check --diff .
       - run: mypy
       - run: pytest -q
-
+      - name: Reproduce canonical Jonah RED on preimplementation head
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          git fetch -q --depth 1 origin b46a869a3d458da5a43b4145a51d88f844d890a1
+          git worktree add --detach /tmp/catss-canonical-red b46a869a3d458da5a43b4145a51d88f844d890a1
+          if PYTHONPATH=/tmp/catss-canonical-red/src python -m pytest -q \
+            /tmp/catss-canonical-red/tests/test_canonical_materializer.py \
+            -k test_jonah_mixed_apparent_minus_targets_first_greek_element_in_canonical_tf \
+            > /tmp/catss-canonical-red.log 2>&1; then
+            cat /tmp/catss-canonical-red.log
+            echo "Expected canonical Jonah scope RED passed unexpectedly"
+            exit 1
+          fi
+          grep -q "E.*catss_annotation_target" /tmp/catss-canonical-red.log
+          grep -q '1 failed' /tmp/catss-canonical-red.log
+          echo 'jonah_scoped_annotation_RED_reproduced=True'
 
   release-smoke:
     runs-on: ubuntu-latest
@@ -43,9 +63,1712 @@ jobs:
       - run: python -m twine check dist/*
       - run: python -m venv /tmp/catss-tf-release-smoke
       - run: /tmp/catss-tf-release-smoke/bin/pip install --no-deps dist/*.whl
+      - name: Clean wheel installation exercises GitHub backend extra
+        run: |
+          python -m venv /tmp/catss-tf-github-extra
+          /tmp/catss-tf-github-extra/bin/python -m pip install "dist/catss_tf-0.1.0-py3-none-any.whl[tf]"
+          /tmp/catss-tf-github-extra/bin/python - <<'PY'
+          import importlib.metadata
+
+          import github
+          from tf.capable import Capable
+
+          assert github.Github is not None
+          assert Capable('github').can('github')
+          dist = importlib.metadata.distribution('catss-tf')
+          assert any(
+              'text-fabric[github]' in req and 'extra == "tf"' in req
+              for req in (dist.requires or ())
+          ), dist.requires
+          print('clean_wheel_github_backend=True')
+          PY
       - run: /tmp/catss-tf-release-smoke/bin/catss-tf --version
       - run: >-
           /tmp/catss-tf-release-smoke/bin/python -c
           "import catss_tf; from catss_tf import materialize_bhsa, materialize_lxx,
           compare_projection_bundles, TextFabricBhsaProvider, TextFabricLxxProvider;
           assert catss_tf.__version__ == '0.1.0'"
+
+
+  complete-catss-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e .
+      - name: Acquire upstream snapshot for audit only
+        run: |
+          mkdir -p /tmp/catss-parallel
+          python - <<'PY'
+          import pathlib, ssl, urllib.request
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES, CCAT_PARALLEL_BASE_URL
+          context = ssl._create_unverified_context()
+          root = pathlib.Path('/tmp/catss-parallel')
+          for name in CATSS_PARALLEL_FILENAMES:
+              url = f'{CCAT_PARALLEL_BASE_URL}/{name}'
+              with urllib.request.urlopen(url, context=context, timeout=60) as response:
+                  (root / name).write_bytes(response.read())
+          PY
+      - name: Assert complete Sirach manuscript-lacuna technique class
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.technique import derive_alignment_technique
+
+          document = parse_parallel_file(Path('/tmp/catss-parallel/27.Sirach.par'))
+          witnessed = [
+              alignment
+              for verse in document.verses
+              for alignment in verse.alignments
+              if (
+                  alignment.mt_count == 0
+                  and alignment.lxx_count > 0
+                  and alignment.mt_col_a.split()[:1] == ['[..]']
+              )
+          ]
+          assert len(witnessed) == 4278, len(witnessed)
+          preexisting_transposition = [
+              (alignment.alignment_id, alignment.mt_col_a)
+              for alignment in witnessed
+              if (
+                  alignment.is_transposition_local
+                  or alignment.is_transposition_remote
+                  or alignment.is_transposition_stylistic
+              )
+          ]
+          print(
+              'SIRACH_WITNESS_LACUNAE_ALREADY_ADMISSIBLE',
+              len(preexisting_transposition),
+              preexisting_transposition,
+              flush=True,
+          )
+          for alignment in witnessed:
+              assert not alignment.is_lxx_plus and not alignment.is_lxx_minus
+              assert any(
+                  annotation.side == 'mt_a'
+                  and annotation.kind == 'sirach_lacuna_or_illegible'
+                  for annotation in alignment.annotations
+              ), alignment.alignment_id
+              technique = derive_alignment_technique(document.source_name, alignment)
+              assert technique.cardinality_mt_lxx in {'zero_one', 'zero_many'}
+              assert technique.token_balance_mt_lxx == 'not_applicable'
+              assert not technique.addition_vs_mt and not technique.omission_vs_mt
+          print('SIRACH_WITNESS_LACUNAE_DERIVED', len(witnessed), flush=True)
+          PY
+      - name: Read-only Sirach witness attribution research (no CATSS text)
+        run: |
+          python - <<'PY'
+          from dataclasses import asdict
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.sirach_research import audit_sirach_witnesses
+
+          document = parse_parallel_file(Path('/tmp/catss-parallel/27.Sirach.par'))
+          audit = audit_sirach_witnesses(document)
+          # Exact pinned-source evidence from issue #132 / #134. A manuscript
+          # marker must not silently appear as a Hebrew lexical word again.
+          assert audit.witness_markers == 8119, audit.witness_markers
+          assert audit.witness_groups == 7565, audit.witness_groups
+          assert audit.witness_markers_lexically_retained == 0, audit
+          assert audit.witness_groups_with_zero_mt == 117, audit
+          print('SIRACH_WITNESS_RESEARCH', asdict(audit), flush=True)
+
+          # Verify >n boundaries independently against the source columns.
+          # No raw lexical content or source cell text is printed.
+          import re
+          legacy_re = re.compile(r'>(?:10|[1-9])')
+          complete_re = re.compile(r'>(?:10|[1-9])(?![0-9])')
+          # Independently parse the complete numeric run, then test the
+          # canonical witness catalogue. This oracle is not the regex under test.
+          digits_re = re.compile(r'>([0-9]+)')
+          valid_witness_ids = {str(n) for n in range(1, 11)}
+          legacy_total = 0
+          complete_total = 0
+          oracle_total = 0
+          parsed_total = 0
+          mismatches = []
+          excluded_numeric_prefixes = []
+          for verse in document.verses:
+              for row in verse.alignments:
+                  cells = (row.mt_col_a, row.mt_col_b or '', row.lxx_raw)
+                  old_n = sum(len(legacy_re.findall(c)) for c in cells)
+                  complete_n = sum(len(complete_re.findall(c)) for c in cells)
+                  typed_n = sum(
+                      a.kind == 'sirach_reading_lacking_in_witness'
+                      for a in row.annotations
+                  )
+                  legacy_total += old_n
+                  complete_total += complete_n
+                  oracle_total += sum(
+                      m.group(1) in valid_witness_ids
+                      for cell in cells for m in digits_re.finditer(cell)
+                  )
+                  parsed_total += typed_n
+                  if old_n != complete_n:
+                      excluded_numeric_prefixes.append((
+                          verse.chapter, verse.verse, min(row.source_lines),
+                          old_n - complete_n,
+                      ))
+                  if complete_n != typed_n:
+                      mismatches.append((
+                          verse.chapter, verse.verse, min(row.source_lines),
+                          complete_n, typed_n,
+                      ))
+          assert not mismatches, mismatches[:12]
+          assert (legacy_total, complete_total, oracle_total, parsed_total) == (
+              92, 88, 88, 88,
+          ), (legacy_total, complete_total, oracle_total, parsed_total)
+          assert sum(item[3] for item in excluded_numeric_prefixes) == 4
+          print('SIRACH_ABSENCE_BOUNDARY_AUDIT',
+                {'legacy': legacy_total, 'complete': complete_total,
+                 'independent_oracle': oracle_total, 'typed': parsed_total,
+                 'excluded_prefixes': legacy_total - complete_total},
+                flush=True)
+          print('SIRACH_EXCLUDED_ABSENCE_PREFIX_LOCATIONS',
+                excluded_numeric_prefixes, flush=True)
+
+          # Compare historical and corrected lexical cardinalities per source
+          # alignment, not a coarse "old reader had a token" heuristic.
+          from collections import Counter
+          from dataclasses import replace
+          from catss_tf.parser import _mt_lexical_readings
+          from catss_tf.technique import TechniqueError, derive_alignment_technique
+
+          transitions = Counter()
+          examples = {}
+          changed_rows = 0
+          for verse in document.verses:
+              for row in verse.alignments:
+                  old_mt_n = (
+                      0 if row.is_lxx_plus else len(_mt_lexical_readings(row.mt_col_a))
+                  )
+                  if old_mt_n == row.mt_count:
+                      continue
+                  changed_rows += 1
+                  identity = (verse.chapter, verse.verse, min(row.source_lines))
+                  assert old_mt_n > row.mt_count, identity
+                  assert any(
+                      a.side == 'mt_a' and (
+                          a.kind.startswith('sirach_witness_')
+                          or a.kind == 'sirach_reading_lacking_in_witness'
+                      )
+                      for a in row.annotations
+                  ), identity
+
+                  def status(candidate):
+                      try:
+                          derive_alignment_technique(document.source_name, candidate)
+                          return 'derived'
+                      except TechniqueError as exc:
+                          return 'unclassified:' + str(exc).split(' requires')[0].split(' contradicts')[0]
+
+                  pair = (status(replace(row, mt_count=old_mt_n)), status(row))
+                  transitions[pair] += 1
+                  examples.setdefault(pair, [])
+                  if len(examples[pair]) < 4:
+                      examples[pair].append(identity)
+          assert changed_rows >= audit.witness_groups_with_zero_mt
+          print('SIRACH_CORRECTED_MT_GROUPS', changed_rows, flush=True)
+          for pair, count in sorted(transitions.items()):
+              print('SIRACH_TECHNIQUE_TRANSITION', pair, count,
+                    examples[pair], flush=True)
+          assert changed_rows == 7396, changed_rows
+          assert transitions[('derived', 'derived')] == 7324, transitions
+          assert transitions[('derived', 'unclassified:CATSS LXX-minus')] == 28, transitions
+          assert transitions[('derived', 'unclassified:Hebrew-empty Greek alignment')] == 43, transitions
+          assert transitions[(
+              'unclassified:Sirach witness lacuna',
+              'unclassified:Sirach witness lacuna'
+          )] == 1, transitions
+
+          # #136 research: bounded metadata-only source-context evidence for
+          # newly unclassified (not merely lexically changed) Sirach rows.
+          from catss_tf.sirach_unclassified_research import audit_sirach_unclassified_context
+          context = audit_sirach_unclassified_context(document)
+          assert context.changed_groups == 7396, context.changed_groups
+          assert context.newly_unclassified == 71, context
+          assert context.unexpected_transitions == 0, context.unexpected_transitions
+          assert dict(context.transition_reasons) == {
+              'Hebrew-empty Greek alignment requires CATSS LXX-plus, apparent MT minus, or transposition evidence': 43,
+              'CATSS LXX-minus requires MT lexical material': 28,
+          }, context.transition_reasons
+          assert len({
+              alignment_id for alignment_id, reason in context.new_unclassified_id_reasons
+          }) == 71
+          assert all(count >= 0 for _, count in context.context_counts)
+          print('SIRACH_UNCLASSIFIED_CONTEXT_GROUPS', context.changed_groups,
+                context.newly_unclassified, flush=True)
+          print('SIRACH_UNCLASSIFIED_CONTEXT_COUNTS', dict(context.context_counts), flush=True)
+          print('SIRACH_UNCLASSIFIED_WITNESS_KINDS',
+                dict(context.witness_kind_counts), flush=True)
+          print('SIRACH_UNCLASSIFIED_CONTEXT_SAMPLES', context.samples, flush=True)
+
+          # Anomalous Sir 19:14 from #60: only expose counts and annotation
+          # kinds; never print licensed textual or reconstructed source cells.
+          for verse in document.verses:
+              if (verse.chapter, verse.verse) != (19, 14):
+                  continue
+              for row in verse.alignments:
+                  if row.mt_count == 0:
+                      print('SIRACH_19_14_ZERO_MT_SHAPE',
+                            (min(row.source_lines), row.mt_count, row.lxx_count,
+                             row.mt_col_b is not None,
+                             tuple(sorted(a.kind for a in row.annotations))),
+                            flush=True)
+          PY
+      - name: Research actual column-A marker classes for MT-B-only carriers
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          seen = []
+          for source in CATSS_PARALLEL_FILENAMES:
+              for verse in parse_parallel_file(Path('/tmp/catss-parallel') / source).verses:
+                  for alignment in verse.alignments:
+                      if (
+                          alignment.mt_count == 0
+                          and alignment.lxx_count > 0
+                          and alignment.mt_col_b is not None
+                          and not alignment.is_lxx_plus
+                      ):
+                          seen.append((
+                              source,
+                              verse.chapter,
+                              verse.verse,
+                              alignment.mt_col_a,
+                              alignment.mt_col_b,
+                              alignment.retroversion_kind,
+                          ))
+          by_a = Counter(row[3] for row in seen)
+          empty = [row for row in seen if not row[3]]
+          print('R59 candidate total:', len(seen), flush=True)
+          print('R59 MT column-A classes (top 20):', by_a.most_common(20), flush=True)
+          print('R59 actually empty column-A source counts:',
+                Counter(row[0] for row in empty), flush=True)
+          print('R59 empty column-A witnesses:', empty[:12], flush=True)
+          print('R59 nonempty examples:',
+                [(r[0], r[1], r[2], r[3][:45], r[5]) for r in seen if r[3]][:12],
+                flush=True)
+          PY
+      - name: Audit Greek scalar-reference numeric header candidates
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.reference_audit import audit_greek_references
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = Path('/tmp/catss-parallel')
+          audit = audit_greek_references(
+              parse_parallel_file(root / name)
+              for name in CATSS_PARALLEL_FILENAMES
+          )
+          assert audit.source_files == 46, audit
+          assert audit.scalar_references == 6218, audit
+          assert audit.explicit_chapters == 6, audit
+          assert audit.subverse_suffixes == 424, audit
+          assert (
+              audit.same_header_numeric
+              + audit.different_verse_same_chapter
+              + audit.different_chapter
+          ) == audit.scalar_references, audit
+          assert 0 <= audit.different_chapter <= audit.explicit_chapters, audit
+          assert (
+              audit.same_header_numeric,
+              audit.different_verse_same_chapter,
+              audit.different_chapter,
+          ) == (24, 6188, 6), audit
+          assert (
+              audit.numeric_candidates_zero,
+              audit.numeric_candidates_one,
+              audit.numeric_candidates_multiple,
+          ) == (1749, 4433, 36), audit
+          assert (
+              audit.numeric_candidates_zero
+              + audit.numeric_candidates_one
+              + audit.numeric_candidates_multiple
+          ) == audit.scalar_references
+          print('Greek source-only numeric candidate audit:', audit, flush=True)
+          PY
+      - name: Assert export-orphan layout repair
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          no_tab_physical = []
+          unsplit_alignments = []
+          unsplit_diagnostics = []
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              covered = []
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      covered.extend(alignment.source_lines)
+                      if not alignment.column_split:
+                          unsplit_alignments.append(
+                              (name, verse.header_raw, alignment.source_lines, alignment.raw_lines)
+                          )
+                      for line_no, raw_line in zip(
+                          alignment.source_lines,
+                          alignment.raw_lines,
+                      ):
+                          if '\t' not in raw_line:
+                              no_tab_physical.append(
+                                  (
+                                      name,
+                                      verse.header_raw,
+                                      line_no,
+                                      raw_line,
+                                      alignment.column_split,
+                                      alignment.source_lines,
+                                  )
+                              )
+              unsplit_diagnostics.extend(
+                  (name, diagnostic.line_no, diagnostic.raw_line)
+                  for diagnostic in document.diagnostics
+                  if diagnostic.code == 'unsplit_row'
+              )
+              assert len(covered) == len(set(covered)), (name, 'duplicate source lines')
+              assert sorted(covered) == sorted(document.data_line_numbers), (
+                  name,
+                  set(document.data_line_numbers) - set(covered),
+                  set(covered) - set(document.data_line_numbers),
+              )
+
+          # Exodus preserves four formerly ignored blank/header lines.
+          assert len(no_tab_physical) == 212, len(no_tab_physical)
+          assert all(row[4] for row in no_tab_physical), no_tab_physical[:20]
+          assert unsplit_alignments == [], unsplit_alignments[:20]
+          assert unsplit_diagnostics == [], unsplit_diagnostics[:20]
+          print(f'export_orphan_physical_lines={len(no_tab_physical)}')
+          print('unsplit_alignments=0')
+          print('unsplit_diagnostics=0')
+          PY
+      - name: Assert exact Exodus 35:19 corrupted-header repair
+        run: |
+          python - <<'PY'
+          import pathlib
+          from catss_tf.parser import alignment_id_for, parse_parallel_file
+          from catss_tf.validation import validate_document
+
+          path = pathlib.Path('/tmp/catss-parallel/02.Exodus.par')
+          original = path.read_text(encoding='utf-8').splitlines()
+          doc = parse_parallel_file(path)
+
+          matches = [
+              (verse, alignment)
+              for verse in doc.verses
+              for alignment in verse.alignments
+              if alignment.raw_lines
+              and '^ ^^^ =L/$RT {...?H/&RD} #' in alignment.raw_lines[0]
+              and 'LEITOURGH/SOUSIN' in alignment.raw_lines[0]
+          ]
+          assert len(matches) == 1, matches
+          verse, alignment = matches[0]
+          assert (verse.book, verse.chapter, verse.verse) == ('Exod', 35, 19)
+          assert len(alignment.raw_lines) == 7, alignment.raw_lines
+          assert alignment.source_lines == tuple(range(
+              alignment.source_lines[0], alignment.source_lines[0] + 7
+          ))
+          assert alignment.raw_lines == tuple(
+              original[i - 1] for i in alignment.source_lines
+          )
+          assert [s.strip() for s in alignment.raw_lines[1:6]] == [
+              '', 'Exod 1:10', '#', '', 'Exod 35:19'
+          ]
+          assert alignment.mt_raw.endswith(' {...?H/&RD} --+'), alignment.mt_raw
+          assert alignment.lxx_raw.endswith('E)N AU)TAI=S'), alignment.lxx_raw
+          assert all(i in doc.data_line_numbers for i in alignment.source_lines)
+          assert not any(
+              v.header_raw == 'Exod 1:10'
+              and alignment.source_lines[0] <= v.header_line_no <= alignment.source_lines[-1]
+              for v in doc.verses
+          )
+          assert not any(
+              d.code == 'malformed_continuation'
+              and alignment.source_lines[0] <= d.line_no <= alignment.source_lines[-1]
+              for d in doc.diagnostics
+          )
+          assert alignment.alignment_id == alignment_id_for(
+              source_name='02.Exodus.par',
+              header_raw=verse.header_raw,
+              source_lines=alignment.source_lines,
+              raw_lines=alignment.raw_lines,
+          )
+          audit = validate_document(doc)
+          assert audit.summary.unaccounted_lines == 0
+          assert audit.summary.invalid_alignment_ids == 0
+          print('exodus_35_19_physical_lines_preserved=7')
+          PY
+      - name: Assert zero-token Greek-preverb carriers
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
+
+          expected = {
+              ('23.Prov.par', 28, 18, 'B/)XT', '{p} ---'),
+              ('27.Sirach.par', 5, 2, ')XRY 3', '{p} ---'),
+              ('27.Sirach.par', 23, 17, 'B/W 3', '{p}'),
+          }
+          root = pathlib.Path('/tmp/catss-parallel')
+          observed = set()
+          preverb_total = 0
+
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      preverbs = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'lxx'
+                          and annotation.kind == 'greek_preverb'
+                      ]
+                      if not preverbs:
+                          continue
+                      preverb_total += 1
+                      if alignment.mt_count <= 0 or alignment.lxx_count != 0:
+                          continue
+
+                      identity = (
+                          name,
+                          verse.chapter,
+                          verse.verse,
+                          alignment.mt_raw,
+                          alignment.lxx_raw,
+                      )
+                      observed.add(identity)
+                      assert alignment.is_lxx_minus is False, identity
+                      technique = derive_alignment_technique(name, alignment)
+                      assert technique.addition_vs_mt is False, identity
+                      assert technique.omission_vs_mt is False, identity
+                      assert technique.token_balance_mt_lxx == 'not_applicable', identity
+
+          assert preverb_total == 290, preverb_total
+          assert observed == expected, (expected - observed, observed - expected)
+          print(f'greek_preverb_alignments={preverb_total}')
+          print(f'zero_token_greek_preverb_carriers={len(observed)}')
+          PY
+      - name: Assert chained continuation grouping
+        run: |
+          python - <<'PY'
+          import pathlib
+          from catss_tf.parser import parse_parallel_file
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          expected = {
+              '06.JoshB.par': {3752: (3750, 3751, 3752)},
+              '13.1Kings.par': {14622: (14621, 14622)},
+              '27.Sirach.par': {
+                  3694: (3693, 3694),
+                  3696: (3695, 3696),
+              },
+              '45.DanielOG.par': {85: (84, 85)},
+          }
+
+          checked = 0
+          for name, line_expectations in expected.items():
+              document = parse_parallel_file(root / name)
+              malformed = {
+                  diagnostic.line_no
+                  for diagnostic in document.diagnostics
+                  if diagnostic.code == 'malformed_continuation'
+              }
+              for line_no, expected_group in line_expectations.items():
+                  owners = [
+                      alignment
+                      for verse in document.verses
+                      for alignment in verse.alignments
+                      if line_no in alignment.source_lines
+                  ]
+                  assert len(owners) == 1, (name, line_no, owners)
+                  assert owners[0].source_lines == expected_group, (
+                      name,
+                      line_no,
+                      owners[0].source_lines,
+                  )
+                  assert line_no not in malformed, (name, line_no)
+                  checked += 1
+
+          assert checked == 5, checked
+          print(f'chained_continuation_fragments={checked}')
+          PY
+      - name: Assert MT apparent-minus semantics
+        run: |
+          python - <<'PY'
+          import collections
+          import pathlib
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import TechniqueError, derive_alignment_technique
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          marker_total = 0
+          admissible = 0
+          outlier_shapes = collections.Counter()
+          scoped_mixed = []
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      marker = alignment.mt_col_a.split(maxsplit=1)[0] if alignment.mt_col_a else ''
+                      if marker != '---':
+                          continue
+                      marker_total += 1
+                      apparent = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'mt_a'
+                          and annotation.kind == 'apparent_minus'
+                      ]
+                      assert len(apparent) == 1
+                      if alignment.mt_count == 0 and alignment.lxx_count > 0:
+                          admissible += 1
+                          technique = derive_alignment_technique(name, alignment)
+                          assert technique.addition_vs_mt is False
+                          assert technique.omission_vs_mt is False
+                      else:
+                          outlier_shapes[(alignment.mt_count, alignment.lxx_count)] += 1
+                          identity = (
+                              name, verse.chapter, verse.verse,
+                              alignment.mt_raw, alignment.lxx_raw,
+                          )
+                          if identity == (
+                              '32.Jonah.par', 4, 3, '--- YHWH', 'DE/SPOTA KU/RIE',
+                          ):
+                              assert alignment.mt_count == 1
+                              assert alignment.lxx_count == 2
+                              assert len(apparent) == 1
+                              assert apparent[0].target_side == 'lxx'
+                              assert apparent[0].target_index == 1
+                              technique = derive_alignment_technique(name, alignment)
+                              assert technique.cardinality_mt_lxx == 'one_many'
+                              assert technique.token_balance_mt_lxx == 'lxx_more'
+                              assert technique.addition_vs_mt is False
+                              assert technique.omission_vs_mt is False
+                              scoped_mixed.append(identity)
+                          else:
+                              # All other contradictory cardinalities remain errors.
+                              assert not any(
+                                  a.target_side == 'lxx' and a.target_index is not None
+                                  for a in apparent
+                              ), identity
+                              try:
+                                  derive_alignment_technique(name, alignment)
+                              except TechniqueError:
+                                  pass
+                              else:
+                                  raise AssertionError(
+                                      f'unscoped contradictory minus admitted: {identity}'
+                                  )
+          assert scoped_mixed == [
+              ('32.Jonah.par', 4, 3, '--- YHWH', 'DE/SPOTA KU/RIE'),
+          ], scoped_mixed
+          assert marker_total == 63, marker_total
+          assert admissible == 61, admissible
+          assert outlier_shapes == {(0, 0): 1, (1, 2): 1}, outlier_shapes
+          print(f'mt_apparent_minus_markers={marker_total}')
+          print(f'mt_apparent_minus_admissible={admissible}')
+          print(f'mt_apparent_minus_outliers={dict(outlier_shapes)}')
+          PY
+      - name: Assert exact MT double-dash source repairs
+        run: |
+          python - <<'PY'
+          import pathlib
+          import re
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+
+          expected = {
+              (
+                  '01.Genesis.par', 22, 16,
+                  '--=;M/MN/Y <22.12> <sp>', "DI' E)ME/",
+                  '--+=;M/MN/Y <22.12> <sp>',
+              ),
+              (
+                  '01.Genesis.par', 48, 13,
+                  '-- =;)T/M <48.10>', 'AU)TOU\\S',
+                  '--+ =;)T/M <48.10>',
+              ),
+              (
+                  '02.Exodus.par', 10, 24,
+                  '--=;)LH/YKM <10.8>', 'TW=| QEW=| U(MW=N',
+                  '--+=;)LH/YKM <10.8>',
+              ),
+              (
+                  '15.1Chron.par', 11, 20,
+                  '-- =B/P(M )XT', 'E)N KAIRW=| E(NI/',
+                  '--+ =B/P(M )XT',
+              ),
+          }
+          observed = set()
+          repair_occurrences = []
+          unrepaired_bare = []
+          root = pathlib.Path('/tmp/catss-parallel')
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      repairs = [
+                          a for a in alignment.annotations
+                          if a.side == 'mt_a' and a.kind == 'source_repair'
+                      ]
+                      for repair in repairs:
+                          identity = (
+                              name, verse.chapter, verse.verse,
+                              alignment.mt_raw, alignment.lxx_raw, repair.payload,
+                          )
+                          if identity in expected:
+                              observed.add(identity)
+                              repair_occurrences.append(identity)
+                      if re.match(r'^--(?=[ =])', alignment.mt_raw):
+                          if not repairs:
+                              unrepaired_bare.append(
+                                  (name, verse.chapter, verse.verse, alignment.mt_raw, alignment.lxx_raw)
+                              )
+          assert observed == expected, (expected - observed, observed - expected)
+          assert len(repair_occurrences) == 4, repair_occurrences
+          assert len(set(repair_occurrences)) == 4, repair_occurrences
+          assert unrepaired_bare == [], unrepaired_bare
+          print(f'mt_double_dash_exact_repairs={len(repair_occurrences)}')
+          PY
+      - name: Assert exact Greek-side plus source repairs
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
+
+          expected = {
+              ('01.Genesis.par', 34, 29, 'KL', '--+', '---'),
+              ('18.Esther.par', 7, 4, 'W/)LW', '--+', '---'),
+              ('23.Prov.par', 11, 31, ')P KY', '--+', '---'),
+              ('23.Prov.par', 24, 5, 'GBR', '--+', '---'),
+              ('23.Prov.par', 30, 32, 'L/PH', '--+ {x}', '--- {x}'),
+              ('41.Jer.par', 51, 57, 'PXWT/YH', '--+ [28.57]', '--- [28.57]'),
+          }
+          observed = []
+          unresolved = []
+          root = pathlib.Path('/tmp/catss-parallel')
+
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      repairs = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'lxx'
+                          and annotation.kind == 'source_repair'
+                      ]
+                      for repair in repairs:
+                          identity = (
+                              name,
+                              verse.chapter,
+                              verse.verse,
+                              alignment.mt_raw,
+                              alignment.lxx_raw,
+                              repair.payload,
+                          )
+                          if identity in expected:
+                              observed.append(identity)
+                              assert alignment.is_lxx_minus is True
+                              assert alignment.is_lxx_plus is False
+                              technique = derive_alignment_technique(name, alignment)
+                              assert technique.omission_vs_mt is True
+                              assert technique.addition_vs_mt is False
+
+                      first = alignment.lxx_raw.split(maxsplit=1)[0] if alignment.lxx_raw else ''
+                      if (
+                          first == '--+'
+                          and alignment.mt_count > 0
+                          and alignment.lxx_count == 0
+                          and not repairs
+                      ):
+                          unresolved.append(
+                              (
+                                  name,
+                                  verse.chapter,
+                                  verse.verse,
+                                  alignment.mt_raw,
+                                  alignment.lxx_raw,
+                              )
+                          )
+
+          assert set(observed) == expected, (expected - set(observed), set(observed) - expected)
+          assert len(observed) == 6, observed
+          assert unresolved == [], unresolved
+          print(f'greek_side_plus_exact_repairs={len(observed)}')
+          PY
+      - name: Assert exact 1 Kings missing-minus repair
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.technique import derive_alignment_technique
+
+          root = pathlib.Path('/tmp/catss-parallel')
+          document = parse_parallel_file(root / '13.1Kings.par')
+          matches = []
+          for verse in document.verses:
+              for alignment in verse.alignments:
+                  if (
+                      verse.chapter == 22
+                      and verse.verse == 50
+                      and alignment.mt_raw == ')X)B'
+                      and alignment.lxx_raw == '[16.28g]'
+                  ):
+                      matches.append(alignment)
+
+          assert len(matches) == 1, len(matches)
+          alignment = matches[0]
+          assert alignment.is_lxx_minus is True
+          assert alignment.mt_count == 1
+          assert alignment.lxx_count == 0
+          refs = [
+              a for a in alignment.annotations
+              if a.side == 'lxx' and a.kind == 'contextual_reference'
+          ]
+          assert [(a.raw, a.payload) for a in refs] == [('[16.28g]', '16.28g')]
+          repairs = [
+              a for a in alignment.annotations
+              if a.side == 'lxx' and a.kind == 'source_repair'
+          ]
+          assert [(a.raw, a.payload) for a in repairs] == [
+              ('[16.28g]', '--- [16.28g]')
+          ]
+          technique = derive_alignment_technique('13.1Kings.par', alignment)
+          assert technique.omission_vs_mt is True
+          assert technique.addition_vs_mt is False
+          print('one_kings_22_50_missing_minus_repairs=1')
+          PY
+      - name: Assert parent-grounded 1 Esdras lexical repair
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-lxx
+          git init -q /tmp/centerblc-lxx
+          git -C /tmp/centerblc-lxx remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-lxx fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-lxx checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-lxx rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+
+          from tf.fabric import Fabric
+
+          from catss_tf.lxx_resolver import (
+              TextFabricLxxProvider,
+              normalize_catss_greek,
+              normalize_lxx_greek,
+              resolve_lxx_document,
+          )
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE,
+              LXX_MAX_SLOT,
+              LXX_NODE_COUNTS,
+              LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG,
+              LXX_REPOSITORY,
+              LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES,
+              LXX_SLOT_TYPE,
+              LXX_VERSION,
+              LxxParentProbe,
+          )
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+          from catss_tf.technique import derive_alignment_technique
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/17.1Esdras.par'))
+          targets = [
+              alignment
+              for verse in source.verses
+              if verse.chapter == 6 and verse.verse == 4
+              for alignment in verse.alignments
+              if alignment.mt_raw == 'L/KM' and alignment.lxx_raw == '[e5.3]'
+          ]
+          assert len(targets) == 1, targets
+          alignment = targets[0]
+          assert alignment.raw_lines == ('L/KM\t[e5.3]',)
+          assert alignment.mt_tokens == ('L/KM',)
+          assert alignment.lxx_tokens == ('U(MI=N',)
+          assert alignment.is_transposition_stylistic is True
+          assert any(
+              annotation.side == 'lxx'
+              and annotation.kind == 'transposition_stylistic'
+              and annotation.payload == 'U(MI=N'
+              for annotation in alignment.annotations
+          )
+          assert (alignment.mt_count, alignment.lxx_count) == (1, 1)
+          assert alignment.is_lxx_plus is False
+          assert alignment.is_lxx_minus is False
+          assert any(
+              annotation.side == 'lxx'
+              and annotation.kind == 'contextual_reference'
+              and annotation.raw == '[e5.3]'
+              and annotation.payload == 'e5.3'
+              for annotation in alignment.annotations
+          )
+          repairs = [
+              annotation
+              for annotation in alignment.annotations
+              if annotation.side == 'lxx' and annotation.kind == 'source_repair'
+          ]
+          assert [(repair.raw, repair.payload) for repair in repairs] == [
+              ('[e5.3]', '{..^U(MI=N} [e5.3]')
+          ]
+          carriers = [
+              candidate
+              for verse in source.verses
+              if verse.chapter == 6 and verse.verse == 4
+              for candidate in verse.alignments
+              if candidate.mt_raw == '{...}' and candidate.lxx_raw == 'U(MI=N [e5.3]'
+          ]
+          assert len(carriers) == 1, carriers
+          carrier = carriers[0]
+          assert carrier.lxx_tokens == ('U(MI=N',)
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.kind == 'transposition_remote'
+              and annotation.raw == '{...}'
+              for annotation in carrier.annotations
+          )
+          assert carrier.source_lines[0] < alignment.source_lines[0]
+          technique = derive_alignment_technique('17.1Esdras.par', alignment)
+          assert technique.cardinality_mt_lxx == 'one_one'
+          assert technique.transposition_mt_lxx == 'stylistic'
+          assert technique.addition_vs_mt is False
+          assert technique.omission_vs_mt is False
+
+          TF = Fabric(locations='/tmp/centerblc-lxx/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+
+          verse_node = api.T.nodeFromSection(('1Esdr', 6, 4))
+          assert verse_node is not None
+          word_nodes = tuple(api.L.d(verse_node, otype='word'))
+          target = normalize_catss_greek('U(MI=N')
+          matches = [
+              node
+              for node in word_nodes
+              if normalize_lxx_greek(api.F.word.v(node)) == target
+          ]
+          assert matches == [294471], [
+              (node, api.F.word.v(node), api.F.orig_order.v(node))
+              for node in matches
+          ]
+          assert api.F.word.v(294471) == 'ὑμῖν'
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          repaired = parse_parallel_text(
+              '1Esdr 6:4\n{...}\tU(MI=N [e5.3]\nL/KM\t[e5.3]\n',
+              source_name='17.1Esdras.par',
+          )
+          report = resolve_lxx_document(repaired, provider)
+          assert report.ok is True, report.findings
+          assert report.reference_anchors == ()
+          assert [
+              (mapping.lxx_node, mapping.mapping_kind)
+              for mapping in report.word_mappings
+          ] == [
+              (294471, 'transposition_carrier'),
+              (294471, 'transposition_alignment'),
+          ]
+          assert {
+              (mapping.reference_book, mapping.reference_chapter, mapping.reference_verse)
+              for mapping in report.word_mappings
+          } == {('1Esdr', 6, 4)}
+          print('1esdr_6_4_parent_node=294471')
+          print('1esdr_6_4_parent_word=ὑμῖν')
+          PY
+      - name: Assert doubt-decorated Greek minus semantics
+        run: |
+          python - <<'PY'
+          import pathlib
+
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          from catss_tf.technique import derive_alignment_technique
+
+          expected = {
+              ('09.JudgesA.par', 20, 6, 'ZMH', '---?'),
+              ('15.1Chron.par', 12, 38, 'CB)', '---?'),
+              ('15.1Chron.par', 29, 9, '&MXH', '---?'),
+              ('20.Psalms.par', 35, 20, 'DBRY', '---? [34.20]'),
+              ('40.Isaiah.par', 51, 3, 'W/(RBT/H', '---?'),
+              ('40.Isaiah.par', 51, 3, 'K/GN', '---?'),
+              ('41.Jer.par', 25, 4, 'L/$M(', '---?'),
+          }
+          observed = []
+          root = pathlib.Path('/tmp/catss-parallel')
+
+          for name in CATSS_PARALLEL_FILENAMES:
+              document = parse_parallel_file(root / name)
+              for verse in document.verses:
+                  for alignment in verse.alignments:
+                      first = alignment.lxx_raw.split(maxsplit=1)[0] if alignment.lxx_raw else ''
+                      if first != '---?':
+                          continue
+                      identity = (
+                          name,
+                          verse.chapter,
+                          verse.verse,
+                          alignment.mt_raw,
+                          alignment.lxx_raw,
+                      )
+                      observed.append(identity)
+                      assert alignment.mt_count > 0, identity
+                      assert alignment.lxx_count == 0, identity
+                      assert alignment.is_lxx_minus is True, identity
+                      doubt = [
+                          annotation
+                          for annotation in alignment.annotations
+                          if annotation.side == 'lxx'
+                          and annotation.kind == 'doubt'
+                      ]
+                      assert [(a.raw, a.payload) for a in doubt] == [('?', None)], (
+                          identity,
+                          doubt,
+                      )
+                      assert not any(
+                          annotation.kind == 'source_repair'
+                          for annotation in alignment.annotations
+                      ), identity
+                      technique = derive_alignment_technique(name, alignment)
+                      assert technique.omission_vs_mt is True, identity
+                      assert technique.addition_vs_mt is False, identity
+
+          assert set(observed) == expected, (
+              expected - set(observed),
+              set(observed) - expected,
+          )
+          assert len(observed) == 7, observed
+          print(f'doubt_decorated_lxx_minus={len(observed)}')
+          PY
+      - name: Assert parent-grounded JoshB contextual-reference range
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-lxx-range /tmp/catss-range-source /tmp/catss-range-module
+          git init -q /tmp/centerblc-lxx-range
+          git -C /tmp/centerblc-lxx-range remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-lxx-range fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-lxx-range checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-lxx-range rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+
+          from tf.fabric import Fabric
+
+          from catss_tf.lxx_materializer import materialize_lxx
+          from catss_tf.lxx_resolver import TextFabricLxxProvider, resolve_lxx_document
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE,
+              LXX_MAX_SLOT,
+              LXX_NODE_COUNTS,
+              LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG,
+              LXX_REPOSITORY,
+              LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES,
+              LXX_SLOT_TYPE,
+              LXX_VERSION,
+              LxxParentProbe,
+          )
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/06.JoshB.par'))
+          targets = [
+              alignment
+              for verse in source.verses
+              if verse.chapter == 9 and verse.verse == 2
+              for alignment in verse.alignments
+              if alignment.mt_raw == '{...} <8.30-35>'
+              and alignment.lxx_raw == '[[9.2a-2f]]'
+          ]
+          assert len(targets) == 1, targets
+          alignment = targets[0]
+          original_lines = pathlib.Path('/tmp/catss-parallel/06.JoshB.par').read_text(encoding='utf-8').splitlines()
+          assert alignment.raw_lines == tuple(original_lines[line - 1] for line in alignment.source_lines)
+          assert len(alignment.source_lines) == 1
+          assert (alignment.mt_count, alignment.lxx_count) == (0, 0)
+          assert alignment.lxx_references == ()
+          assert len(alignment.lxx_reference_ranges) == 1
+          range_ref = alignment.lxx_reference_ranges[0]
+          assert (
+              range_ref.start_chapter,
+              range_ref.start_verse,
+              range_ref.start_subverse,
+              range_ref.end_chapter,
+              range_ref.end_verse,
+              range_ref.end_subverse,
+              range_ref.raw,
+          ) == (9, 2, 'a', 9, 2, 'f', '[[9.2a-2f]]')
+          assert not any(
+              diagnostic.code == 'invalid_lxx_reference'
+              and diagnostic.raw_line == alignment.raw_lines[0]
+              for diagnostic in source.diagnostics
+          )
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.kind == 'transposition_remote'
+              and annotation.raw == '{...}'
+              for annotation in alignment.annotations
+          )
+          assert any(
+              annotation.side == 'mt_a'
+              and annotation.raw == '<8.30-35>'
+              and annotation.payload == '8.30-35'
+              for annotation in alignment.annotations
+          )
+
+          TF = Fabric(locations='/tmp/centerblc-lxx-range/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY,
+              version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG,
+              release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE,
+              max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          # Exact pinned CenterBLC/LXX evidence: one unlabeled subverse node,
+          # not six labeled subverse targets. Never fabricate a-f TF nodes.
+          spans = [provider.get_span('Josh', 9, 2, subverse) for subverse in 'abcdef']
+          assert spans == [None] * 6, spans
+          parent_verse = api.T.nodeFromSection(('Josh', 9, 2))
+          assert parent_verse == 661339, parent_verse
+          parent_subverses = tuple(api.L.d(parent_verse, otype='subverse'))
+          assert parent_subverses == (630920,), parent_subverses
+          assert api.F.subverse.v(630920) == ''
+          parent_words = tuple(api.L.d(parent_verse, otype='word'))
+          assert len(parent_words) == 191
+          assert all(api.F.subverse.v(node) == '' for node in parent_words)
+
+          focused = parse_parallel_text(
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
+              source_name='06.JoshB.par',
+          )
+          report = resolve_lxx_document(focused, provider)
+          assert report.ok is False
+          assert report.word_mappings == ()
+          assert report.reference_anchors == ()
+          assert report.reference_range_memberships == ()
+          missing = [f for f in report.findings if f.code == 'missing_lxx_reference_range_member']
+          assert len(missing) == 1, report.findings
+          assert missing[0].alignment_id == focused.verses[0].alignments[0].alignment_id
+          # Do not demand a successful projection against an absent parent range.
+          from catss_tf.lxx_materializer import LxxMaterializationError
+          materialize_source = pathlib.Path('/tmp/catss-range-source')
+          materialize_source.mkdir()
+          (materialize_source / '06.JoshB.par').write_text(
+              'JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n',
+              encoding='utf-8',
+          )
+          try:
+              materialize_lxx(
+                  materialize_source,
+                  pathlib.Path('/tmp/catss-range-module'),
+                  provider=provider,
+              )
+          except LxxMaterializationError as exc:
+              assert 'missing_lxx_reference_range_member' in str(exc), exc
+          else:
+              raise AssertionError('LXX module must fail closed without parent subverses')
+          assert not pathlib.Path('/tmp/catss-range-module').exists()
+          print('joshb_9_2_reference_range_unresolved_parent=abcdef')
+          PY
+      - name: Research pinned Jonah 4:3 Greek token scope
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/catss-jonah-parent
+          git init -q /tmp/catss-jonah-parent
+          git -C /tmp/catss-jonah-parent remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/catss-jonah-parent fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/catss-jonah-parent checkout -q FETCH_HEAD
+          test "$(git -C /tmp/catss-jonah-parent rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          import pathlib
+          from tf.fabric import Fabric
+          from catss_tf.parser import parse_parallel_file, parse_parallel_text
+          from catss_tf.lxx_resolver import (
+              TextFabricLxxProvider, normalize_catss_greek, normalize_lxx_greek,
+              resolve_lxx_document,
+          )
+          from catss_tf.lxx_schema import (
+              LXX_MAX_NODE, LXX_MAX_SLOT, LXX_NODE_COUNTS, LXX_RELEASE_COMMIT,
+              LXX_RELEASE_TAG, LXX_REPOSITORY, LXX_REQUIRED_FEATURES,
+              LXX_SECTION_TYPES, LXX_SLOT_TYPE, LXX_VERSION, LxxParentProbe,
+          )
+
+          source = parse_parallel_file(pathlib.Path('/tmp/catss-parallel/32.Jonah.par'))
+          rows = [
+              a for v in source.verses if (v.chapter, v.verse) == (4, 3)
+              for a in v.alignments
+              if a.mt_raw == '--- YHWH' and a.lxx_raw == 'DE/SPOTA KU/RIE'
+          ]
+          assert len(rows) == 1, rows
+          alignment = rows[0]
+          assert alignment.mt_tokens == ('YHWH',)
+          assert alignment.lxx_tokens == ('DE/SPOTA', 'KU/RIE')
+          assert any(a.side == 'mt_a' and a.kind == 'apparent_minus' for a in alignment.annotations)
+
+          TF = Fabric(locations='/tmp/catss-jonah-parent/tf/1935', silent='deep')
+          api = TF.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          verse_node = api.T.nodeFromSection(('Jonah', 4, 3))
+          assert verse_node is not None
+          slots = tuple(api.L.d(verse_node, otype='word'))
+          normalized = []
+          for n in slots:
+              try:
+                  normalized.append(normalize_lxx_greek(api.F.word.v(n)))
+              except ValueError:
+                  normalized.append(None)  # unrelated parent token with unsupported punctuation
+          expected = tuple(map(normalize_catss_greek, alignment.lxx_tokens))
+          matches = [
+              (slots[i], slots[i+1])
+              for i in range(len(slots) - 1)
+              if tuple(normalized[i:i+2]) == expected
+          ]
+          print('JONAH_4_3_MATCHES', [
+              ((left, api.F.word.v(left)), (right, api.F.word.v(right)))
+              for left, right in matches
+          ])
+          assert matches == [(495520, 495521)], matches
+          assert normalize_lxx_greek('ἀπ᾿') == normalize_catss_greek("A)P'")
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY, version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG, release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE, max_slot=LXX_MAX_SLOT,
+              max_node=LXX_MAX_NODE, section_types=LXX_SECTION_TYPES,
+              node_counts=LXX_NODE_COUNTS, feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          isolated = parse_parallel_text(
+              'Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n',
+              source_name='32.Jonah.par',
+          )
+          grounded = resolve_lxx_document(isolated, provider)
+          assert grounded.ok, grounded.findings
+          assert grounded.reference_anchors == ()
+          assert [
+              (m.lxx_index, m.lxx_node, m.mapping_kind)
+              for m in grounded.word_mappings
+          ] == [(0, 495520, 'exact'), (1, 495521, 'exact')]
+          print('JONAH_4_3_PINNED_PARENT_MAPPINGS', [
+              (m.lxx_index, m.lxx_node) for m in grounded.word_mappings
+          ])
+
+          # Full-document resolution remains independently strict: unrelated
+          # mismatched CATSS groups may prevent publishing a complete module.
+          full_report = resolve_lxx_document(source, provider)
+          print('JONAH_FULL_DOC_REPORT', full_report.summary)
+          print('JONAH_4_3_FULL_DOC_FOCUS', [
+              (m.lxx_index, m.lxx_node)
+              for m in full_report.word_mappings
+              if m.alignment_id == alignment.alignment_id
+          ])
+          assert full_report.summary.mismatched_reference_groups > 0
+
+          # R96-5: read-only Greek-parent span existence for ALL 46 CATSS
+          # sources, distinct from MT-header numeric candidate counting
+          # and from proven CATSS/LXX lexical mappings.
+          from catss_tf.parent_reference_audit import audit_lxx_parent_span_availability
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          documents = (
+              parse_parallel_file(pathlib.Path('/tmp/catss-parallel') / filename)
+              for filename in CATSS_PARALLEL_FILENAMES
+          )
+          audit = audit_lxx_parent_span_availability(documents, provider)
+          assert audit.source_files == 46, audit
+          assert audit.scalar_references == 6218, audit
+          assert audit.subverse_suffixes == 424, audit
+          assert (
+              audit.parent_span_present + audit.parent_span_missing
+              + audit.unsupported_source + audit.unknown_source
+          ) == 6218, audit
+          assert (
+              audit.subverse_present + audit.subverse_missing
+              + audit.subverse_unprofiled
+          ) == 424, audit
+          print('PINNED_LXX_REFERENCE_SPAN_AUDIT', audit, flush=True)
+
+          # Read-only R96-7: a locally matching word sequence is not a
+          # verified contextual reference destination or canonical edge.
+          from catss_tf.reference_surface_audit import audit_lxx_reference_surface_candidates
+          surface = audit_lxx_reference_surface_candidates(
+              (
+                  parse_parallel_file(pathlib.Path('/tmp/catss-parallel') / filename)
+                  for filename in CATSS_PARALLEL_FILENAMES
+              ),
+              provider,
+          )
+          assert surface.source_files == audit.source_files == 46, surface
+          assert surface.scalar_references == audit.scalar_references == 6218, surface
+          assert surface.parent_span_missing == audit.parent_span_missing, surface
+          assert surface.unsupported_source == audit.unsupported_source, surface
+          assert surface.unknown_source == audit.unknown_source, surface
+          assert surface.reference_groups > 0, surface
+          assert (
+              surface.joint_unique_groups + surface.joint_multiple_groups
+              + surface.joint_impossible_groups + surface.joint_incomplete_groups
+              + surface.joint_indeterminate_groups
+          ) == surface.reference_groups, surface
+          assert (
+              surface.context_unique_groups + surface.context_multiple_groups
+              + surface.context_impossible_groups + surface.context_incomplete_groups
+              + surface.context_indeterminate_groups
+          ) == surface.reference_groups, surface
+          assert (
+              surface.role_context_unique_groups + surface.role_context_multiple_groups
+              + surface.role_context_impossible_groups + surface.role_context_incomplete_groups
+              + surface.role_context_indeterminate_groups
+          ) == surface.reference_groups, surface
+          assert (
+              0 <= surface.role_context_changed_groups
+              <= surface.role_context_groups_with_eligible_pair
+              <= surface.reference_groups
+          ), surface
+          assert surface.role_context_groups_with_eligible_pair == 96, surface
+          assert surface.role_context_changed_groups == 17, surface
+          assert (
+              surface.role_context_unique_groups, surface.role_context_multiple_groups,
+              surface.role_context_impossible_groups, surface.role_context_incomplete_groups,
+              surface.role_context_indeterminate_groups,
+          ) == (260, 84, 32, 295, 0), surface
+          assert surface.context_groups_with_implicit == 279, surface
+          assert (
+              surface.context_unique_groups, surface.context_multiple_groups,
+              surface.context_impossible_groups, surface.context_incomplete_groups,
+              surface.context_indeterminate_groups,
+          ) == (252, 75, 49, 295, 0), surface
+          assert (
+              surface.exact_single_with_unavoidable_overlap
+              + surface.exact_single_with_avoidable_overlap_only
+          ) == surface.exact_single_with_overlap, surface
+          assert (
+              surface.exact_single_with_overlap + surface.exact_single_without_overlap
+          ) == surface.exact_single, surface
+          assert (
+              surface.exact_single + surface.exact_multiple + surface.no_surface_match
+              + surface.no_greek_tokens + surface.catss_normalization_error
+              + surface.parent_normalization_error
+          ) == audit.parent_span_present, surface
+          print('PINNED_LXX_REFERENCE_SURFACE_CANDIDATES', surface, flush=True)
+          PY
+      - name: Research pinned Josh 9:2 subverse node hierarchy
+        run: |
+          python -m pip install "text-fabric>=13.1,<14"
+          rm -rf /tmp/centerblc-josh
+          git init -q /tmp/centerblc-josh
+          git -C /tmp/centerblc-josh remote add origin https://github.com/CenterBLC/LXX.git
+          git -C /tmp/centerblc-josh fetch -q --depth 1 origin f32a98eddf7eb239aa73ab863d70381e416d5076
+          git -C /tmp/centerblc-josh checkout -q FETCH_HEAD
+          test "$(git -C /tmp/centerblc-josh rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python - <<'PY'
+          from collections import Counter
+          from tf.fabric import Fabric
+          from catss_tf.lxx_resolver import TextFabricLxxProvider
+          from catss_tf.lxx_schema import (
+              LXX_REPOSITORY, LXX_VERSION, LXX_RELEASE_TAG, LXX_RELEASE_COMMIT,
+              LXX_SLOT_TYPE, LXX_MAX_SLOT, LXX_MAX_NODE, LXX_SECTION_TYPES,
+              LXX_NODE_COUNTS, LXX_REQUIRED_FEATURES, LxxParentProbe,
+          )
+
+          fabric = Fabric(locations='/tmp/centerblc-josh/tf/1935', silent='deep')
+          api = fabric.load('book chapter verse subverse word orig_order', silent='deep')
+          assert api is not None
+          verse_node = api.T.nodeFromSection(('Josh', 9, 2))
+          assert verse_node is not None
+          words = tuple(api.L.d(verse_node, otype='word'))
+          subverses = tuple(api.L.d(verse_node, otype='subverse'))
+          print('JOSH_9_2_VERSE_NODE', verse_node)
+          print('JOSH_9_2_WORD_COUNT', len(words))
+          print('JOSH_9_2_SUBVERSE_COUNT', len(subverses))
+          print('JOSH_9_2_SUBVERSE_NODES', [
+              (
+                  node,
+                  api.F.subverse.v(node),
+                  tuple(api.L.d(node, otype='word')),
+              )
+              for node in subverses
+          ])
+          print('JOSH_9_2_WORD_FEATURE_VALUES', [
+              (
+                  word,
+                  api.F.word.v(word),
+                  api.F.subverse.v(word),
+                  tuple(api.L.u(word, otype='subverse')),
+              )
+              for word in words
+          ])
+          print('JOSH_9_2_WORD_LABEL_COUNTS', dict(Counter(
+              api.F.subverse.v(word) for word in words
+          )))
+          print('JOSH_9_2_SUBVERSE_LABEL_COUNTS', dict(Counter(
+              api.F.subverse.v(node) for node in subverses
+          )))
+
+          probe = LxxParentProbe(
+              repository=LXX_REPOSITORY, version=LXX_VERSION,
+              release_tag=LXX_RELEASE_TAG, release_commit=LXX_RELEASE_COMMIT,
+              slot_type=LXX_SLOT_TYPE, max_slot=LXX_MAX_SLOT, max_node=LXX_MAX_NODE,
+              section_types=LXX_SECTION_TYPES, node_counts=LXX_NODE_COUNTS,
+              feature_names=LXX_REQUIRED_FEATURES,
+          )
+          provider = TextFabricLxxProvider(api, probe)
+          print('JOSH_9_2_RANGE_PROVIDER', [
+              (label, span.node if span else None)
+              for label in 'abcdef'
+              for span in (provider.get_span('Josh', 9, 2, label),)
+          ])
+          # Encode the real-data observation as a fail-closed regression gate:
+          # all six CATSS subverse labels are ABSENT from this pinned parent.
+          assert verse_node == 661339, verse_node
+          assert len(words) == 191, len(words)
+          assert subverses == (630920,), subverses
+          assert all(api.F.subverse.v(word) == '' for word in words)
+          assert api.F.subverse.v(subverses[0]) == ''
+          assert all(tuple(api.L.u(word, otype='subverse')) == subverses for word in words)
+          assert all(provider.get_span('Josh', 9, 2, label) is None for label in 'abcdef')
+          PY
+      - name: Assert complete notation coverage
+        run: |
+          set +e
+          catss-tf validate --complete /tmp/catss-parallel 2>&1 | tee /tmp/catss-audit.txt
+          set -e
+          grep -qx 'complete_snapshot=true' /tmp/catss-audit.txt
+          grep -qx 'source_files=46' /tmp/catss-audit.txt
+          grep -qx 'unaccounted_lines=0' /tmp/catss-audit.txt
+          grep -qx 'unknown_annotations=0' /tmp/catss-audit.txt
+          # Parser diagnostics are reported above but are a separate quality layer;
+          # this gate proves complete special-notation coverage without hiding them.
+      - name: Materialize complete canonical corpus
+        run: |
+          python - <<'PY'
+          import csv
+          import pathlib
+          from catss_tf import materialize_corpus
+
+          output = pathlib.Path('/tmp/catss-canonical')
+          result = materialize_corpus(
+              '/tmp/catss-parallel',
+              output,
+              allowed_validation_codes={
+                  'invalid_lxx_reference',
+                  'malformed_continuation',
+                  'unsplit_row',
+              },
+          )
+          assert result.summary.source_files == 46
+          assert result.summary.alignments > 300_000
+          assert result.summary.reference_ranges == 1, result.summary.reference_ranges
+          assert result.summary.mt_b_carriers == 6, result.summary.mt_b_carriers
+          # Preserve all CATSS alignments without guessing formal translation technique.
+          # 43 Hebrew-empty/Greek-present and 28 Greek-minus/MT-empty
+          # source rows are now explicitly unclassified, not fabricated matches.
+          assert result.summary.unclassified_techniques == 102, result.summary.unclassified_techniques
+          assert result.summary.alignment_slots == result.summary.alignments
+          assert result.summary.audit_ok
+          assert (output / 'otype.tf').is_file()
+          assert (output / 'catss_tt_unclassified_reason.tf').is_file()
+          assert (output / 'catss_tt_status.tf').is_file()
+          unclassified_rows = (output / 'catss_tt_unclassified_reason.tf').read_text(
+              encoding='utf-8'
+          )
+          assert 'Hebrew-empty Greek alignment' in unclassified_rows
+          assert (output / 'oslots.tf').is_file()
+          with (output / 'catss-diagnostics.tsv').open(
+              encoding='utf-8', newline=''
+          ) as handle:
+              diagnostic_rows = tuple(csv.DictReader(handle, delimiter='\t'))
+          assert len(diagnostic_rows) == result.summary.ignored_validation_findings
+          print(result.summary)
+          PY
+      - name: Reload complete canonical CATSS corpus with Text-Fabric
+        run: |
+          python - <<'PY'
+          from tf.fabric import Fabric
+
+          # Validate the complete 46-file TF warp from the researcher's API,
+          # not only in-memory compiler counters or tiny synthetic fixtures.
+          api = Fabric(
+              locations='/tmp',
+              modules=('catss-canonical',),
+              silent='deep',
+          ).load(
+              'catss_alignment_id catss_source catss_raw catss_mt_col_b '
+              'catss_range_start_verse catss_range_end_subverse '
+              'catss_kind catss_side catss_payload catss_target_side '
+              'catss_target_index catss_text catss_index book chapter verse '
+              'catss_annotation_target catss_mt_b_raw catss_retro_kind '
+              'catss_tt_status catss_tt_unclassified_reason '
+              'catss_line_first catss_line_last catss_mt_n catss_lxx_n',
+              silent='deep',
+          )
+          assert api is not None
+          assert len(api.F.otype.s('alignment')) == 349670
+          # An independently parsed source-to-TF inventory catches dropped
+          # lexical elements, including the former Sirach witness pseudo-words.
+          from pathlib import Path
+          from catss_tf.parser import parse_parallel_file
+          from catss_tf.source import CATSS_PARALLEL_FILENAMES
+          expected_mt = sum(
+              row.mt_count
+              for filename in CATSS_PARALLEL_FILENAMES
+              for verse in parse_parallel_file(Path('/tmp/catss-parallel') / filename).verses
+              for row in verse.alignments
+          )
+          actual_mt = len(api.F.otype.s('mt_element'))
+          assert actual_mt == expected_mt, (actual_mt, expected_mt)
+          print('CANONICAL_MT_LEXICAL_ELEMENTS', actual_mt, flush=True)
+          carriers = tuple(api.F.otype.s('mt_b_carrier'))
+          assert len(carriers) == 6, carriers
+          from collections import Counter
+          carrier_sources = Counter()
+          for node in carriers:
+              slots = tuple(api.L.d(node, otype='alignment'))
+              assert len(slots) == 1
+              slot = slots[0]
+              assert tuple(api.L.u(slot, otype='mt_element')) == ()
+              assert api.F.catss_mt_b_raw.v(node) == api.F.catss_mt_col_b.v(slot)
+              carrier_sources[api.F.catss_source.v(slot)] += 1
+          assert dict(carrier_sources) == {
+              '12.2Sam.par': 4, '17.1Esdras.par': 1, '44.Ezekiel.par': 1
+          }, carrier_sources
+          assert len([
+              n for n in carriers if api.F.catss_retro_kind.v(n) == 'vocalization'
+          ]) == 1
+          assert len(api.F.otype.s('lxx_element')) == 546020
+          assert len(api.F.otype.s('reference')) == 6218
+          # Numeric MT-header coincidence is never emitted as a Greek target.
+          from pathlib import Path
+          assert not Path('/tmp/catss-canonical/catss_reference_target.tf').exists()
+          assert 'catss_reference_target' not in api.Eall()
+          ranges = tuple(api.F.otype.s('reference_range'))
+          assert len(ranges) == 1, ranges
+          range_node = ranges[0]
+          assert api.F.catss_raw.v(range_node) == '[[9.2a-2f]]'
+          assert api.F.catss_range_start_verse.v(range_node) == 2
+          assert api.F.catss_range_end_subverse.v(range_node) == 'f'
+          slots = tuple(api.L.d(range_node, otype='alignment'))
+          assert len(slots) == 1, slots
+          assert api.F.catss_source.v(slots[0]) == '06.JoshB.par'
+          assert str(api.F.catss_alignment_id.v(slots[0])).startswith('catss:06.JoshB.par:')
+          # The exact Jonah mixed apparent-minus marker targets only Greek element 1.
+          assert 'catss_annotation_target' in api.Eall()
+          scoped = tuple(
+              n for n in api.F.otype.s('annotation')
+              if api.F.catss_target_side.v(n) == 'lxx'
+          )
+          assert len(scoped) == 1, scoped
+          scope = scoped[0]
+          assert api.F.catss_kind.v(scope) == 'apparent_minus'
+          assert api.F.catss_target_index.v(scope) == 1
+          jonah_target = tuple(api.E.catss_annotation_target.f(scope))
+          assert len(jonah_target) == 1, jonah_target
+          assert api.F.otype.v(jonah_target[0]) == 'lxx_element'
+          assert api.F.catss_index.v(jonah_target[0]) == 1
+          assert api.F.catss_text.v(jonah_target[0]) == 'DE/SPOTA'
+          jonah_slots = tuple(api.L.d(scope, otype='alignment'))
+          assert len(jonah_slots) == 1
+          assert api.F.catss_source.v(jonah_slots[0]) == '32.Jonah.par'
+          # Independent researcher-facing Sirach marker smoke on real data:
+          # compare typed Masada annotations with the complete-source count
+          # from #132/#133, without assigning them to individual words.
+          from catss_tf import find_sirach_witness_annotations
+          masada = tuple(find_sirach_witness_annotations(api, 7, mode='marked'))
+          assert len(masada) == 254, len(masada)
+          assert all(hit.source == '27.Sirach.par' and hit.witness == 7 for hit in masada)
+          missing = tuple(find_sirach_witness_annotations(api, 7, mode='lacking'))
+          print('SIRACH_MASADA_MARKED', len(masada), flush=True)
+          print('SIRACH_MASADA_LACKING', len(missing), flush=True)
+
+          # A user-facing source-grounded unresolved-case query: compare
+          # every TF slot's stable ID + literal reason to independent
+          # source parser and conservative technique-deriver output.
+          from catss_tf import find_unclassified_alignments
+          from catss_tf.technique import TechniqueError, derive_alignment_technique
+
+          unresolved = tuple(find_unclassified_alignments(api))
+          assert len(unresolved) == 102, len(unresolved)
+          source_reasons = {}
+          for filename in CATSS_PARALLEL_FILENAMES:
+              doc = parse_parallel_file(Path('/tmp/catss-parallel') / filename)
+              for verse in doc.verses:
+                  for row in verse.alignments:
+                      try:
+                          derive_alignment_technique(filename, row)
+                      except TechniqueError as exc:
+                          assert row.alignment_id not in source_reasons
+                          source_reasons[row.alignment_id] = str(exc)
+          assert len(source_reasons) == 102, len(source_reasons)
+          assert {
+              hit.alignment_id: hit.reason for hit in unresolved
+          } == source_reasons
+          assert all(api.F.catss_tt_status.v(hit.alignment_slot) == 'unclassified'
+                     for hit in unresolved)
+          assert all(hit.mt_count == len(hit.mt_elements)
+                     and hit.lxx_count == len(hit.lxx_elements)
+                     for hit in unresolved)
+          sirach_unresolved = tuple(find_unclassified_alignments(
+              api, source='27.Sirach.par'
+          ))
+          assert len(sirach_unresolved) >= 71, len(sirach_unresolved)
+          assert all(hit.source == '27.Sirach.par' for hit in sirach_unresolved)
+          # Independent native-TF replay of the **exact** 71 newly
+          # unclassified source alignments, with unchanged source reasons.
+          from catss_tf.sirach_unclassified_research import audit_sirach_unclassified_context
+          sirach_source = parse_parallel_file(Path('/tmp/catss-parallel/27.Sirach.par'))
+          context = audit_sirach_unclassified_context(sirach_source)
+          tf_sirach = {hit.alignment_id: hit.reason for hit in sirach_unresolved}
+          assert len(context.new_unclassified_id_reasons) == 71
+          for alignment_id, reason in context.new_unclassified_id_reasons:
+              assert tf_sirach[alignment_id] == reason, alignment_id
+          assert tuple(find_unclassified_alignments(
+              api, reason_contains='intentionally-nonexistent-reason'
+          )) == ()
+          print('CATSS_UNCLASSIFIED_SOURCE_TF_PARITY', len(unresolved),
+                'Sirach', len(sirach_unresolved), flush=True)
+          print('CATSS_UNCLASSIFIED_EXAMPLE_IDENTITIES', [
+              (hit.source, hit.chapter, hit.verse, hit.source_line_first)
+              for hit in unresolved[:3]
+          ], flush=True)
+          # #144: real 46-file researcher-facing multi-form membership test.
+          # Select exact forms from an actual multiword source group in memory,
+          # then compare the public query with a DIFFERENT complete slot scan
+          # limited to that source. Do not print CATSS lexical strings.
+          from catss_tf import find_groups_with_all_forms
+          seed = None
+          for slot in api.F.otype.s('alignment'):
+              mt_nodes = api.L.u(slot, otype='mt_element')
+              greek_nodes = api.L.u(slot, otype='lxx_element')
+              if not mt_nodes or len(greek_nodes) < 2:
+                  continue
+              greek_distinct = tuple(dict.fromkeys(
+                  str(api.F.catss_text.v(node)) for node in greek_nodes
+              ))
+              if len(greek_distinct) >= 2:
+                  seed = (
+                      str(api.F.catss_text.v(mt_nodes[0])),
+                      greek_distinct[:2],
+                      str(api.F.catss_source.v(slot)),
+                  )
+                  break
+          assert seed is not None, 'No mixed multi-Greek alignment in 46-file corpus'
+          mt_term, greek_terms, source_name = seed
+          found = tuple(find_groups_with_all_forms(
+              api, mt_forms=(mt_term,), lxx_forms=greek_terms, source=source_name
+          ))
+          expected_ids = []
+          for slot, slot_source in api.F.catss_source.items():
+              if slot_source != source_name or api.F.otype.v(slot) != 'alignment':
+                  continue
+              mt_seen = {
+                  api.F.catss_text.v(node)
+                  for node in api.L.u(slot, otype='mt_element')
+              }
+              greek_seen = {
+                  api.F.catss_text.v(node)
+                  for node in api.L.u(slot, otype='lxx_element')
+              }
+              if mt_term in mt_seen and set(greek_terms) <= greek_seen:
+                  expected_ids.append(str(api.F.catss_alignment_id.v(slot)))
+          assert expected_ids
+          assert tuple(hit.alignment_id for hit in found) == tuple(expected_ids)
+          assert all(
+              set(greek_terms) <= set(hit.lxx_elements)
+              and mt_term in hit.mt_elements
+              for hit in found
+          )
+          print('CANONICAL_ALL_FORMS_ORACLE_GROUPS', len(found), flush=True)
+          print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
+                'alignments, single JoshB contextual reference_range')
+          PY
+      - name: Real 46-file Agora canonical adapter smoke
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          from tf.fabric import Fabric
+          from catss_tf.agora_adapter import main as agora_main
+
+          source = Path('/tmp/catss-parallel')
+          original = Path('/tmp/catss-canonical')
+          staging = Path('/tmp/catss-agora-staging')
+          staging.mkdir()  # Actual Agora contract: output is pre-created empty.
+          assert agora_main([
+              str(source), '--output', str(staging),
+          ]) == 0
+          assert not (staging / '.catss-agora-native-artifact').exists()
+          original_files = {
+              p.name: p for p in original.iterdir() if p.is_file()
+          }
+          staged_files = {
+              p.name: p for p in staging.iterdir() if p.is_file() and not p.is_symlink()
+          }
+          assert original_files.keys() == staged_files.keys(), (
+              original_files.keys() ^ staged_files.keys()
+          )
+          # The Agora bridge must not alter any feature or provenance file,
+          # including ignored parser-diagnostic audit sidecars.
+          for name in sorted(original_files):
+              def digest(p):
+                  h = hashlib.sha256()
+                  with p.open('rb') as source_file:
+                      for block in iter(lambda: source_file.read(1024 * 1024), b''):
+                          h.update(block)
+                  return h.digest()
+              assert digest(original_files[name]) == digest(staged_files[name]), name
+
+          api = Fabric(locations=[str(staging)], modules=[''], silent='deep').load(
+              'catss_alignment_id', silent='deep'
+          )
+          assert api is not None
+          assert api.F.otype.slotType == 'alignment'
+          assert len(api.F.otype.s('alignment')) == 349670
+          assert len(api.F.otype.s('reference')) == 6218
+          assert api.F.catss_alignment_id.v(1)
+          assert (staging / 'catss-diagnostics.tsv').is_file()
+          print('AGORA_FULL_CORPUS_ROUNDTRIP_OK', len(staged_files),
+                'files, 349670 alignment slots, 6218 references', flush=True)
+          PY

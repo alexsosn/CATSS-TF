@@ -23,7 +23,13 @@ from catss_tf.lxx_schema import (
     classify_catss_source,
     validate_lxx_parent,
 )
-from catss_tf.parser import AlignmentRecord, ParallelDocument, VerseRecord, parse_parallel_text
+from catss_tf.parser import (
+    AlignmentRecord,
+    Annotation,
+    ParallelDocument,
+    VerseRecord,
+    parse_parallel_text,
+)
 from catss_tf.source import (
     ParallelSourceManifest,
     SourceFileFingerprint,
@@ -35,6 +41,7 @@ from catss_tf.tf_schema import (
     TfAnchorEvent,
     TfMembership,
     TfModuleMetadata,
+    TfReferenceRangeEvent,
     compile_tf_features,
     write_tf_module,
 )
@@ -56,6 +63,7 @@ class LxxMaterializationSummary:
     alignments: int
     word_mappings: int
     reference_anchors: int
+    reference_range_memberships: int
     tf_features: int
     sidecar_rows: int
     ignored_validation_findings: int
@@ -145,6 +153,7 @@ def materialize_lxx(
         (
             memberships,
             anchors,
+            reference_ranges,
             alignment_rows,
             technique_rows,
             annotation_rows,
@@ -161,6 +170,7 @@ def materialize_lxx(
         max_node=LXX_MAX_NODE,
         memberships=tuple(memberships),
         anchors=tuple(anchors),
+        reference_ranges=tuple(reference_ranges),
     )
     mapping_rows = _mapping_rows(mapping_memberships, features)
     source_rows: list[tuple[object, ...]] = [
@@ -214,6 +224,7 @@ def materialize_lxx(
             ),
             word_mappings=len(memberships),
             reference_anchors=len(anchors),
+            reference_range_memberships=len(reference_ranges),
             tf_features=len(features),
             sidecar_rows=sidecar_rows,
             ignored_validation_findings=ignored_validation_findings,
@@ -258,6 +269,7 @@ def _projection_facts(
 ) -> tuple[
     list[TfMembership],
     list[TfAnchorEvent],
+    list[TfReferenceRangeEvent],
     list[tuple[object, ...]],
     list[tuple[object, ...]],
     list[tuple[object, ...]],
@@ -268,6 +280,7 @@ def _projection_facts(
 ]:
     memberships: list[TfMembership] = []
     anchors: list[TfAnchorEvent] = []
+    reference_ranges: list[TfReferenceRangeEvent] = []
     alignment_rows: list[tuple[object, ...]] = []
     technique_rows: list[tuple[object, ...]] = []
     annotation_rows: list[tuple[object, ...]] = []
@@ -294,6 +307,9 @@ def _projection_facts(
                         alignment.alignment_id,
                         annotation.side,
                         annotation.kind,
+                        annotation.family,
+                        int(annotation.contextual),
+                        annotation.payload,
                         annotation.raw,
                     )
                     for annotation in alignment.annotations
@@ -329,7 +345,27 @@ def _projection_facts(
                 line_last=max(alignment.source_lines),
                 line_n=len(alignment.source_lines),
                 retro_kind=alignment.retroversion_kind,
-                flags=_alignment_flags(alignment),
+                flags=_alignment_flags(alignment, side="lxx"),
+                annotation_payloads=_annotation_payloads(alignment, side="lxx"),
+                semantic_kinds=_semantic_kinds(
+                    alignment, side="lxx", element_index=mapping.lxx_index + 1
+                ),
+                semantic_scopes=_semantic_scopes(
+                    alignment, side="lxx", element_index=mapping.lxx_index + 1
+                ),
+                semantic_scoped_payloads=_semantic_scoped_payloads(
+                    alignment, side="lxx", element_index=mapping.lxx_index + 1
+                ),
+                semantic_payloads=_semantic_payloads(
+                    alignment, side="lxx", element_index=mapping.lxx_index + 1
+                ),
+                scoped_apparent_mt_minus=any(
+                    annotation.side == "mt_a"
+                    and annotation.kind == "apparent_minus"
+                    and annotation.target_side == "lxx"
+                    and annotation.target_index == mapping.lxx_index + 1
+                    for annotation in alignment.annotations
+                ),
             )
             memberships.append(membership)
             mapping_memberships.append(membership)
@@ -352,6 +388,25 @@ def _projection_facts(
                     anchor.lxx_reference_node,
                     anchor.kind,
                     0,
+                )
+            )
+
+        for member in report.reference_range_memberships:
+            _require_context(contexts, member.alignment_id)
+            reference_ranges.append(
+                TfReferenceRangeEvent(
+                    node=member.lxx_reference_node,
+                    source=document.source_name,
+                    alignment_id=member.alignment_id,
+                    raw=member.raw,
+                    member_i=member.member_index,
+                    member_n=member.member_count,
+                    start_chapter=member.start_chapter,
+                    start_verse=member.start_verse,
+                    start_subverse=member.start_subverse,
+                    end_chapter=member.end_chapter,
+                    end_verse=member.end_verse,
+                    end_subverse=member.end_subverse,
                 )
             )
 
@@ -384,11 +439,15 @@ def _projection_facts(
     )
     memberships.sort(key=_membership_sort_key)
     anchors.sort(key=lambda anchor: (anchor.source, anchor.alignment_id, anchor.node))
+    reference_ranges.sort(
+        key=lambda event: (event.source, event.alignment_id, event.member_i, event.node)
+    )
     mapping_memberships.sort(key=_membership_sort_key)
 
     return (
         memberships,
         anchors,
+        reference_ranges,
         alignment_rows,
         technique_rows,
         annotation_rows,
@@ -426,7 +485,7 @@ def _require_context(
     return context
 
 
-def _alignment_flags(alignment: AlignmentRecord) -> frozenset[str]:
+def _alignment_flags(alignment: AlignmentRecord, *, side: str = "both") -> frozenset[str]:
     flags: set[str] = set()
     if alignment.is_lxx_plus:
         flags.add("catss_lxx_plus")
@@ -446,11 +505,156 @@ def _alignment_flags(alignment: AlignmentRecord) -> frozenset[str]:
         flags.add("catss_doubt")
 
     for annotation in alignment.annotations:
+        if side == "mt" and annotation.side == "lxx":
+            continue
+        if side == "lxx" and annotation.side != "lxx":
+            continue
         flag = _ANNOTATION_FLAG.get(annotation.kind)
         if flag is not None:
             flags.add(flag)
 
     return frozenset(flags)
+
+
+def _annotation_payloads(alignment: AlignmentRecord, *, side: str) -> tuple[tuple[str, str], ...]:
+    payload_feature = {
+        "distributive": "catss_distributive_payload",
+        "preposition_added": "catss_prep_added_payload",
+        "repetition": "catss_repetition_payload",
+        "transposition_remote": "catss_trans_remote_payload",
+        "transposition_stylistic": "catss_trans_style_payload",
+    }
+    result: list[tuple[str, str]] = []
+    for annotation in alignment.annotations:
+        if side == "mt" and annotation.side == "lxx":
+            continue
+        if side == "lxx" and annotation.side != "lxx":
+            continue
+        feature = payload_feature.get(annotation.kind)
+        if feature is not None and annotation.payload is not None:
+            result.append((feature, annotation.payload))
+    return tuple(result)
+
+
+def _semantic_annotation_applies(
+    *,
+    annotation_side: str,
+    kind: str,
+    projection_side: str,
+) -> bool:
+    if kind == "source_repair":
+        return True
+    if kind == "apparent_minus":
+        return annotation_side == "mt_a"
+    if (
+        kind == "sirach_lacuna_or_illegible"
+        and annotation_side == "mt_a"
+        and projection_side == "lxx"
+    ):
+        # The missing Hebrew witness can be relevant to Greek lexical words,
+        # without reclassifying Greek-side or MT-B annotations.
+        return True
+    if projection_side == "mt":
+        return annotation_side != "lxx"
+    if projection_side == "lxx":
+        return annotation_side == "lxx"
+    raise ValueError(f"unknown projection side {projection_side!r}")
+
+
+def _semantic_annotation_in_scope(
+    annotation: Annotation,
+    *,
+    alignment: AlignmentRecord,
+    side: str,
+    element_index: int | None,
+) -> bool:
+    # Cross from MT-A onto a Greek word only for an actual Sirach
+    # *witness* lacuna, never for a forged source or an LXX-plus event.
+    # The canonical alignment identity embeds its source filename, and
+    # the caller independently checks it against document.source_name.
+    if (
+        side == "lxx"
+        and annotation.side == "mt_a"
+        and annotation.kind == "sirach_lacuna_or_illegible"
+        and (
+            not alignment.alignment_id.startswith("catss:27.Sirach.par:")
+            or alignment.mt_col_a.split()[:1] != ["[..]"]
+            or alignment.mt_count != 0
+            or alignment.lxx_count == 0
+            or alignment.is_lxx_plus
+            or alignment.is_lxx_minus
+        )
+    ):
+        return False
+    if annotation.target_side is not None:
+        return annotation.target_side == side and annotation.target_index == element_index
+    return _semantic_annotation_applies(
+        annotation_side=annotation.side,
+        kind=annotation.kind,
+        projection_side=side,
+    )
+
+
+def _semantic_kinds(
+    alignment: AlignmentRecord, *, side: str, element_index: int | None = None
+) -> tuple[str, ...]:
+    kinds = {
+        annotation.kind
+        for annotation in alignment.annotations
+        if annotation.kind != "unknown"
+        and _semantic_annotation_in_scope(
+            annotation, alignment=alignment, side=side, element_index=element_index
+        )
+    }
+    return tuple(sorted(kinds))
+
+
+def _semantic_scopes(
+    alignment: AlignmentRecord, *, side: str, element_index: int | None = None
+) -> tuple[tuple[str, str], ...]:
+    scopes = {
+        (annotation.kind, annotation.side)
+        for annotation in alignment.annotations
+        if annotation.kind != "unknown"
+        and _semantic_annotation_in_scope(
+            annotation, alignment=alignment, side=side, element_index=element_index
+        )
+    }
+    return tuple(sorted(scopes))
+
+
+def _semantic_scoped_payloads(
+    alignment: AlignmentRecord, *, side: str, element_index: int | None = None
+) -> tuple[tuple[str, str, str], ...]:
+    payloads = {
+        (annotation.kind, annotation.side, annotation.payload)
+        for annotation in alignment.annotations
+        if annotation.kind != "unknown"
+        and annotation.payload is not None
+        and _semantic_annotation_in_scope(
+            annotation, alignment=alignment, side=side, element_index=element_index
+        )
+    }
+    return tuple(sorted(payloads))
+
+
+def _semantic_payloads(
+    alignment: AlignmentRecord, *, side: str, element_index: int | None = None
+) -> tuple[tuple[str, str], ...]:
+    by_kind: dict[str, set[str]] = {}
+    for annotation in alignment.annotations:
+        if (
+            annotation.kind == "unknown"
+            or annotation.payload is None
+            or not _semantic_annotation_in_scope(
+                annotation, alignment=alignment, side=side, element_index=element_index
+            )
+        ):
+            continue
+        by_kind.setdefault(annotation.kind, set()).add(annotation.payload)
+    return tuple(
+        sorted((kind, next(iter(values))) for kind, values in by_kind.items() if len(values) == 1)
+    )
 
 
 def _alignment_sidecar_row(context: _AlignmentContext) -> tuple[object, ...]:

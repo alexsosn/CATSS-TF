@@ -154,7 +154,6 @@ HB2\t--- ''
     )
     output = tmp_path / "catss-lxx"
     provider = FakeLxxProvider((_span("θεός"),))
-
     result = materialize_lxx(source, output, provider=provider)
 
     assert result.output_path == output
@@ -231,6 +230,114 @@ def test_generated_lxx_module_loads_over_parent_warp_and_is_searchable(
     assert api.F.catss_source.v(1) == "01.Genesis.par"
     assert api.F.catss_lxx_i.v(1) == 1
     assert (1,) in api.S.search("word catss_lxx_n=1", silent="deep")
+
+
+def test_source_repair_is_query_native_on_available_lxx_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        "Gen 6:19\n--= '' =H/BHMH\tTW=N KTHNW=N\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        (_span("τῶν", "κτηνῶν", chapter=6, verse=19, node=20, start_node=10),)
+    )
+
+    materialize_lxx(source, output, provider=provider)
+
+    repair = (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_source_repair_mt_a.tf").read_text(encoding="utf-8")
+    payload = (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
+    scoped_payload = (output / "catss_sem_source_repair_mt_a_payload.tf").read_text(
+        encoding="utf-8"
+    )
+
+    for node in (10, 11):
+        assert f"{node}\t1" in repair
+        assert f"{node}\t1" in scoped
+        assert f"{node}\t--+ '' =H/BHMH" in payload
+        assert f"{node}\t--+ '' =H/BHMH" in scoped_payload
+
+
+def test_mt_apparent_minus_is_query_native_on_lxx_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        "Gen 1:1\n--- =;DBR\tLOGOS\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider((_span("λόγος"),))
+
+    materialize_lxx(source, output, provider=provider)
+
+    semantic = (output / "catss_sem_apparent_minus.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_apparent_minus_mt_a.tf").read_text(encoding="utf-8")
+    plus_path = output / "catss_lxx_plus.tf"
+
+    assert "1\t1" in semantic
+    assert "1\t1" in scoped
+    assert not plus_path.exists() or "1\t1" not in plus_path.read_text(encoding="utf-8")
+
+
+def test_contextual_reference_range_is_query_native_on_parent_subverse_nodes(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "06.JoshB.par",
+        "JoshB 9:2\n{...} <8.30-35>\t[[9.2a-2f]]\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        tuple(
+            _span(
+                "καί",
+                book="Josh",
+                chapter=9,
+                verse=2,
+                subverse=subverse,
+                node=640000 + index,
+                start_node=302000 + index,
+            )
+            for index, subverse in enumerate("abcdef", start=1)
+        )
+    )
+
+    result = materialize_lxx(source, output, provider=provider)
+
+    assert result.summary.word_mappings == 0
+    assert result.summary.reference_anchors == 0
+    assert result.summary.reference_range_memberships == 6
+    assert not (output / "otype.tf").exists()
+    assert not (output / "oslots.tf").exists()
+
+    alignment_id = _read_tsv(output / "catss-alignments.tsv")[0]["alignment_id"]
+    expected = {
+        "catss_lxx_reference_range_id.tf": alignment_id,
+        "catss_lxx_reference_range_raw.tf": "[[9.2a-2f]]",
+        "catss_lxx_reference_range_member_n.tf": "6",
+        "catss_lxx_reference_range_start_chapter.tf": "9",
+        "catss_lxx_reference_range_start_verse.tf": "2",
+        "catss_lxx_reference_range_start_subverse.tf": "a",
+        "catss_lxx_reference_range_end_chapter.tf": "9",
+        "catss_lxx_reference_range_end_verse.tf": "2",
+        "catss_lxx_reference_range_end_subverse.tf": "f",
+    }
+    for filename, value in expected.items():
+        payload = (output / filename).read_text(encoding="utf-8")
+        for node in range(640001, 640007):
+            assert f"{node}\t{value}" in payload
+
+    member_i = (output / "catss_lxx_reference_range_member_i.tf").read_text(encoding="utf-8")
+    for index, node in enumerate(range(640001, 640007), start=1):
+        assert f"{node}\t{index}" in member_i
 
 
 def test_transposition_alignment_and_carrier_use_two_scalar_lanes(
@@ -475,3 +582,102 @@ def test_lxx_plus_materializer_emits_explicit_addition_vs_mt_feature(
     assert rows[0]["addition_vs_mt"] == "1"
     assert rows[0]["omission_vs_mt"] == "0"
     assert rows[0]["token_balance_mt_lxx"] == "not_applicable"
+
+
+def test_lxx_does_not_project_mt_scoped_annotation_onto_greek_word(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "01.Genesis.par", "Gen 1:1\nHB {..dGRDIST}\tQEOS\n")
+    output = tmp_path / "catss-lxx"
+
+    materialize_lxx(source, output, provider=FakeLxxProvider((_span("θεός"),)))
+
+    assert not (output / "catss_distributive_payload.tf").exists()
+
+
+def test_scoped_minus_is_attached_only_to_first_greek_element() -> None:
+    from catss_tf.lxx_materializer import _semantic_kinds, _semantic_scopes
+    from catss_tf.parser import parse_parallel_text
+
+    doc = parse_parallel_text(
+        "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert "apparent_minus" in _semantic_kinds(alignment, side="lxx", element_index=1)
+    assert ("apparent_minus", "mt_a") in _semantic_scopes(alignment, side="lxx", element_index=1)
+    assert "apparent_minus" not in _semantic_kinds(alignment, side="lxx", element_index=2)
+    assert "apparent_minus" not in _semantic_kinds(alignment, side="mt", element_index=1)
+
+
+def test_jonah_scoped_minus_materializes_on_despotas_not_kyrios(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(source, "32.Jonah.par", "Jonah 4:3\n--- YHWH\tDE/SPOTA KU/RIE\n")
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        (_span("δέσποτα", "κύριε", book="Jonah", chapter=4, verse=3, node=9, start_node=7),)
+    )
+
+    result = materialize_lxx(source, output, provider=provider)
+
+    assert result.summary.word_mappings == 2
+    assert result.summary.reference_anchors == 0
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert [(int(m["parent_node"]), int(m["lxx_i"])) for m in mappings] == [
+        (7, 1),
+        (8, 2),
+    ]
+    for feature in ("catss_sem_apparent_minus.tf", "catss_sem_apparent_minus_mt_a.tf"):
+        content = (output / feature).read_text(encoding="utf-8")
+        assert "7\t1" in content
+        assert "8\t1" not in content
+    assert not (output / "catss_apparent_mt_minus_n.tf").exists()
+
+
+def test_1esdr_restored_greek_token_projects_to_real_parent_word(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "17.1Esdras.par",
+        "1Esdr 6:4\nL/KM\t[e5.3]\n",
+    )
+    output = tmp_path / "catss-lxx"
+    provider = FakeLxxProvider(
+        (
+            _span(
+                "τίνος",
+                "ὑμῖν",
+                "συντάξαντος",
+                book="1Esdr",
+                chapter=6,
+                verse=4,
+                node=900604,
+                start_node=294470,
+            ),
+        )
+    )
+
+    result = materialize_lxx(source, output, provider=provider)
+
+    assert result.summary.word_mappings == 1
+    assert result.summary.reference_anchors == 0
+    mappings = _read_tsv(output / "catss-mappings.tsv")
+    assert [(row["parent_node"], row["lxx_i"], row["mapping_kind"]) for row in mappings] == [
+        ("294471", "1", "transposition_alignment")
+    ]
+    assert _read_tsv(output / "catss-anchors.tsv") == []
+
+    repair = (output / "catss_sem_source_repair.tf").read_text(encoding="utf-8")
+    scoped = (output / "catss_sem_source_repair_lxx.tf").read_text(encoding="utf-8")
+    payload = (output / "catss_sem_source_repair_payload.tf").read_text(encoding="utf-8")
+    scoped_payload = (output / "catss_sem_source_repair_lxx_payload.tf").read_text(encoding="utf-8")
+    assert "294471\t1" in repair
+    assert "294471\t1" in scoped
+    assert "294471\t{..^U(MI=N} [e5.3]" in payload
+    assert "294471\t{..^U(MI=N} [e5.3]" in scoped_payload

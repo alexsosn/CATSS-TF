@@ -1,0 +1,12 @@
+# #130 — Canonical alignment-group lexical lookup
+
+## Evidence
+The current canonical warp has `alignment` slots, word-like `mt_element`/`lxx_element` nodes and `catss_text`, `catss_index`, `catss_alignment_id`, `catss_source` features (see `canonical_materializer.py` and TF readback tests). Element nodes each cover their alignment slot via `oslots`. Reconstructed MT-B is a separate raw column and cannot be treated as a lexical MT-A element without a grounded tokenization decision. The existing Libronix crosswalk example loops across every slot, retrieving all elements for every one of ~349,670 groups for each candidate query.
+
+## Design
+Independent review of upstream Text-Fabric `tf/core/nodefeature.py` found that `F.catss_text.s(value)` performs a **linear scan** through the entire feature dictionary. It does not use an inverted index, so the original indexed-lookup hypothesis was incorrect. Use `F.catss_text.items()` to scan defined lexical entries **once for both search forms**, and `F.otype.v(element)` to discriminate MT from Greek even when spellings collide. Convert element node to its alignment slot through `L.d(element, otype="alignment")`. Intersect the slot sets and use source filename filter **after** matching; return records carrying the entire ordered group, not a fabricated 1:1 word pair. Check the warp slot type explicitly to avoid running against a BHSA/LXX projection. Keep the function side-effect-free and independent of the upstream .par inputs.
+
+No inverse index, cache, sidecars, new TF features, dependency or parent-warp mutation. This query remains O(number of CATSS lexical entries) per call; do not advertise sublinear performance. Its memory footprint is proportional to matching slot sets. Source filtering is literal filename equality (A/B and OG/Theodotion remain distinct); empty forms are invalid rather than wildcard-all queries.
+
+## RED and gates
+Commit `bac51b5` added a test that imports missing `find_aligned_groups` and compares it to an independently written exhaustive TF slot scan. CI initially identified formatting differences rather than reaching pytest. Formatting-only RED commit `fcf8181` corrects them, leaving the missing exported helper as the expected behavioral failure before production code. The acceptance gate is exact-head Python 3.11–3.13, release smoke, 46-file CI, Context-Fabric fixture acceptance, and a skeptical final-head review with a loaded TF API smoke.

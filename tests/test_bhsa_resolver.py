@@ -87,6 +87,36 @@ BR)\tEPOI
     assert report.findings == ()
 
 
+def test_contextual_range_record_does_not_enter_bhsa_lexical_word_count() -> None:
+    doc = parse_parallel_text(
+        """JoshB 9:2
+BR)\tLOGOS
+JoshB 9:2
+{...} <8.30-35>\t[[9.2a-2f]]
+""",
+        source_name="06.JoshB.par",
+    )
+    provider = FakeProvider(
+        {
+            ("Josua", 9, 2): BhsaVerse(
+                node=900902,
+                book="Josua",
+                chapter=9,
+                verse=2,
+                words=(BhsaWord(101, "ברא", None, None),),
+            )
+        }
+    )
+
+    report = resolve_bhsa_document(doc, provider)
+
+    assert report.findings == ()
+    assert report.summary.resolved_verses == 1
+    assert report.summary.mismatched_verses == 0
+    assert len(report.word_mappings) == 1
+    assert report.word_mappings[0].bhsa_node == 101
+
+
 def test_one_word_mismatch_emits_no_partial_word_mappings() -> None:
     doc = parse_parallel_text(
         """Gen 1:1
@@ -200,6 +230,28 @@ BR)\tEPOI
         (plus_id, 9001, "lxx_plus")
     ]
     assert all(mapping.alignment_id != plus_id for mapping in report.word_mappings)
+
+
+def test_mt_apparent_minus_gets_distinct_verse_anchor() -> None:
+    doc = parse_parallel_text(
+        """Gen 1:1
+B/R)$YT\tEN
+--- =;DBR\tLOGOS
+""",
+        source_name="01.Genesis.par",
+    )
+    provider = _provider(
+        BhsaWord(101, "בראשׁית", None, None),
+        verse_node=9001,
+    )
+
+    report = resolve_bhsa_document(doc, provider)
+
+    apparent_id = doc.verses[0].alignments[1].alignment_id
+    assert [(a.alignment_id, a.bhsa_verse_node, a.kind) for a in report.verse_anchors] == [
+        (apparent_id, 9001, "apparent_mt_minus")
+    ]
+    assert all(mapping.alignment_id != apparent_id for mapping in report.word_mappings)
 
 
 def test_column_b_retroversion_never_becomes_bhsa_word() -> None:

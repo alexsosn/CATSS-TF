@@ -15,7 +15,11 @@ from catss_tf.bhsa_schema import (
     BHSA_VERSION,
     BhsaParentProbe,
 )
-from catss_tf.consistency import compare_projection_bundles
+from catss_tf.canonical_materializer import materialize_corpus
+from catss_tf.consistency import (
+    compare_canonical_projection_bundle,
+    compare_projection_bundles,
+)
 from catss_tf.lxx_materializer import materialize_lxx
 from catss_tf.lxx_resolver import LxxSpan, LxxWord
 from catss_tf.lxx_schema import (
@@ -202,6 +206,54 @@ def _rewrite_tsv(
         writer.writerows(rows)
 
 
+def test_canonical_projection_consistency_matches_both_projection_bundles(
+    tmp_path: pathlib.Path,
+) -> None:
+    bhsa, lxx = _materialize_common_bundle_pair(tmp_path)
+    canonical = tmp_path / "catss"
+    materialize_corpus(tmp_path / "source", canonical)
+
+    bhsa_report = compare_canonical_projection_bundle(canonical, bhsa, projection="bhsa")
+    lxx_report = compare_canonical_projection_bundle(canonical, lxx, projection="lxx")
+
+    for report in (bhsa_report, lxx_report):
+        assert report.ok is True
+        assert report.findings == ()
+        assert report.summary.source_files == 1
+        assert report.summary.comparable_sources == 1
+        assert report.summary.canonical_alignments == 8
+        assert report.summary.fingerprint_mismatches == 0
+        assert report.summary.canonical_mismatches == 0
+        assert report.summary.orphan_projection_rows == 0
+
+
+def test_canonical_projection_consistency_detects_drift_and_orphans(
+    tmp_path: pathlib.Path,
+) -> None:
+    _bhsa, lxx = _materialize_common_bundle_pair(tmp_path)
+    canonical = tmp_path / "catss"
+    materialize_corpus(tmp_path / "source", canonical)
+
+    def corrupt_alignment(rows: list[dict[str, str]]) -> None:
+        rows[0]["mt_raw"] = "TAMPERED"
+
+    def orphan_mapping(rows: list[dict[str, str]]) -> None:
+        rows[0]["alignment_id"] = "catss-deadbeef"
+
+    _rewrite_tsv(lxx / "catss-alignments.tsv", corrupt_alignment)
+    _rewrite_tsv(lxx / "catss-mappings.tsv", orphan_mapping)
+
+    report = compare_canonical_projection_bundle(canonical, lxx, projection="lxx")
+
+    assert report.ok is False
+    assert report.summary.canonical_mismatches == 1
+    assert report.summary.orphan_projection_rows == 1
+    assert {finding.code for finding in report.findings} >= {
+        "canonical_alignment_mismatch",
+        "orphan_projection_row",
+    }
+
+
 def test_consistency_accepts_expected_projection_asymmetries(tmp_path: pathlib.Path) -> None:
     bhsa, lxx = _materialize_common_bundle_pair(tmp_path)
 
@@ -221,6 +273,40 @@ def test_consistency_accepts_expected_projection_asymmetries(tmp_path: pathlib.P
     assert report.summary.canonical_mismatches == 0
     assert report.summary.index_mismatches == 0
     assert report.summary.anchor_mismatches == 0
+    assert report.summary.unexpected_projection_gaps == 0
+
+
+def test_consistency_accepts_apparent_mt_minus_projection_asymmetry(
+    tmp_path: pathlib.Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_source(
+        source,
+        "01.Genesis.par",
+        """Gen 1:1
+)B\tQEOS
+--- =;DBR\tLOGOS
+""",
+    )
+    bhsa = tmp_path / "catss-bhsa"
+    lxx = tmp_path / "catss-lxx"
+
+    materialize_bhsa(
+        source,
+        bhsa,
+        provider=FakeBhsaProvider((_bhsa_verse("Genesis", 1, 1, 100, ("אב",), 1),)),
+        parent_probe=_bhsa_probe(),
+    )
+    materialize_lxx(
+        source,
+        lxx,
+        provider=FakeLxxProvider((_lxx_span("Gen", 1, 1, 200, ("θεός", "λόγος"), 1000),)),
+    )
+
+    report = compare_projection_bundles(bhsa, lxx)
+
+    assert report.ok is True
+    assert report.findings == ()
     assert report.summary.unexpected_projection_gaps == 0
 
 

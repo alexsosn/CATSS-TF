@@ -1,8 +1,10 @@
 # CATSS-TF
 
-CATSS-TF is a materializer-only project for projecting the CATSS Hebrew–Greek parallel alignment onto existing Text-Fabric corpora.
+CATSS-TF materializes the CATSS Hebrew–Greek parallel alignment as Text-Fabric.
 
-The intended outputs are two locally generated TF modules:
+The intended outputs are three locally generated artifacts:
+
+- `catss` — standalone canonical CATSS corpus with alignment groups as first-class nodes;
 
 - `catss-bhsa` — CATSS alignment annotations attached to nodes of ETCBC/BHSA;
 - `catss-lxx` — the same canonical CATSS alignments projected onto nodes of CenterBLC/LXX.
@@ -22,12 +24,16 @@ pip install \\
   https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
-Install with Text-Fabric integration:
+Install with Text-Fabric integration from current source (including the GitHub backend):
 
 ```sh
 pip install \\
-  "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
+  "catss-tf[tf] @ git+https://github.com/alexsosn/CATSS-TF.git"
 ```
+
+The already-published v0.1.0 wheel retains its original dependency metadata.
+If using that wheel, additionally run `pip install "text-fabric[github]>=13.1,<14"`
+for BHSA/LXX downloads; a future release will include the fix automatically.
 
 Verify:
 
@@ -37,20 +43,28 @@ catss-tf --version
 
 Read:
 
-1. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
-2. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
-3. [CHANGELOG.md](CHANGELOG.md)
-4. [research.md](research.md)
-5. [design.md](design.md)
-6. [plan.md](plan.md)
-7. [docs/case-studies/magic-terminology.ipynb](docs/case-studies/magic-terminology.ipynb) — reproducible Hebrew–Greek research case study
-8. [AGENTS.md](AGENTS.md)
+1. [docs/canonical-corpus.md](docs/canonical-corpus.md) — standalone CATSS corpus and node model
+2. [docs/libronix-coverage.md](docs/libronix-coverage.md) — 2003 CATSS/Libronix feature crosswalk and known limits
+3. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
+4. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
+5. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
+6. [CHANGELOG.md](CHANGELOG.md)
+7. [research.md](research.md)
+8. [design.md](design.md)
+9. [plan.md](plan.md)
+10. [AGENTS.md](AGENTS.md)
 
 ## Architectural boundary
 
 CATSS is the source of alignment semantics. BHSA and LXX remain the owners of their node identities and linguistic annotation.
 
-A Text-Fabric module is a collection of additional features built around an existing warp. CATSS-TF therefore does not create an `alignment` node type in a module. Instead, both projections attach a shared stable `catss_alignment_id` and related CATSS features to existing parent nodes.
+The standalone `catss` corpus owns a Text-Fabric warp whose slot type is
+`alignment`. Every CATSS alignment group is therefore independently queryable,
+including groups with an empty Hebrew or Greek side.
+
+The two projection modules remain weft-only collections of additional features built
+around an existing parent warp. They do not create nodes in BHSA or LXX. Both attach
+the same stable `catss_alignment_id` used by the canonical corpus.
 
 The materialization model is:
 
@@ -59,14 +73,14 @@ CATSS source acquired by user
           |
           v
 canonical CATSS alignment IR
-       /                  \
-      v                    v
-resolve Hebrew          resolve Greek
-to BHSA nodes           to LXX nodes
-      |                    |
-      v                    v
-catss-bhsa             catss-lxx
-TF module              TF module
+      /          |          \
+     v           v           v
+  catss       resolve      resolve
+ standalone    Hebrew       Greek
+ TF corpus       |           |
+                 v           v
+             catss-bhsa  catss-lxx
+             TF module   TF module
 ```
 
 ## License
@@ -80,11 +94,23 @@ The initial release consumes a local directory of CATSS parallel `.par` files. U
 
 ```sh
 catss-tf fetch ./data/catss-parallel
+
+# Optional: independently verified HTTPS mirror / trusted PEM chain
+catss-tf fetch ./data/catss-parallel --base-url https://validated.example.org/parallel
+catss-tf fetch ./data/catss-parallel --ca-bundle ./verified-upstream-ca.pem
 ```
+
+The upstream CCAT HTTPS server has exhibited an incomplete certificate chain
+on clean Ubuntu. The downloader never falls back to insecure HTTP or disables
+verification; use only an independently authenticated CA chain or HTTPS mirror,
+or work from a locally acquired source directory. See
+[docs/integration.md](docs/integration.md) and [issue #44](https://github.com/alexsosn/CATSS-TF/issues/44).
 
 CATSS morphology files are not required.
 
 The user is responsible for the upstream CATSS/CCAT terms that apply to acquisition and use. CATSS-TF does not redistribute the downloaded corpus. The local source directory is fingerprinted by filename, byte size, and SHA-256 before parsing, and repository tests use synthetic fixtures only.
+
+Direct-child `.par` symbolic links (including broken links) are rejected during local inspection and download; linked targets cannot masquerade as acquired CATSS files in the source manifest. An explicitly symlinked **source directory** is supported when its direct-child `.par` entries are ordinary files. If source files are supplied via symlinks, copy them into a directory you control first. This is a snapshot/discovery safeguard, not protection against concurrent filesystem modifications by another process.
 
 See [research.md](research.md), [design.md](design.md), and [LICENSE_SCOPE.md](LICENSE_SCOPE.md) for the rationale and data-license boundary.
 
@@ -106,6 +132,40 @@ You can also use the direct Text-Fabric `--locations/--modules` mechanism or
 See [docs/browser.md](docs/browser.md) for exact pinned commands and search examples.
 
 
+## Agora materialization (standalone corpus)
+
+An Agora v1 manifest at [`agora.materializer.json`](agora.materializer.json)
+advertises exactly **one** executable materializer, `catss-canonical`:
+local licensed CATSS `.par` source → standalone `catss` Text-Fabric corpus.
+It uses a network-denied Python adapter for Agora's *precreated empty staging
+output*. The normal public `materialize_corpus` API still requires an absent
+destination. No CATSS data, output corpus or parent warp is redistributed.
+
+The standalone adapter can be smoke-tested with an existing empty directory:
+
+```sh
+mkdir -p ./generated/agora-staging
+python -m catss_tf.agora_adapter ./data/catss-parallel \
+  --output ./generated/agora-staging
+```
+
+The Agora manifest explicitly uses **strict validation**: no parser
+diagnostic is pre-authorized. A direct operator can use repeatable
+`--allow CODE` flags for a separately reviewed anomalous source, but
+those flags are not part of the registered default. The 46-file source
+audit observed **zero ignored validation findings**, so there is no
+evidence these allowances were needed for that snapshot. If the source
+has new diagnostics, default materialization fails rather than guessing.
+
+This is **upstream executability metadata**, not a claim that Agora has already
+registered or installed it. Agora must use an explicitly approved installation,
+user-local licensed input and its normal network-denied sandbox. The manifest
+does **not** advertise `catss-bhsa` or `catss-lxx`: those feature modules need
+a separately verified, trusted read-only *exact parent* binding (BHSA 2021,
+LXX 1935), and complete LXX materialization is still affected by JoshB's
+unrepresented lettered subverses. Track remaining work at [CATSS-TF #16](https://github.com/alexsosn/CATSS-TF/issues/16)
+and [Agora #221](https://github.com/alexsosn/Agora/issues/221).
+
 ## Public Python API
 
 v0.1 freezes the following package-level entry points:
@@ -116,6 +176,7 @@ from catss_tf import (
     TextFabricLxxProvider,
     compare_projection_bundles,
     materialize_bhsa,
+    materialize_corpus,
     materialize_lxx,
 )
 ```
@@ -123,3 +184,8 @@ from catss_tf import (
 Materialization is deliberately library-first. The mapping/resolver behavior stays in
 CATSS-TF; downstream integrations such as Agora should call the released API rather than
 reimplement CATSS semantics.
+
+
+## Special notation semantics
+
+CATSS special notation is decoded into query-native `catss_sem_*` Text-Fabric features rather than requiring researchers to parse raw sigla or provenance sidecars. Context-bearing notation has corresponding `*_payload` features, and unknown notation fails validation instead of falling into a generic bucket. See [docs/special-notation.md](docs/special-notation.md) for semantic families, Sirach-specific scope, and query examples.

@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from catss_tf.parser import parse_parallel_text
+import pytest
+
+import catss_tf.parser as parser_module
+from catss_tf.parser import alignment_id_for, parse_parallel_text
+from catss_tf.technique import derive_alignment_technique
 
 
 def test_parse_basic_alignment_ratios() -> None:
@@ -52,6 +56,146 @@ HBA =:ALT .dr\tGRA
     assert retro.mt_col_b == ":ALT .dr"
     assert retro.mt_tokens == ("HBA",)
     assert retro.lxx_tokens == ("GRA",)
+
+
+def test_jonah_mixed_apparent_minus_is_scoped_to_first_greek_element() -> None:
+    raw = "--- YHWH\tDE/SPOTA KU/RIE"
+    doc = parse_parallel_text(
+        "Jonah 4:3\n" + raw + "\n",
+        source_name="32.Jonah.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+    assert alignment.mt_raw == "--- YHWH"
+    assert alignment.lxx_raw == "DE/SPOTA KU/RIE"
+    assert alignment.mt_tokens == ("YHWH",)
+    assert alignment.lxx_tokens == ("DE/SPOTA", "KU/RIE")
+    apparent = [a for a in alignment.annotations if a.side == "mt_a" and a.kind == "apparent_minus"]
+    assert len(apparent) == 1
+    assert getattr(apparent[0], "target_side", None) == "lxx"
+    assert getattr(apparent[0], "target_index", None) == 1
+
+
+def test_pure_apparent_minus_does_not_gain_element_scope() -> None:
+    doc = parse_parallel_text(
+        "Gen 8:8\n--- =;ALT\tLOGOS\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+    apparent = [a for a in alignment.annotations if a.kind == "apparent_minus"]
+    assert len(apparent) == 1
+    assert getattr(apparent[0], "target_side", None) is None
+    assert getattr(apparent[0], "target_index", None) is None
+
+
+def test_mt_side_apparent_minus_is_typed_without_becoming_lxx_plus() -> None:
+    raw = "--- =;L/R)T <8.8>\tTOU= I)DEI=N"
+    doc = parse_parallel_text(
+        f"Gen 8:7\n{raw}\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.alignment_id == alignment_id_for(
+        source_name="01.Genesis.par",
+        header_raw="Gen 8:7",
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+    assert alignment.mt_raw == "--- =;L/R)T <8.8>"
+    assert alignment.mt_col_a == "---"
+    assert alignment.mt_col_b == ";L/R)T <8.8>"
+    assert alignment.mt_count == 0
+    assert alignment.lxx_count == 2
+    assert alignment.is_lxx_plus is False
+    assert alignment.is_lxx_minus is False
+
+    apparent = tuple(
+        annotation for annotation in alignment.annotations if annotation.kind == "apparent_minus"
+    )
+    assert len(apparent) == 1
+    assert apparent[0].side == "mt_a"
+    assert apparent[0].family == "alignment"
+    assert apparent[0].raw == "---"
+
+
+def test_greek_side_minus_does_not_emit_mt_apparent_minus() -> None:
+    doc = parse_parallel_text(
+        "Gen 1:1\nHB\t--- ''\n",
+        source_name="01.Genesis.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.is_lxx_minus is True
+    assert not any(annotation.kind == "apparent_minus" for annotation in alignment.annotations)
+
+
+def test_doubt_decorated_greek_minus_is_compositional() -> None:
+    raw = "HB\t---?"
+    doc = parse_parallel_text(
+        f"Test 1:1\n{raw}\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.lxx_raw == "---?"
+    assert alignment.is_lxx_minus is True
+    assert alignment.mt_count == 1
+    assert alignment.lxx_count == 0
+    assert alignment.alignment_id == alignment_id_for(
+        source_name="99.Test.par",
+        header_raw="Test 1:1",
+        source_lines=(2,),
+        raw_lines=(raw,),
+    )
+
+    doubt = tuple(
+        annotation
+        for annotation in alignment.annotations
+        if annotation.side == "lxx" and annotation.kind == "doubt"
+    )
+    assert [(annotation.raw, annotation.payload) for annotation in doubt] == [("?", None)]
+
+    technique = derive_alignment_technique("99.Test.par", alignment)
+    assert technique.omission_vs_mt is True
+    assert technique.addition_vs_mt is False
+
+
+def test_doubt_decorated_minus_preserves_contextual_reference() -> None:
+    doc = parse_parallel_text(
+        "Ps 35:20\nDBRY\t---? [34.20]\n",
+        source_name="20.Psalms.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.is_lxx_minus is True
+    assert any(
+        annotation.side == "lxx"
+        and annotation.kind == "contextual_reference"
+        and annotation.raw == "[34.20]"
+        and annotation.payload == "34.20"
+        for annotation in alignment.annotations
+    )
+    assert any(
+        annotation.side == "lxx" and annotation.kind == "doubt" and annotation.raw == "?"
+        for annotation in alignment.annotations
+    )
+
+
+def test_question_mark_on_lexical_greek_does_not_become_minus() -> None:
+    doc = parse_parallel_text(
+        "Test 1:1\nHB\tLOGOS?\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.is_lxx_minus is False
+    assert alignment.lxx_tokens == ("LOGOS",)
+    assert any(
+        annotation.side == "lxx" and annotation.kind == "doubt"
+        for annotation in alignment.annotations
+    )
 
 
 def test_parse_ketiv_and_qere_independently() -> None:
@@ -132,6 +276,244 @@ HBY\t
     assert second.lxx_tokens == ("GRZ",)
 
 
+def test_chained_leading_hash_fragments_remain_one_logical_alignment() -> None:
+    raw_lines = (
+        "HB\tGR1 #",
+        "#\tGR2",
+        "#\tGR3",
+    )
+    doc = parse_parallel_text(
+        "Test 1:1\n" + "\n".join(raw_lines) + "\nNEXT\tGR4\n",
+        source_name="99.Test.par",
+    )
+
+    assert len(doc.verses[0].alignments) == 2
+    chained, following = doc.verses[0].alignments
+    assert chained.source_lines == (2, 3, 4)
+    assert chained.raw_lines == raw_lines
+    assert chained.mt_tokens == ("HB",)
+    assert chained.lxx_tokens == ("GR1", "GR2", "GR3")
+    assert chained.alignment_id == alignment_id_for(
+        source_name="99.Test.par",
+        header_raw="Test 1:1",
+        source_lines=(2, 3, 4),
+        raw_lines=raw_lines,
+    )
+    assert following.mt_tokens == ("NEXT",)
+    assert not any(d.code == "malformed_continuation" for d in doc.diagnostics)
+
+
+def test_leading_hash_cannot_attach_across_verse_header() -> None:
+    doc = parse_parallel_text(
+        """Test 1:1
+HB1\tGR1
+Test 1:2
+#\tGR2
+""",
+        source_name="99.Test.par",
+    )
+
+    assert len(doc.verses) == 2
+    assert doc.verses[0].alignments[0].raw_lines == ("HB1\tGR1",)
+    assert doc.verses[1].alignments[0].raw_lines == ("#\tGR2",)
+    malformed = tuple(d for d in doc.diagnostics if d.code == "malformed_continuation")
+    assert len(malformed) == 1
+    assert malformed[0].line_no == 4
+
+
+def test_non_ps_export_orphan_rejoins_preceding_greek_inside_token() -> None:
+    raw_lines = ("HB\tDANI", "HL")
+    doc = parse_parallel_text(
+        "Test 1:1\n" + "\n".join(raw_lines) + "\nNEXT\tGR\n",
+        source_name="99.Test.par",
+    )
+
+    assert len(doc.verses[0].alignments) == 2
+    repaired, following = doc.verses[0].alignments
+    assert repaired.source_lines == (2, 3)
+    assert repaired.raw_lines == raw_lines
+    assert repaired.mt_raw == "HB"
+    assert repaired.lxx_raw == "DANIHL"
+    assert repaired.lxx_tokens == ("DANIHL",)
+    assert repaired.column_split is True
+    assert repaired.alignment_id == alignment_id_for(
+        source_name="99.Test.par",
+        header_raw="Test 1:1",
+        source_lines=(2, 3),
+        raw_lines=raw_lines,
+    )
+    assert following.mt_tokens == ("NEXT",)
+    assert not any(d.code == "unsplit_row" for d in doc.diagnostics)
+
+
+def test_layout_repair_precedes_semantic_source_repair(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(
+        parser_module._KNOWN_LXX_SOURCE_ROW_REPAIRS,
+        ("99.Test.par", 1, 1, "HB", "DANIHL"),
+        "---",
+    )
+    raw_lines = ("HB\tDANI", "HL")
+    doc = parse_parallel_text(
+        "Test 1:1\n" + "\n".join(raw_lines) + "\n",
+        source_name="99.Test.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == raw_lines
+    assert alignment.lxx_raw == "DANIHL"
+    assert alignment.is_lxx_minus is True
+    repairs = [
+        annotation for annotation in alignment.annotations if annotation.kind == "source_repair"
+    ]
+    assert [(repair.side, repair.raw, repair.payload) for repair in repairs] == [
+        ("lxx", "DANIHL", "---")
+    ]
+
+
+def test_non_ps_export_orphan_preserves_existing_word_boundary() -> None:
+    doc = parse_parallel_text(
+        "Test 1:1\nHB\tWORD \nNEXT\nFOLLOW\tGR\n",
+        source_name="99.Test.par",
+    )
+
+    repaired = doc.verses[0].alignments[0]
+    assert repaired.raw_lines == ("HB\tWORD ", "NEXT")
+    assert repaired.lxx_raw == "WORD NEXT"
+    assert repaired.lxx_tokens == ("WORD", "NEXT")
+
+
+def test_psalms_export_orphan_rejoins_following_hebrew_inside_token() -> None:
+    raw_lines = (")", "PSY\tGR2")
+    doc = parse_parallel_text(
+        "Ps 1:1\nPREV\tGR1\n" + "\n".join(raw_lines) + "\n",
+        source_name="20.Psalms.par",
+    )
+
+    assert len(doc.verses[0].alignments) == 2
+    repaired = doc.verses[0].alignments[1]
+    assert repaired.source_lines == (3, 4)
+    assert repaired.raw_lines == raw_lines
+    assert repaired.mt_raw == ")PSY"
+    assert repaired.mt_tokens == (")PSY",)
+    assert repaired.lxx_raw == "GR2"
+    assert repaired.column_split is True
+    assert not any(d.code == "unsplit_row" for d in doc.diagnostics)
+
+
+def test_consecutive_psalms_export_orphans_rejoin_in_source_order() -> None:
+    raw_lines = ("MTR", "PS =?M/TR", "PS\tGR")
+    doc = parse_parallel_text(
+        "Ps 68:31\nPREV\tG0\n" + "\n".join(raw_lines) + "\n",
+        source_name="20.Psalms.par",
+    )
+
+    assert len(doc.verses[0].alignments) == 2
+    repaired = doc.verses[0].alignments[1]
+    assert repaired.source_lines == (3, 4, 5)
+    assert repaired.raw_lines == raw_lines
+    assert repaired.mt_raw == "MTRPS =?M/TRPS"
+    assert repaired.lxx_raw == "GR"
+    assert repaired.column_split is True
+
+
+@pytest.mark.parametrize(
+    ("source_name", "text", "line_no"),
+    (
+        ("99.Test.par", "Test 1:1\nORPHAN\nTest 1:2\nHB\tGR\n", 2),
+        ("20.Psalms.par", "Ps 1:1\nHB\tGR\nORPHAN\n", 3),
+    ),
+)
+def test_export_orphan_cannot_cross_required_verse_boundary(
+    source_name: str,
+    text: str,
+    line_no: int,
+) -> None:
+    doc = parse_parallel_text(text, source_name=source_name)
+
+    unsplit = tuple(d for d in doc.diagnostics if d.code == "unsplit_row")
+    assert len(unsplit) == 1
+    assert unsplit[0].line_no == line_no
+    assert any(not row.column_split for verse in doc.verses for row in verse.alignments)
+
+
+@pytest.mark.parametrize(
+    ("header", "raw", "expected_mt", "expected_lxx"),
+    (
+        (
+            "JoshB 3:10",
+            "W/)T H/GRG$Y ^ =W/)T W/H/)MRY KAI\\ TO\\N AMORRAI=ON",
+            "W/)T H/GRG$Y ^ =W/)T W/H/)MRY",
+            "KAI\\ TO\\N AMORRAI=ON",
+        ),
+        (
+            "JoshB 9:4",
+            "W/YC+YRW =;W/YC+YDW .rd <9.12 E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+            "W/YC+YRW =;W/YC+YDW .rd <9.12>",
+            "E)PESITI/SANTO {d} KAI\\ H(TOIMA/SANTO",
+        ),
+        (
+            "JoshB 21:42",
+            "--+ '' =;L/GBWLWT/YHM <19.49> E)N TOI=S O(RI/OIS AU)TW=N",
+            "--+ '' =;L/GBWLWT/YHM <19.49>",
+            "E)N TOI=S O(RI/OIS AU)TW=N",
+        ),
+    ),
+)
+def test_exact_joshua_whole_row_layout_repairs(
+    header: str,
+    raw: str,
+    expected_mt: str,
+    expected_lxx: str,
+) -> None:
+    doc = parse_parallel_text(
+        f"{header}\n{raw}\n",
+        source_name="06.JoshB.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.source_lines == (2,)
+    assert alignment.mt_raw == expected_mt
+    assert alignment.lxx_raw == expected_lxx
+    assert alignment.column_split is True
+    assert not any(d.code == "unsplit_row" for d in doc.diagnostics)
+
+
+def test_exact_joshua_4_11_layout_repair_preserves_hash_continuation() -> None:
+    raw_lines = (
+        "W/H/KHNYM =W/H/)BNYM .m .kb # KAI\\ OI( LI/QOI",
+        ".h)\t#",
+    )
+    doc = parse_parallel_text(
+        "JoshB 4:11\n" + "\n".join(raw_lines) + "\nL/PNY H/(M\tE)/MPROSQEN AU)TW=N\n",
+        source_name="06.JoshB.par",
+    )
+
+    repaired, following = doc.verses[0].alignments
+    assert repaired.source_lines == (2, 3)
+    assert repaired.raw_lines == raw_lines
+    assert repaired.mt_raw == "W/H/KHNYM =W/H/)BNYM .m .kb .h)"
+    assert repaired.lxx_raw == "KAI\\ OI( LI/QOI"
+    assert repaired.column_split is True
+    assert following.mt_tokens == ("L/PNY", "H/(M")
+    assert not any(d.code in {"unsplit_row", "malformed_continuation"} for d in doc.diagnostics)
+
+
+def test_joshua_layout_repairs_do_not_generalize_to_lookalike() -> None:
+    raw = "W/)T H/GRG$Y ^ =W/)T W/H/)MRY KAI\\ TO\\N AMORRAI=ON"
+    doc = parse_parallel_text(
+        f"JoshB 3:11\n{raw}\n",
+        source_name="06.JoshB.par",
+    )
+    alignment = doc.verses[0].alignments[0]
+
+    assert alignment.raw_lines == (raw,)
+    assert alignment.column_split is False
+    assert any(d.code == "unsplit_row" for d in doc.diagnostics)
+
+
 def test_unknown_brace_siglum_is_retained_as_annotation() -> None:
     doc = parse_parallel_text(
         """Test 1:1
@@ -160,7 +542,7 @@ HB {d} {t} {x} {*} {**}\tGR [2] <note>
     kinds = {annotation.kind for annotation in row.annotations}
     assert {"doublet", "transliteration", "apparent_plus_minus"} <= kinds
     assert {"greek_agrees_ketiv", "greek_agrees_qere"} <= kinds
-    assert {"verse_reference", "note"} <= kinds
+    assert {"verse_reference", "source_note"} <= kinds
 
 
 def test_special_and_single_chapter_headers_are_parsed() -> None:
@@ -269,7 +651,7 @@ HB .m .s .j .w .z .xx\tGR
         "word_join",
         "word_division",
         "abbreviation",
-        "mt_strategy_siglum",
+        "letter_interchange",
     ]
 
 
@@ -381,3 +763,274 @@ def test_mt_readings_structure_inline_aramaic_and_doubt_markers() -> None:
     assert second.doubtful is False
     assert second.aramaic_section is True
     assert doc.verses[0].alignments[0].mt_tokens == ("MLK", "DBR")
+
+
+def test_parser_decodes_documented_contextual_influence_annotation() -> None:
+    document = parse_parallel_text(
+        "Ge 1:1\nBR> {XTM}\tλογος\n",
+        source_name="01.Genesis.par",
+    )
+
+    annotation = document.verses[0].alignments[0].annotations[0]
+    assert annotation.kind == "contextual_influence"
+    assert annotation.family == "translation_technique"
+    assert annotation.contextual is True
+    assert annotation.raw == "{XTM}"
+
+
+def test_parser_maps_raw_catss_brace_syntax_to_documented_semantics() -> None:
+    document = parse_parallel_text(
+        "Ge 1:1\nBR>\tλογος {..dABC} {..pABC} {...ABC} {..rABC}\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.family, a.contextual) for a in annotations] == [
+        ("distributive", "translation_technique", True),
+        ("preposition_added", "preposition", True),
+        ("transposition_remote", "transposition", True),
+        ("repetition", "translation_technique", True),
+    ]
+
+
+def test_contextual_raw_annotation_preserves_payload_text() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\t{..dGRDIST} {..rGRREPEAT}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.raw, a.contextual) for a in annotations] == [
+        ("distributive", "{..dGRDIST}", True),
+        ("repetition", "{..rGRREPEAT}", True),
+    ]
+
+
+def test_contextual_brace_annotation_exposes_payload_separately() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\t{..dGRDIST} {..rGRREPEAT}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.payload) for a in annotations] == [
+        ("distributive", "GRDIST"),
+        ("repetition", "GRREPEAT"),
+    ]
+
+
+def test_sirach_uncertain_transliteration_annotation_is_typed() -> None:
+    document = parse_parallel_text(
+        "Sir 2:13\n[..]\tOU)AI\\ {t?}\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    annotation = next(a for a in annotations if a.raw == "{t?}")
+    assert annotation.kind == "uncertain_transliteration"
+    assert annotation.family == "translation_technique"
+
+
+def test_raw_mt_strategy_codes_keep_specific_semantics() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB .kb\tGR\nHB =%p-\tGR\nHB =%p+\tGR\nHB =+\tGR\nHB {!}-\tGR\n",
+        source_name="99.Test.par",
+    )
+
+    alignments = document.verses[0].alignments
+    assert alignments[0].annotations[0].kind == "letter_interchange"
+    assert alignments[0].annotations[0].payload == "kb"
+    assert alignments[1].retroversion_kind == "preposition_omission"
+    assert alignments[2].retroversion_kind == "preposition_addition"
+    assert alignments[3].retroversion_kind == "number_difference"
+    inf_abs = next(a for a in alignments[4].annotations if a.raw == "{!}-")
+    assert inf_abs.kind == "inf_abs_rendered_finite_verb"
+    assert inf_abs.family == "infinitive_absolute"
+
+
+def test_contextual_reference_markup_is_typed_without_false_invalid_reference() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB <sp26.35ap>\tGR [e6.16] [2.46k,10.26a] [[30:11]]\n",
+        source_name="99.Test.par",
+    )
+
+    alignment = document.verses[0].alignments[0]
+    by_raw = {a.raw: a for a in alignment.annotations}
+    assert by_raw["<sp26.35ap>"].kind == "samaritan_apparatus_reference"
+    assert by_raw["<sp26.35ap>"].family == "reference"
+    assert by_raw["[e6.16]"].kind == "contextual_reference"
+    assert by_raw["[e6.16]"].payload == "e6.16"
+    assert by_raw["[2.46k,10.26a]"].kind == "contextual_reference"
+    assert by_raw["[[30:11]]"].kind == "verse_reference"
+    assert document.diagnostics == ()
+
+
+def test_greek_editorial_wrappers_expose_payload() -> None:
+    document = parse_parallel_text(
+        "Test 1:1\nHB\tGR {c?PU/LHS} {gREADING}\n",
+        source_name="99.Test.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert [(a.kind, a.payload) for a in annotations] == [
+        ("greek_correction", "?PU/LHS"),
+        ("greek_edition_difference", "READING"),
+    ]
+
+
+def test_sirach_mt_manuscript_markup_is_not_silently_dropped() -> None:
+    document = parse_parallel_text(
+        "Sir 2:13\n[..] 3\tOU)AI\\\n[BN]* >7\tLOGOS\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = [
+        annotation
+        for alignment in document.verses[0].alignments
+        for annotation in alignment.annotations
+    ]
+    assert sorted((a.raw, a.kind) for a in annotations) == sorted(
+        [
+            ("[..]", "sirach_lacuna_or_illegible"),
+            ("3", "sirach_witness_geniza_a"),
+            ("[BN]", "sirach_reconstructed_letters"),
+            ("*", "sirach_uncertain_fragmentary_letter"),
+            (">7", "sirach_reading_lacking_in_witness"),
+        ]
+    )
+
+
+def test_sirach_brace_manuscript_markup_keeps_raw_and_witness_payload() -> None:
+    document = parse_parallel_text(
+        "Sir 3:1\nHB {7} {72} {?1} {{}}\tGR\n",
+        source_name="27.Sirach.par",
+    )
+
+    annotations = document.verses[0].alignments[0].annotations
+    assert sorted((a.raw, a.kind, a.payload) for a in annotations) == [
+        ("{72}", "sirach_manuscript_addition", "72"),
+        ("{7}", "sirach_manuscript_addition", "7"),
+        ("{?1}", "sirach_manuscript_addition", "?1"),
+        ("{{}}", "sirach_manuscript_addition", None),
+    ]
+
+
+def test_stylistic_preposition_transposition_preserves_context_payload() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB {..p^TARGET}\tQEOS\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    match = next(item for item in annotations if item.kind == "transposition_stylistic")
+    assert match.payload == "TARGET"
+
+
+def test_raw_uncertain_doublet_and_stylistic_transposition_are_typed() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB {d?} {..?YDY}\tGR\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    by_raw = {item.raw: item for item in annotations}
+    assert by_raw["{d?}"].kind == "possible_doublet"
+    assert by_raw["{..?YDY}"].kind == "transposition_stylistic"
+    assert by_raw["{..?YDY}"].payload == "?YDY"
+
+
+def test_beta_code_letter_interchange_sigla_are_typed_and_stop_before_angle_note() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB .$c .h-<ge10.4>\tGR\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    dot = {item.raw: item for item in annotations if item.raw.startswith(".")}
+    assert dot[".$c"].kind == "letter_interchange"
+    assert dot[".h-"].kind == "letter_interchange"
+    assert all(item.kind != "unknown_mt_strategy_siglum" for item in annotations)
+
+
+def test_contextual_square_references_accept_catss_book_prefix_and_uncertainty() -> None:
+    document = parse_parallel_text(
+        "Gen 1:1\nHB\tGR [cc35.21] [ne 8.4] [[5.1?]]\n",
+        source_name="01.Genesis.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    refs = [item for item in annotations if item.family == "reference"]
+    assert {item.payload for item in refs} >= {"cc35.21", "ne 8.4", "5.1?"}
+    assert all(item.kind != "unknown" for item in annotations)
+
+
+def test_snapshot_special_notation_variants_are_typed_not_unknown() -> None:
+    cases = (
+        ("Exod", "HB {t.}\tGR", "transliteration"),
+        ("Deut", "HB {pm}\tGR", "preposition_marker"),
+        ("Deut", "HB {dt}\tGR", "doublet_transposed"),
+        ("Jer", "HB {z}\tGR", "ziegler_variant"),
+        ("Dan", "HB\tGR {?}", "doubt"),
+        ("Isa", "HB {?..^L/HM}\tGR", "transposition_stylistic"),
+        ("Josh", "HB\tGR [[20.8 c6.63]]", "contextual_reference"),
+    )
+    for book, row, expected in cases:
+        document = parse_parallel_text(
+            f"{book} 1:1\n{row}\n",
+            source_name="99.Test.par",
+        )
+        annotations = document.verses[0].alignments[0].annotations
+        assert all(item.kind != "unknown" for item in annotations)
+        assert any(item.kind == expected for item in annotations)
+
+
+@pytest.mark.parametrize(
+    ("source_name", "raw"),
+    [
+        ("05.Deut.par", "{!}na+"),
+        ("06.JoshB.par", "{=51}"),
+        ("06.JoshB.par", "{TOU= SWTHRI/OU}"),
+        ("09.JudgesA.par", "{**?}"),
+        ("14.2Kings.par", "{H)=GEN}"),
+        ("16.2Chron.par", "[v.8]"),
+        ("16.2Chron.par", "{TOU=}"),
+        ("17.1Esdras.par", "[cc.35.27]"),
+        ("17.1Esdras.par", "[e.14]"),
+        ("19.Neh.par", "{PU/LHS}"),
+        ("20.Psalms.par", "{.1.dU(PE\\R}"),
+        ("23.Prov.par", "{U(POLH/NION}"),
+        ("26.Job.par", "{O(LO/RRIZOI}"),
+        ("26.Job.par", "{E)PI\\ TOU/TW|}"),
+        ("26.Job.par", "{A)PO\\ PROSW/POU AU)TOU=}"),
+        ("26.Job.par", "{#}"),
+        ("26.Job.par", "{QUMOU=}"),
+        ("30.Amos.par", "[cGH=S]"),
+        ("30.Amos.par", "[cGUNAI=KES]"),
+        ("45.DanielOG.par", "[37cc]"),
+    ],
+)
+def test_empirical_special_notation_is_never_unknown(source_name: str, raw: str) -> None:
+    doc = parse_parallel_text(f"Test 1:1\nHB\tGR {raw}\n", source_name="99.Test.par")
+    annotations = doc.verses[0].alignments[0].annotations
+    assert all(annotation.kind != "unknown" for annotation in annotations)
+
+
+def test_double_bracket_contextual_reference_with_prefix_is_valid() -> None:
+    document = parse_parallel_text(
+        "Josh 1:1\nHB\tGR [[20.8 c6.63]]\n",
+        source_name="06.JoshB.par",
+    )
+    assert not any(item.code == "invalid_lxx_reference" for item in document.diagnostics)
+    annotation = next(
+        item
+        for item in document.verses[0].alignments[0].annotations
+        if item.raw == "[[20.8 c6.63]]"
+    )
+    assert annotation.kind == "contextual_reference"
+    assert annotation.payload == "20.8 c6.63"
+
+
+def test_contextual_reference_allows_source_spacing_after_period() -> None:
+    document = parse_parallel_text(
+        "Ps 119:7\nHB\tGR [119. 7]\n",
+        source_name="20.Psalms.par",
+    )
+    annotations = document.verses[0].alignments[0].annotations
+    annotation = next(item for item in annotations if item.raw == "[119. 7]")
+    assert annotation.kind == "contextual_reference"
+    assert annotation.payload == "119. 7"

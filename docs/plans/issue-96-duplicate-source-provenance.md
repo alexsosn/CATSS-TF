@@ -1,0 +1,8 @@
+# R96-11 — provenance-hardening loop
+
+1. **Research first.** Inspect current `reference_surface_audit.py`, `parser.parse_parallel_text` source-name canonicalization and `alignment_id_for` identity; establish that `source_name` is part of the candidate scope, and the current 46-file baseline uses unique files.
+2. **Design.** Fail closed on duplicate source names with one set, checked during iterable consumption before incrementing source counts or loading any parent span for the duplicate. Do not silently isolate or union duplicates. Define how an iterable generator behaves and ensure the duplicate error names the file.
+3. **RED.** Commit failing public regression tests for same-name distinct contents, identical input repeated via generator, and empty duplicate documents. Run the workflow, verify Ruff/mypy green and RED failures explicitly due to absent provenance validation.
+4. **GREEN.** Implement the minimal streaming check; rerun focused and full tests; update researcher-facing documentation.
+5. **Real data and review.** Verify the pinned 46 CCAT sources, exact LXX parent, all 6,218 reference categories and 671 groups, full TF round-trip; perform a separate logically independent skeptical exact-head review exploring non-string aliases, differing input bodies, unsupported/empty sources, generator partial failure, source-path basename canonicalization, exceptions, and duplicate overlap bias.
+6. **Merge.** Require full exact-head CI green and review posted against the exact final commit; merge once. Preserve open #96 until the actual contextual semantics and implicit alignment constraints are resolved.
