@@ -47,7 +47,7 @@ Read:
 2. [docs/libronix-coverage.md](docs/libronix-coverage.md) — 2003 CATSS/Libronix feature crosswalk and known limits
 3. [docs/integration.md](docs/integration.md) — opt-in real-corpus materialization
 4. [docs/browser.md](docs/browser.md) — standard Text-Fabric browser/search
-5. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study
+5. [docs/case-studies/magic-terminology.md](docs/case-studies/magic-terminology.md) — worked Hebrew↔Greek lexical case study; [draft reproducibility notebook](docs/case-studies/magic-terminology.ipynb) (requires local licensed projections)
 6. [CHANGELOG.md](CHANGELOG.md)
 7. [research.md](research.md)
 8. [design.md](design.md)
