@@ -26,6 +26,9 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
+      # RED-only, removed after observed test-before-code failure for #41.
+      - name: Notebook path and alignment-index behavioral RED (#41)
+        run: pytest -q tests/test_magic_terminology_notebook.py
       - run: ruff check .
       - run: ruff format --check --diff .
       - run: mypy
