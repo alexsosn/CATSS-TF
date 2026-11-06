@@ -83,7 +83,7 @@ def test_source_keyed_hebrew_index_is_linear_and_deduplicated() -> None:
     evidence: dict[int, list[dict[str, str | None]]] = {
         9: [{"source": "OG", "alignment_id": "id"}, {"source": "OG", "alignment_id": "id"}],
         2: [{"source": "Th", "alignment_id": "id"}, {"source": "OG", "alignment_id": "id"}],
-        6: [{"source": None, "alignment_id": "id"}],
+        6: [],
     }
 
     def membership_rows(_app: object, node: int) -> list[dict[str, str | None]]:
@@ -100,3 +100,21 @@ def test_source_keyed_hebrew_index_is_linear_and_deduplicated() -> None:
     assert lookup("OG", "id") == (2, 9)
     assert lookup("Th", "id") == (2,)
     assert lookup("other", "id") == ()
+
+
+@pytest.mark.parametrize("source", (None, ""))
+def test_index_rejects_alignment_with_missing_source_provenance(
+    source: str | None,
+) -> None:
+    class Otype:
+        def s(self, kind: str) -> tuple[int, ...]:
+            assert kind == "word"
+            return (1,)
+
+    def membership_rows(_app: object, _node: int) -> list[dict[str, str | None]]:
+        return [{"source": source, "alignment_id": "catss:example:1"}]
+
+    app = SimpleNamespace(api=SimpleNamespace(F=SimpleNamespace(otype=Otype())))
+    build = _function("build_hebrew_alignment_index", membership_rows=membership_rows)
+    with pytest.raises(ValueError, match="source"):
+        build(app)
