@@ -80,8 +80,12 @@ for hit in find_mt_b_raw_matches(
     print(hit.mt_b_raw, hit.retro_kind, hit.group.mt_elements, hit.group.lxx_elements)
 ```
 
-`mt_b_raw` is preserved **verbatim** and `retro_kind` is the existing parser's
-editorial classification (`context`, `plain`, `vocalization`, etc.).
+`mt_b_raw` reproduces exactly the canonical `catss_mt_col_b` feature value;
+the parser has already split the original MT cell at its first `=` and trimmed
+surrounding column-B whitespace. For the complete physical source spelling,
+inspect `catss_mt_raw` and the typed `source_line` / `catss_raw` nodes.
+`retro_kind` is the existing parser's editorial classification (`context`,
+`plain`, `vocalization`, etc.).
 Raw substring search includes markup and can match part of a source spelling.
 It does **not** tokenize column B, infer a reconstructed lexical occurrence,
 identify an attesting Hebrew manuscript, normalize spelling, establish
