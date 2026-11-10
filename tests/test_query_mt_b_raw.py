@@ -29,13 +29,9 @@ def _loaded(tmp_path: Path) -> Any:
         "=W/KLH\tLOGOS\n",
         encoding="utf-8",
     )
-    (source / "06.JoshB.par").write_text(
-        "JoshB 1:1\n=W/KL\tLOGOS\n", encoding="utf-8"
-    )
+    (source / "06.JoshB.par").write_text("JoshB 1:1\n=W/KL\tLOGOS\n", encoding="utf-8")
     materialize_corpus(source, tmp_path / "catss")
-    return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(
-        silent="deep"
-    )
+    return Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(silent="deep")
 
 
 def _oracle(
@@ -59,9 +55,7 @@ def _oracle(
             continue
         if retro_kind is not None and kind != retro_kind:
             continue
-        result.append(
-            (str(name), str(api.F.catss_alignment_id.v(slot)), raw, str(kind))
-        )
+        result.append((str(name), str(api.F.catss_alignment_id.v(slot)), raw, str(kind)))
     return tuple(result)
 
 
@@ -92,19 +86,14 @@ def test_mt_b_raw_matches_independent_loaded_tf_oracle(
     assert len(hits) == expected
     assert all(isinstance(hit, CanonicalMtBRawHit) for hit in hits)
     assert tuple(
-        (hit.group.source, hit.group.alignment_id, hit.mt_b_raw, hit.retro_kind)
-        for hit in hits
+        (hit.group.source, hit.group.alignment_id, hit.mt_b_raw, hit.retro_kind) for hit in hits
     ) == _oracle(api, needle, source=source, retro_kind=kind)
     assert len({hit.group.alignment_id for hit in hits}) == len(hits)
 
 
 def test_mt_b_raw_retains_marker_plus_and_original_greek_order(tmp_path: Path) -> None:
     api = _loaded(tmp_path)
-    hits = tuple(
-        find_mt_b_raw_matches(
-            api, "W/KL", source="01.Genesis.par", retro_kind="plain"
-        )
-    )
+    hits = tuple(find_mt_b_raw_matches(api, "W/KL", source="01.Genesis.par", retro_kind="plain"))
     assert len(hits) == 2
     assert hits[0].mt_b_raw == "W/KL"
     assert hits[0].group.mt_elements == ()
@@ -121,9 +110,7 @@ def test_no_column_b_feature_returns_empty_iterator(tmp_path: Path) -> None:
     source.mkdir()
     (source / "01.Genesis.par").write_text("Gen 1:1\nMLK\tLOGOS\n", encoding="utf-8")
     materialize_corpus(source, tmp_path / "catss")
-    api = Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(
-        silent="deep"
-    )
+    api = Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(silent="deep")
     assert "catss_mt_col_b" not in set(api.Fall())
     assert tuple(find_mt_b_raw_matches(api, "MLK")) == ()
 
