@@ -176,9 +176,7 @@ def find_mt_b_raw_matches(
         raise ValueError("raw_substring must be a nonempty source text string")
     if source is not None and (not isinstance(source, str) or not source.strip()):
         raise ValueError("source must be a nonempty exact CATSS source filename")
-    if retro_kind is not None and (
-        not isinstance(retro_kind, str) or not retro_kind.strip()
-    ):
+    if retro_kind is not None and (not isinstance(retro_kind, str) or not retro_kind.strip()):
         raise ValueError("retro_kind must be a nonempty exact source classification")
 
     available = set(api.Fall())
