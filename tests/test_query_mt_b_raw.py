@@ -20,7 +20,7 @@ def _loaded(tmp_path: Path) -> Any:
     source.mkdir()
     (source / "01.Genesis.par").write_text(
         "Gen 1:1\n"
-        "=;W/KL\tKAI\\\\ PA=S\n"
+        "=;W/KL\tKAI\\ PA=S\n"
         "--+ =;W/KL\tLOGOS\n"
         "^^^ ^ =W/KL\tLOGOS\n"
         "MLK\tLOGOS\n"
