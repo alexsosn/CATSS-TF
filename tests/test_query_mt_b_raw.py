@@ -24,6 +24,7 @@ def _loaded(tmp_path: Path) -> Any:
         "--+ =;W/KL\tLOGOS\n"
         "^^^ ^ =W/KL\tLOGOS\n"
         "MLK\tLOGOS\n"
+        "MLK =W/KL\tLOGOS\n"
         "=v\tLOGOS\n"
         "Gen 1:2\n"
         "=W/KLH\tLOGOS\n",
@@ -62,11 +63,11 @@ def _oracle(
 @pytest.mark.parametrize(
     ("needle", "source", "kind", "expected"),
     (
-        ("W/KL", None, None, 5),
-        ("W/KL", "01.Genesis.par", None, 4),
+        ("W/KL", None, None, 6),
+        ("W/KL", "01.Genesis.par", None, 5),
         ("W/KL", "06.JoshB.par", None, 1),
         ("W/KL", None, "context", 2),
-        ("W/KL", None, "plain", 3),
+        ("W/KL", None, "plain", 4),
         ("W/KLH", None, None, 1),
         ("w/kl", None, None, 0),
         ("MLK", None, None, 0),
@@ -94,10 +95,15 @@ def test_mt_b_raw_matches_independent_loaded_tf_oracle(
 def test_mt_b_raw_retains_marker_plus_and_original_greek_order(tmp_path: Path) -> None:
     api = _loaded(tmp_path)
     hits = tuple(find_mt_b_raw_matches(api, "W/KL", source="01.Genesis.par", retro_kind="plain"))
-    assert len(hits) == 2
+    assert len(hits) == 3
     assert hits[0].mt_b_raw == "W/KL"
     assert hits[0].group.mt_elements == ()
     assert hits[0].group.lxx_elements == ("LOGOS",)
+    # Ordinary MT-A lexical material must not suppress or absorb column B.
+    lexical = tuple(hit for hit in hits if hit.group.mt_elements == ("MLK",))
+    assert len(lexical) == 1
+    assert lexical[0].mt_b_raw == "W/KL"
+    assert lexical[0].group.lxx_elements == ("LOGOS",)
     plus = tuple(find_mt_b_raw_matches(api, ";W/KL", retro_kind="context"))
     assert len(plus) == 2
     assert all(hit.group.mt_elements == () for hit in plus)
