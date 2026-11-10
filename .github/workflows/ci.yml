@@ -26,6 +26,9 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[dev]"
+      # Test-only behavioral RED for #147; remove when implementing.
+      - name: Demonstrate missing public raw MT-B query before implementation
+        run: pytest -q tests/test_query_mt_b_raw.py
       - run: ruff check .
       - run: ruff format --check --diff .
       - run: mypy
