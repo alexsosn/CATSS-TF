@@ -87,7 +87,7 @@ def _canonical_source() -> tuple[set[str], set[str], set[str]]:
 
 
 def _parent_expected() -> dict[str, dict[str, str]]:
-    expected = {
+    expected: dict[str, dict[str, str]] = {
         "Lane core": {key: kind for key, (kind, _) in tf_schema._LANE_CORE.items()},
         "Technique": {key: kind for key, (kind, _) in tf_schema._TECHNIQUE_LANE_CORE.items()},
         "Membership flag": {key: "int" for key in tf_schema._MEMBERSHIP_FLAGS},
