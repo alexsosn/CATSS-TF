@@ -1,0 +1,8 @@
+# #151 phase 1 — research-plan-TDD-test gate
+
+Research: [issue-151-canonical-walkthrough.md](../research/issue-151-canonical-walkthrough.md).
+
+1. Commit this plan before tests. Add `tests/test_researcher_quickstart.py` requiring both missing `docs/researcher-cookbook.md` and `examples/canonical_research_walkthrough.py`. Invoke the script as a user via subprocess in a fresh temp CWD, validate JSON output of source/document and alignment counts and returned query evidence against a small independent TF slot oracle. Confirm the README links to the cookbook and that docs name the Libronix/MT-B/Sirach limits. First run is intended **RED** due absent artifact, after Ruff/mypy.
+2. Implement minimal documented CLI using only `TemporaryDirectory`, `pathlib`, `json`, `tf.fabric.Fabric` and existing public CATSS-TF APIs. Write synthetic two-file input, generate/read native TF and print deterministic JSON. No extra runtime dependencies beyond `catss-tf[tf]`; no source text or generated TF data checked into git.
+3. Make a coherent beginner walkthrough: install, run demo, interpret exact returned groups, scope source/query semantics, where to consult complete notation/feature docs, how to switch to authorized real CATSS, and why pinned parent overlay steps are separate. Follow the demo commands as an independent user on clean checkout in CI.
+4. Exact-head Python matrix, Ruff/mypy, release, native-vs-compiled Context-Fabric and full 46-file canonical TF/Agora E2E gates. Independent failure-oriented review of output and code; merge only if green. Keep #151 open for remaining comprehensive recipes, pinned-parent execution, and independent new-reader evaluation.
