@@ -77,6 +77,15 @@ groups = tuple(
 )
 ```
 
+To try either code snippet against the **demo** data, place it inside
+`run_demo()` in `examples/canonical_research_walkthrough.py`, immediately
+after the `api = Fabric(...).loadAll(...)` line and **before**
+the `return` statement. The demo closes its temporary directory when
+`run_demo()` finishes, so `api` is **not** a variable exposed by the
+script to a separate Python session. Alternatively, obtain your own
+long-lived `api` by loading a locally materialized corpus, as described
+in [canonical-corpus.md](canonical-corpus.md).
+
 On the demo's already loaded `api` this yields one group. Searching
 for both Greek `QEOS` and `LOGOS` yields zero even though both
 occur in Genesis 1:1: they belong to **different** alignment groups.
