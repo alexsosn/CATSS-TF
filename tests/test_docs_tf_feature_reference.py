@@ -70,12 +70,10 @@ def _canonical_source() -> tuple[set[str], set[str], set[str]]:
     for node in ast.walk(tree):
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):
             continue
-        names = (
-            [node.target.id] if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
-            else [target.id for target in node.targets if isinstance(target, ast.Name)]
-            if isinstance(node, ast.Assign)
-            else []
-        )
+        if isinstance(node, ast.AnnAssign):
+            names = [node.target.id] if isinstance(node.target, ast.Name) else []
+        else:
+            names = [target.id for target in node.targets if isinstance(target, ast.Name)]
         if not any(name in {"values", "flags"} for name in names):
             continue
         if not isinstance(node.value, ast.Dict):
