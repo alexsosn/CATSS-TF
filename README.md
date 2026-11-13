@@ -186,6 +186,23 @@ CATSS-TF; downstream integrations such as Agora should call the released API rat
 reimplement CATSS semantics.
 
 
-## Special notation semantics
+## Researcher-facing notation and feature documentation
 
-CATSS special notation is decoded into query-native `catss_sem_*` Text-Fabric features rather than requiring researchers to parse raw sigla or provenance sidecars. Context-bearing notation has corresponding `*_payload` features, and unknown notation fails validation instead of falling into a generic bucket. See [docs/special-notation.md](docs/special-notation.md) for semantic families, Sirach-specific scope, and query examples.
+Start with the [complete CATSS notation dictionary](docs/notation-reference.md):
+all **86 general** and **16 Sirach-specific** catalogue entries, the separate
+Samaritan-apparatus reference pattern, original symbol, scope, meaning, kind,
+and the names of declared TF projection features. The dictionary distinguishes
+`*` and `[..]` in the general and Sirach profiles rather than silently
+overwriting one interpretation.
+
+CATSS annotations are first-class `annotation` nodes in the **standalone
+`catss` corpus**, with `catss_kind`, `catss_raw`, `catss_side`
+and optional `catss_payload`. In the **parent projection modules**
+`catss-bhsa` and `catss-lxx`, mapped word nodes use the declared
+`catss_sem_*` feature family, with optional payload, source-scope and
+second membership-lane values. These surfaces are *not interchangeable*.
+
+See the [semantic guide](docs/special-notation.md) for source scopes,
+[canonical corpus reference](docs/canonical-corpus.md) for node types, and
+[Libronix coverage matrix](docs/libronix-coverage.md) for confirmed
+capabilities and unresolved product-level gaps.
