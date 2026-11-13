@@ -7,6 +7,13 @@ The canonical corpus is the query-native representation of CATSS alignment group
 The two projection artifacts, `catss-bhsa` and `catss-lxx`, remain feature-only
 modules over their parent corpora and share the same stable `catss_alignment_id`.
 
+For an exhaustive code-checked inventory of public TF feature names, canonical
+node and edge types, both parent membership lanes, semantic-scope suffixes,
+declared value types, and public Python exports, use the
+[Text-Fabric feature and API dictionary](tf-feature-reference.md).
+The [notation dictionary](notation-reference.md) maps all supported literal
+general/Sirach sigla to their catalogued meanings.
+
 ## Materialize
 
 ```python

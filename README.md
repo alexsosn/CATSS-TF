@@ -202,7 +202,9 @@ and optional `catss_payload`. In the **parent projection modules**
 `catss_sem_*` feature family, with optional payload, source-scope and
 second membership-lane values. These surfaces are *not interchangeable*.
 
-See the [semantic guide](docs/special-notation.md) for source scopes,
-[canonical corpus reference](docs/canonical-corpus.md) for node types, and
-[Libronix coverage matrix](docs/libronix-coverage.md) for confirmed
-capabilities and unresolved product-level gaps.
+See the [complete Text-Fabric feature and API reference](docs/tf-feature-reference.md)
+for all canonical node/feature names and the parent-projection naming rules
+(including membership lanes and semantic scopes),
+the [semantic guide](docs/special-notation.md) for source annotations,
+the [canonical corpus guide](docs/canonical-corpus.md) for materialization,
+and the [Libronix crosswalk](docs/libronix-coverage.md) for remaining product gaps.
