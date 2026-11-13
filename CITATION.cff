@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: >-
+  If you use CATSS-TF software in your research, please cite it using these
+  metadata. CATSS, BHSA, and LXX datasets have separate upstream citation and
+  licensing requirements.
+type: software
+title: 'CATSS-TF: CATSS Hebrew-Greek alignment materializers for Text-Fabric'
+authors:
+  - family-names: Sosnovshchenko
+    given-names: Oleksandr
+version: 0.1.0
+date-released: '2026-09-26'
+repository-code: https://github.com/alexsosn/CATSS-TF
+license: MIT
+abstract: >-
+  Software for materializing user-acquired CATSS Hebrew-Greek parallel
+  alignments as a standalone Text-Fabric corpus and as BHSA/LXX projection
+  modules. The software does not redistribute the upstream datasets.
