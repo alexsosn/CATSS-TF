@@ -55,7 +55,10 @@ def test_general_and_sirach_catalogues_complete_and_typechecked() -> None:
     }
     assert {key: actual[key] for key in actual if key[0] != "Pattern"} == expected
     assert len(expected) == 102
-    assert sum(1 for profile, raw in expected if profile == "General" and raw.startswith("I:")) == 16
+    assert (
+        sum(1 for profile, raw in expected if profile == "General" and raw.startswith("I:"))
+        == 16
+    )
     for key in expected:
         assert expected[key][3] in FEATURE_SPECS, key
 
