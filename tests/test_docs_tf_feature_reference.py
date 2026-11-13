@@ -4,8 +4,8 @@ import ast
 from pathlib import Path
 
 from catss_tf import __all__ as public_symbols
-from catss_tf.notation import documented_semantic_specs
 from catss_tf import tf_schema
+from catss_tf.notation import documented_semantic_specs
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs/tf-feature-reference.md"
