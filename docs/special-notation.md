@@ -1,10 +1,15 @@
 # CATSS special notation: researcher guide
 
-CATSS-TF decodes CATSS special notation into query-native Text-Fabric features while preserving the exact source notation for provenance.
+CATSS-TF decodes CATSS special notation while preserving source notation for provenance. On **canonical standalone** `catss`, inspect typed `annotation` nodes; on the **parent projection modules** `catss-bhsa` and `catss-lxx`, inspect the declared `catss_sem_*` word features where the parent mapping exists.
+
+For every exact general/Sirach symbol and the patterned Samaritan reference,
+use the [complete CATSS notation dictionary](notation-reference.md).
+It distinguishes general `*`/`[..]` from their Sirach-specific meanings
+and names the canonical annotation kind and parent-projection feature separately.
 
 ## What researchers query
 
-Every decoded semantic kind has a canonical boolean node feature named `catss_sem_<kind>`. A value of `1` means that CATSS assigns that semantic annotation to the alignment material mapped to the parent word node. Context-bearing notation additionally receives `catss_sem_<kind>_payload`.
+The **parent projection feature schema** declares a boolean word feature `catss_sem_<kind>` for each supported semantic kind. A value of `1` marks a projected CATSS annotation on a successfully mapped parent word node; it is not a canonical slot feature, and its absence from an individual node does not prove the absence of a textual phenomenon. The schema also declares `catss_sem_<kind>_payload` and scoped/membership-lane variants, which have values only when the source and mapping supply that evidence.
 
 Examples:
 
