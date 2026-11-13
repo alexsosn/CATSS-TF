@@ -1720,6 +1720,49 @@ jobs:
               for hit in found
           )
           print('CANONICAL_ALL_FORMS_ORACLE_GROUPS', len(found), flush=True)
+          # #147: a *real* raw MT-B source field must be queryable without
+          # pretending it is a Hebrew lexical word or limiting to special
+          # mt_b_carrier nodes. An independent exhaustive slot scan is oracle.
+          from catss_tf import find_mt_b_raw_matches
+          mt_b_seed = None
+          for slot, raw in api.F.catss_mt_col_b.items():
+              if (
+                  api.F.otype.v(slot) == 'alignment'
+                  and isinstance(raw, str)
+                  and len(raw) >= 4
+                  and api.F.catss_retro_kind.v(slot) == 'context'
+              ):
+                  mt_b_seed = (raw, str(api.F.catss_source.v(slot)))
+                  break
+          assert mt_b_seed is not None, 'No actual contextual raw MT-B value in 46 files'
+          raw_needle, mt_b_source = mt_b_seed
+          raw_hits = tuple(find_mt_b_raw_matches(
+              api, raw_needle, source=mt_b_source, retro_kind='context'
+          ))
+          raw_expected = []
+          for slot in api.F.otype.s('alignment'):
+              raw_b = api.F.catss_mt_col_b.v(slot)
+              if (
+                  isinstance(raw_b, str)
+                  and raw_needle in raw_b
+                  and api.F.catss_source.v(slot) == mt_b_source
+                  and api.F.catss_retro_kind.v(slot) == 'context'
+              ):
+                  raw_expected.append((
+                      str(api.F.catss_alignment_id.v(slot)),
+                      raw_b,
+                      'context',
+                  ))
+          assert raw_expected
+          assert tuple(
+              (h.group.alignment_id, h.mt_b_raw, h.retro_kind) for h in raw_hits
+          ) == tuple(raw_expected)
+          assert all(
+              h.group.source == mt_b_source
+              and raw_needle in h.mt_b_raw
+              for h in raw_hits
+          )
+          print('CANONICAL_MT_B_RAW_ORACLE_GROUPS', len(raw_hits), flush=True)
           print('canonical complete TF round trip:', len(api.F.otype.s('alignment')),
                 'alignments, single JoshB contextual reference_range')
           PY

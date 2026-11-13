@@ -145,6 +145,77 @@ def find_groups_with_all_forms(
 
 
 @dataclass(frozen=True, slots=True)
+class CanonicalMtBRawHit:
+    """Raw reconstructed MT column-B evidence in one canonical alignment.
+
+    The source B field is editorial/hypothetical notation, never an MT-A
+    lexical token, normalized Hebrew lexeme, or manuscript attestation.
+    """
+
+    group: CanonicalAlignedGroup
+    mt_b_raw: str
+    retro_kind: str
+
+
+def find_mt_b_raw_matches(
+    api: Any,
+    raw_substring: str,
+    *,
+    source: str | None = None,
+    retro_kind: str | None = None,
+) -> Iterator[CanonicalMtBRawHit]:
+    """Find exact case-sensitive substrings in raw CATSS MT column B.
+
+    No tokenization, normalizing, wildcard interpretation, or pairwise
+    MT-to-Greek lexical correspondence is inferred. Marked source rows,
+    ordinary MT-A-bearing groups and LXX-plus groups remain searchable.
+    """
+    if api.F.otype.slotType != "alignment":
+        raise ValueError("MT-B raw query requires the standalone CATSS alignment-slot warp")
+    if not isinstance(raw_substring, str) or not raw_substring.strip():
+        raise ValueError("raw_substring must be a nonempty source text string")
+    if source is not None and (not isinstance(source, str) or not source.strip()):
+        raise ValueError("source must be a nonempty exact CATSS source filename")
+    if retro_kind is not None and (not isinstance(retro_kind, str) or not retro_kind.strip()):
+        raise ValueError("retro_kind must be a nonempty exact source classification")
+
+    available = set(api.Fall())
+    if "catss_mt_col_b" not in available:
+        return
+    if "catss_retro_kind" not in available:
+        raise ValueError("MT-B raw evidence is missing its retroversion-kind feature")
+
+    for slot, raw in api.F.catss_mt_col_b.items():
+        if not isinstance(raw, str) or raw_substring not in raw:
+            continue
+        if api.F.otype.v(slot) != "alignment":
+            raise ValueError("MT-B raw evidence belongs to a non-alignment node")
+        name = api.F.catss_source.v(slot)
+        if not isinstance(name, str) or not name:
+            raise ValueError("MT-B raw evidence has no canonical source identity")
+        if source is not None and name != source:
+            continue
+        kind = api.F.catss_retro_kind.v(slot)
+        if not isinstance(kind, str) or not kind:
+            raise ValueError("MT-B raw evidence has no retroversion classification")
+        if retro_kind is not None and kind != retro_kind:
+            continue
+        yield CanonicalMtBRawHit(
+            group=CanonicalAlignedGroup(
+                source=name,
+                alignment_id=str(api.F.catss_alignment_id.v(slot)),
+                book=str(api.F.book.v(slot)),
+                chapter=int(api.F.chapter.v(slot)),
+                verse=int(api.F.verse.v(slot)),
+                mt_elements=_ordered_elements(api, int(slot), "mt_element"),
+                lxx_elements=_ordered_elements(api, int(slot), "lxx_element"),
+            ),
+            mt_b_raw=raw,
+            retro_kind=kind,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class SirachWitnessAnnotation:
     """One raw manuscript annotation owned by a canonical alignment group.
 

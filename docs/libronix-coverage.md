@@ -59,7 +59,41 @@ requested spellings are set-membership, not token multiplicity. Co-membership
 does not imply phrase adjacency, running-text order, pairwise lexical matches
 or links to reconstructed MT-B forms; such claims need separate evidence.
 
-To compare MT against reconstructed Hebrew, use `api.F.catss_mt_col_a` and `api.F.catss_mt_col_b` on alignment slots. These are raw evidence strings: an MT-B lexical query like Libronix `Reconst:` cannot yet be presumed equivalent to a regularized token search. Query scopes and raw source provenance are distinct from semantic/morphological inference.
+## Inspect exact raw reconstructed Hebrew (MT column B)
+
+The canonical corpus preserves CATSS's tentative, editorial MT-B column separately from
+MT-A lexical elements. To find an **exact, case-sensitive substring of the raw
+column-B field**, including B evidence on ordinary MT-A-bearing or marked LXX-plus
+alignments, use:
+
+```python
+from catss_tf import find_mt_b_raw_matches
+
+# Exact unnormalized CATSS source spelling; not a reconstructed Hebrew lemma.
+for hit in find_mt_b_raw_matches(
+    api,
+    "W/KL",
+    source="12.2Sam.par",
+    retro_kind="context",
+):
+    print(hit.group.source, hit.group.chapter, hit.group.verse, hit.group.alignment_id)
+    print(hit.mt_b_raw, hit.retro_kind, hit.group.mt_elements, hit.group.lxx_elements)
+```
+
+`mt_b_raw` reproduces exactly the canonical `catss_mt_col_b` feature value;
+the parser has already split the original MT cell at its first `=` and trimmed
+surrounding column-B whitespace. For the complete physical source spelling,
+inspect `catss_mt_raw` and the typed `source_line` / `catss_raw` nodes.
+`retro_kind` is the existing parser's editorial classification (`context`,
+`plain`, `vocalization`, etc.).
+Raw substring search includes markup and can match part of a source spelling.
+It does **not** tokenize column B, infer a reconstructed lexical occurrence,
+identify an attesting Hebrew manuscript, normalize spelling, establish
+within-group word-to-word edges, or reproduce Libronix `Reconst:` indexing.
+Use exact `source` and `retro_kind` filters where the scope matters;
+the query scans one native alignment-slot warp and returns source-ordered groups.
+See [issue #126](https://github.com/alexsosn/CATSS-TF/issues/126) for the
+remaining lexical-reconstruction and product-equivalence research.
 
 ## Verification rules
 
