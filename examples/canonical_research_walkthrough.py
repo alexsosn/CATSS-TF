@@ -28,32 +28,19 @@ def run_demo() -> dict[str, int]:
         source = root / "source"
         source.mkdir()
         (source / "01.Genesis.par").write_text(
-            "Gen 1:1\n"
-            "MLK DBR\tBASILEU/S LOGOS\n"
-            "MLK\tQEOS\n"
-            "DBR\tLOGOS\n"
-            "Gen 1:2\n"
-            "=;W/KL\tLOGOS\n",
+            "Gen 1:1\nMLK DBR\tBASILEU/S LOGOS\nMLK\tQEOS\nDBR\tLOGOS\nGen 1:2\n=;W/KL\tLOGOS\n",
             encoding="utf-8",
         )
-        (source / "06.JoshB.par").write_text(
-            "JoshB 1:1\nMLK\tBASILEU/S\n", encoding="utf-8"
-        )
+        (source / "06.JoshB.par").write_text("JoshB 1:1\nMLK\tBASILEU/S\n", encoding="utf-8")
         materialize_corpus(source, root / "catss")
-        api = Fabric(locations=str(root), modules=("catss",), silent="deep").loadAll(
-            silent="deep"
-        )
+        api = Fabric(locations=str(root), modules=("catss",), silent="deep").loadAll(silent="deep")
 
         return {
             "source_documents": len(api.F.otype.s("document")),
             "alignment_groups": len(api.F.otype.s("alignment")),
             "mt_greek_groups": len(tuple(find_aligned_groups(api, "MLK", "BASILEU/S"))),
             "source_scoped_groups": len(
-                tuple(
-                    find_aligned_groups(
-                        api, "MLK", "BASILEU/S", source="01.Genesis.par"
-                    )
-                )
+                tuple(find_aligned_groups(api, "MLK", "BASILEU/S", source="01.Genesis.par"))
             ),
             "multi_form_groups": len(
                 tuple(
