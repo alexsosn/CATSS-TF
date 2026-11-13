@@ -54,6 +54,8 @@ def test_cookbook_provides_reproducible_user_instructions() -> None:
         "authenticated",
         "notation-reference.md",
         "tf-feature-reference.md",
+        "after the `api = Fabric(...).loadAll(...)` line",
+        "before the `return` statement",
     ):
         assert expected in content, expected
     assert "docs/researcher-cookbook.md" in README.read_text(encoding="utf-8")
