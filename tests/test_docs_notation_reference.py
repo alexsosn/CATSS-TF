@@ -20,6 +20,7 @@ def _table_rows() -> list[tuple[str, ...]]:
         cells = tuple(part.strip() for part in line.strip().strip("|").split("|"))
         assert len(cells) == 7, f"expected seven table fields: {line}"
         assert cells[1].startswith("`") and cells[1].endswith("`"), line
+        assert cells[3].startswith("`") and cells[3].endswith("`"), line
         assert cells[5].startswith("`") and cells[5].endswith("`"), line
         assert cells[6].startswith("`") and cells[6].endswith("`"), line
         result.append(cells)
@@ -34,7 +35,7 @@ def _actual() -> dict[tuple[str, str], tuple[str, str, str, str]]:
         assert key not in result, f"duplicate catalogue entry: {key}"
         assert meaning and meaning != "TODO", key
         assert contextual in {"yes", "no"}, key
-        result[key] = (family, contextual, kind[1:-1], feature[1:-1])
+        result[key] = (family[1:-1], contextual, kind[1:-1], feature[1:-1])
     return result
 
 
