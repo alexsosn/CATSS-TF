@@ -112,8 +112,8 @@ after the parser's column split/trim. It is **not** a Libronix
 
 The canonical Text-Fabric warp has `alignment` slots, `mt_element`
 and `lxx_element` lexical nodes, `annotation` nodes and
-`source_line` nodes. After loading the `api` from the script's
-`run_demo` procedure or your own local corpus, the following pattern
+`source_line` nodes. After loading an `api` using the `Fabric(...).loadAll()`
+pattern in the script, or from your own local corpus, the following pattern
 uses **source provenance**, not positional Hebrew/Greek token inference:
 
 ```python
