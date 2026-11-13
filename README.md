@@ -41,6 +41,10 @@ Verify:
 catss-tf --version
 ```
 
+Read the [runnable researcher quickstart](docs/researcher-cookbook.md) first.
+It generates a small **synthetic** native Text-Fabric corpus, runs public
+queries, and requires no proprietary CATSS/BHSA/LXX data.
+
 Read:
 
 1. [docs/canonical-corpus.md](docs/canonical-corpus.md) — standalone CATSS corpus and node model
