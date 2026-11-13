@@ -56,8 +56,7 @@ def test_general_and_sirach_catalogues_complete_and_typechecked() -> None:
     assert {key: actual[key] for key in actual if key[0] != "Pattern"} == expected
     assert len(expected) == 102
     assert (
-        sum(1 for profile, raw in expected if profile == "General" and raw.startswith("I:"))
-        == 16
+        sum(1 for profile, raw in expected if profile == "General" and raw.startswith("I:")) == 16
     )
     for key in expected:
         assert expected[key][3] in FEATURE_SPECS, key
@@ -97,8 +96,6 @@ def test_patterned_samaritan_reference_documented() -> None:
         ("not a manuscript reading", "no inferred Sirach attestation"),
     ],
 )
-def test_dictionary_explains_scope_and_missing_semantics(
-    must_contain: str, reason: str
-) -> None:
+def test_dictionary_explains_scope_and_missing_semantics(must_contain: str, reason: str) -> None:
     assert PAGE.is_file(), "missing the researcher notation dictionary"
     assert must_contain in PAGE.read_text(encoding="utf-8"), reason
