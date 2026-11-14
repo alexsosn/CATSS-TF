@@ -211,9 +211,9 @@ these invented source lines, **not measurements of historical texts**:
 ```
 
 The Genesis line `*HBK **HBQ` has **one** canonical `mt_element`
-node with `catss_text="HBK"`, `catss_ketiv_text="HBK"` and
-`catss_qere_text="HBQ"`. Do not count these as three independent
-MT lexical tokens. The parser also records alignment-level Ketiv/Qere
+node. Its `catss_text` and `catss_ketiv_text` values are `HBK`,
+while `catss_qere_text` is `HBQ`. Do not count these as three
+independent MT lexical tokens. The parser also records alignment-level Ketiv/Qere
 flags, but the Greek `GR` in this fixture is not a pairwise
 word-to-word correspondence to both readings. On your own loaded canonical
 `api`, retrieve the individual reading surfaces:
