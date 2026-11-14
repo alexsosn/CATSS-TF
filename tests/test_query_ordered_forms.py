@@ -36,9 +36,7 @@ def _elements(api: Any, slot: int, otype: str) -> tuple[str, ...]:
     return tuple(str(api.F.catss_text.v(n)) for n in nodes)
 
 
-def _oracle_matches(
-    elements: tuple[str, ...], wanted: tuple[str, ...], *, adjacent: bool
-) -> bool:
+def _oracle_matches(elements: tuple[str, ...], wanted: tuple[str, ...], *, adjacent: bool) -> bool:
     """Exhaustively enumerate positional combinations, not the query algorithm."""
     if not wanted:
         return True
@@ -97,14 +95,10 @@ def test_ordered_query_matches_exhaustive_native_tf_positional_oracle(
 ) -> None:
     api = _loaded(tmp_path)
     found = tuple(
-        find_groups_with_ordered_forms(
-            api, mt_forms=mt, lxx_forms=lxx, adjacent=adjacent
-        )
+        find_groups_with_ordered_forms(api, mt_forms=mt, lxx_forms=lxx, adjacent=adjacent)
     )
     assert len(found) == expected
-    assert tuple(hit.alignment_id for hit in found) == _oracle(
-        api, mt, lxx, adjacent=adjacent
-    )
+    assert tuple(hit.alignment_id for hit in found) == _oracle(api, mt, lxx, adjacent=adjacent)
 
 
 def test_source_filter_preserves_order_and_group_identity(tmp_path: Path) -> None:
@@ -125,9 +119,9 @@ def test_source_filter_preserves_order_and_group_identity(tmp_path: Path) -> Non
     assert tuple(hit.alignment_id for hit in found) == _oracle(
         api, ("MLK",), ("BASILEU/S",), adjacent=True, source="06.JoshB.par"
     )
-    assert tuple(
-        find_groups_with_ordered_forms(api, mt_forms=("MLK",), source="07.JoshA.par")
-    ) == ()
+    assert (
+        tuple(find_groups_with_ordered_forms(api, mt_forms=("MLK",), source="07.JoshA.par")) == ()
+    )
 
 
 def test_invalid_forms_and_adjacent_are_rejected(tmp_path: Path) -> None:
