@@ -8,7 +8,13 @@ from typing import Any, cast
 import pytest
 from tf.fabric import Fabric  # type: ignore[import-untyped]
 
-from catss_tf import find_groups_with_ordered_forms, materialize_corpus
+import catss_tf
+from catss_tf import materialize_corpus
+
+
+def find_groups_with_ordered_forms(*args: Any, **kwargs: Any) -> Any:
+    """Resolve the real public export at runtime, permitting mypy-clean RED."""
+    return cast(Any, catss_tf).find_groups_with_ordered_forms(*args, **kwargs)
 
 
 def _loaded(tmp_path: Path) -> Any:
