@@ -17,6 +17,7 @@ from tf.fabric import Fabric
 from catss_tf import (
     find_aligned_groups,
     find_groups_with_all_forms,
+    find_groups_with_ordered_forms,
     find_mt_b_raw_matches,
     materialize_corpus,
 )
@@ -48,6 +49,26 @@ def run_demo() -> dict[str, int]:
                         api,
                         mt_forms=("MLK", "DBR"),
                         lxx_forms=("BASILEU/S", "LOGOS"),
+                    )
+                )
+            ),
+            "ordered_adjacent_groups": len(
+                tuple(
+                    find_groups_with_ordered_forms(
+                        api,
+                        mt_forms=("MLK", "DBR"),
+                        lxx_forms=("BASILEU/S", "LOGOS"),
+                        adjacent=True,
+                    )
+                )
+            ),
+            "reversed_greek_order_groups": len(
+                tuple(
+                    find_groups_with_ordered_forms(
+                        api,
+                        mt_forms=("MLK", "DBR"),
+                        lxx_forms=("LOGOS", "BASILEU/S"),
+                        adjacent=True,
                     )
                 )
             ),

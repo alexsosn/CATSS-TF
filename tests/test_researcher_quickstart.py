@@ -16,6 +16,8 @@ EXPECTED = {
     "mt_greek_groups": 2,
     "source_scoped_groups": 1,
     "multi_form_groups": 1,
+    "ordered_adjacent_groups": 1,
+    "reversed_greek_order_groups": 0,
     "false_cross_group_matches": 0,
     "mt_b_context_hits": 1,
     "mt_b_as_mt_a_hits": 0,

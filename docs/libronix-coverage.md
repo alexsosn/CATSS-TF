@@ -59,6 +59,38 @@ requested spellings are set-membership, not token multiplicity. Co-membership
 does not imply phrase adjacency, running-text order, pairwise lexical matches
 or links to reconstructed MT-B forms; such claims need separate evidence.
 
+## Source-position order and adjacent forms (within one alignment)
+
+`find_groups_with_ordered_forms` is available when mere
+`find_groups_with_all_forms` co-membership would produce false positives
+for a research question about order. It tests exact MT-A and/or Greek
+spelling sequences on a single native editorial CATSS alignment, using
+the original `catss_index` positions:
+
+```python
+from catss_tf import find_groups_with_ordered_forms
+
+for group in find_groups_with_ordered_forms(
+    api,
+    mt_forms=("MLK", "DBR"),
+    lxx_forms=("BASILEU/S", "LOGOS"),
+    adjacent=True,
+    source="01.Genesis.par",
+):
+    print(group.alignment_id, group.mt_elements, group.lxx_elements)
+```
+
+`adjacent=False` means exact ordered subsequence with gaps permitted;
+`adjacent=True` requires consecutive source elements in the *same
+alignment group*. Repeated query forms require distinct source
+occurrences, unlike AND/set membership. This **does not** reproduce
+Libronix's running-text phrase index across multiple CATSS groups,
+Hebrew or Greek lemma normalization, MT-B reconstructions or
+within-group word-to-word translation links. These remain independent
+acceptance questions in [#126](https://github.com/alexsosn/CATSS-TF/issues/126)
+and are explicitly tracked in
+[#158](https://github.com/alexsosn/CATSS-TF/issues/158).
+
 ## Inspect exact raw reconstructed Hebrew (MT column B)
 
 The canonical corpus preserves CATSS's tentative, editorial MT-B column separately from

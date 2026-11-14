@@ -1720,6 +1720,45 @@ jobs:
               for hit in found
           )
           print('CANONICAL_ALL_FORMS_ORACLE_GROUPS', len(found), flush=True)
+          # #158: actual-source ordered Greek adjacency, with an independent
+          # exhaustive native-TF slot oracle. Never print proprietary tokens.
+          from catss_tf import find_groups_with_ordered_forms
+          positional_seed = None
+          for slot in api.F.otype.s('alignment'):
+              greek_nodes = sorted(
+                  api.L.u(slot, otype='lxx_element'),
+                  key=api.F.catss_index.v,
+              )
+              if len(greek_nodes) >= 2:
+                  positional_seed = (
+                      str(api.F.catss_source.v(slot)),
+                      tuple(str(api.F.catss_text.v(n)) for n in greek_nodes[:2]),
+                  )
+                  break
+          assert positional_seed is not None
+          positional_source, positional_terms = positional_seed
+          ordered_found = tuple(find_groups_with_ordered_forms(
+              api, lxx_forms=positional_terms, adjacent=True, source=positional_source
+          ))
+          ordered_ids = []
+          for slot, slot_source in api.F.catss_source.items():
+              if slot_source != positional_source or api.F.otype.v(slot) != 'alignment':
+                  continue
+              lexical = tuple(
+                  str(api.F.catss_text.v(n))
+                  for n in sorted(
+                      api.L.u(slot, otype='lxx_element'),
+                      key=api.F.catss_index.v,
+                  )
+              )
+              if any(
+                  lexical[index:index + 2] == positional_terms
+                  for index in range(len(lexical) - 1)
+              ):
+                  ordered_ids.append(str(api.F.catss_alignment_id.v(slot)))
+          assert ordered_ids, 'No real contiguous Greek token pair in CATSS'
+          assert tuple(hit.alignment_id for hit in ordered_found) == tuple(ordered_ids)
+          print('CANONICAL_ORDERED_ADJACENT_ORACLE_GROUPS', len(ordered_found), flush=True)
           # #147: a *real* raw MT-B source field must be queryable without
           # pretending it is a Hebrew lexical word or limiting to special
           # mt_b_carrier nodes. An independent exhaustive slot scan is oracle.

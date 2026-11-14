@@ -1,0 +1,9 @@
+# Issue #158 — TDD plan: lexical order and adjacency within an alignment
+
+Research: [issue-158-ordered-forms.md](../research/issue-158-ordered-forms.md).
+
+1. Add `tests/test_query_ordered_forms.py` with only source-authentic synthetic CATSS 2-source fixtures, loaded from the **actual native Text-Fabric** materializer. Independently compute the expected IDs by exhausting `F.otype.s("alignment")` and running an `itertools.combinations`-based subsequence/adjacency oracle on the sorted `mt_element`/`lxx_element` child nodes. Test Greek-only, Hebrew-only, conjunction, reverse order, gaps, duplicate words, source filters, negative cross-group same-verse, malformed args, missing text feature and wrong warp. RED should fail importing the missing new helper (after lint/mypy).
+2. Implement `find_groups_with_ordered_forms` using `find_groups_with_all_forms` to narrow candidates, then a single O(n) scan over each ordered element tuple. `adjacent` must be exactly `bool`; validate other arguments with existing function; no new schema.
+3. Update `src/catss_tf/__init__.py`, `docs/tf-feature-reference.md` to keep its code-driven `__all__` completeness check green. Add a runnable user recipe to `docs/researcher-cookbook.md` and an evidence-backed Libronix boundary line to `docs/libronix-coverage.md`.
+4. Update complete 46-file CI reload query smoke to sample one **actual** contiguous two-token Greek group, call the new public helper with source restriction, then verify exact ordered stable IDs against an independent complete slot scan. Log counts, not licensed text.
+5. Exact-head Ruff, mypy, Python 3.11/3.12/3.13, release, raw/compiled Context-Fabric, full 46-file native TF/Agora and independent failure-oriented code/data-grounded review; merge only on GREEN and stable head/base. Keep #126 open for actual cross-group text phrase/index parity and #151 open for complete user cookbook.
