@@ -38,6 +38,8 @@ The JSON summary (key order may vary in other JSON implementations) is:
   "mt_b_context_hits": 1,
   "mt_greek_groups": 2,
   "multi_form_groups": 1,
+  "ordered_adjacent_groups": 1,
+  "reversed_greek_order_groups": 0,
   "source_documents": 2,
   "source_scoped_groups": 1
 }
@@ -262,6 +264,54 @@ MT-to-Greek lexical association. Missing a marker in this tiny synthetic
 source does not imply the absence of the reading in a real historical
 manuscript. Source-grounded Sirach witness-to-reading research is
 tracked in [#132](https://github.com/alexsosn/CATSS-TF/issues/132).
+
+## 7. Exact source order and adjacency inside one alignment
+
+The existing `find_groups_with_all_forms` requires every form to be present
+in a group but does **not** test their order, repetitions or adjacency. To
+distinguish these researcher questions, use the public
+`find_groups_with_ordered_forms` helper on a loaded **standalone**
+alignment-slot `catss` Text-Fabric corpus:
+
+```python
+from catss_tf import find_groups_with_ordered_forms
+
+for hit in find_groups_with_ordered_forms(
+    api,
+    mt_forms=("MLK", "DBR"),
+    lxx_forms=("BASILEU/S", "LOGOS"),
+    adjacent=True,
+    source="01.Genesis.par",
+):
+    print(hit.source, hit.alignment_id, hit.mt_elements, hit.lxx_elements)
+```
+
+In the first synthetic example this finds **one** group; reversing the
+Greek query to `("LOGOS", "BASILEU/S")` finds **zero** such groups
+when combined with that same MT sequence. The
+[executable first-researcher script](../examples/canonical_research_walkthrough.py)
+now checks both results in a fresh-process native-TF smoke.
+
+With `adjacent=False` (the default), queried forms must occur in
+**increasing distinct positions** inside the original MT-A or Greek
+element sequence, but intervening elements are allowed. With
+`adjacent=True`, the elements must be consecutive **within that same
+editorial CATSS alignment**. Repeating a query spelling requires two
+separate source elements: `("MLK", "MLK")` does not match a group
+containing only one `MLK` element. With both sides supplied, **both**
+ordered predicates must match the same group; MT order is not interpreted
+as a pairwise lexical link to Greek order.
+
+The helper respects exact original CCAT spellings, 1-based
+`catss_index` ordering, and exact source filenames. It does not
+normalize orthography, look at reconstructed MT column B, bridge two
+alignment groups even inside the same verse, interpret Greek articles
+as grammatical tags, or perform Libronix indexed running-text phrase
+search. The independently tested [#158](https://github.com/alexsosn/CATSS-TF/issues/158)
+covers reversed sequences, gaps, duplicate forms and cross-group
+false positives. Consult [the source-level Libronix
+crosswalk](libronix-coverage.md) before describing a result as
+Libronix-equivalent.
 
 ## Further research recipes and limitations
 
