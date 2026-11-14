@@ -173,6 +173,96 @@ by the JoshB lettered-subverse evidence described in
 A passing **standalone** smoke does not demonstrate the complete
 pinned-parent end-to-end workflow.
 
+## 6. Qere/Ketiv and Sirach annotation evidence
+
+Run the second independently tested, **synthetic** CATSS-to-native-TF walkthrough
+from the repository checkout, after installing the Text-Fabric extra:
+
+```sh
+python -m pip install -e ".[tf]"
+python examples/annotation_evidence_walkthrough.py
+```
+
+This program makes two tiny temporary source files, `01.Genesis.par`
+and `27.Sirach.par`, calls the public `materialize_corpus` API and
+reloads the native standalone Text-Fabric `catss` artifact. It does
+not download CATSS, BHSA, LXX, Libronix or any manuscript transcription.
+The following JSON fields and counts are deterministic expectations for
+these invented source lines, **not measurements of historical texts**:
+
+```json
+{
+  "alignment_groups": 3,
+  "invented_annotation_targets": 0,
+  "mt_ketiv_nodes": 1,
+  "mt_primary_hbk_nodes": 1,
+  "mt_qere_nodes": 1,
+  "same_mt_word_for_ketiv_qere": 1,
+  "sirach_3_independent_oracle": 1,
+  "sirach_3_marked": 1,
+  "sirach_7_lacking_independent_oracle": 1,
+  "sirach_7_lacking_mt_a": 1,
+  "sirach_7_lacking_mt_b": 0,
+  "sirach_8_marked": 0,
+  "sirach_fragmentary_letters": 1,
+  "sirach_lacuna_annotations": 1,
+  "source_documents": 2
+}
+```
+
+The Genesis line `*HBK **HBQ` has **one** canonical `mt_element`
+node. Its `catss_text` and `catss_ketiv_text` values are `HBK`,
+while `catss_qere_text` is `HBQ`. Do not count these as three
+independent MT lexical tokens. The parser also records alignment-level Ketiv/Qere
+flags, but the Greek `GR` in this fixture is not a pairwise
+word-to-word correspondence to both readings. On your own loaded canonical
+`api`, retrieve the individual reading surfaces:
+
+```python
+for word in api.F.otype.s("mt_element"):
+    if api.F.catss_ketiv_text.v(word) == "HBK":
+        print(
+            api.F.catss_text.v(word),
+            api.F.catss_ketiv_text.v(word),
+            api.F.catss_qere_text.v(word),
+        )
+```
+
+The synthetic Sirach 2:13 uses the *source-tested* markers `[..]`,
+`3`, `[BN]*` and `>7`. One `3` marks the manuscript Geniza A,
+and a separate `>7` is an editorial **reading-lacking** indicator for
+witness 7. To inspect the source **annotation occurrences**, run
+the following while `api` is still loaded (inside
+`run_demo()`, immediately after `Fabric(...).loadAll()`, or in your
+own longer-lived TF session):
+
+```python
+from catss_tf import find_sirach_witness_annotations
+
+for hit in find_sirach_witness_annotations(api, 3, mode="marked", side="mt_a"):
+    print(hit.source, hit.alignment_id, hit.source_side, hit.raw)
+
+for hit in find_sirach_witness_annotations(api, 7, mode="lacking", side="mt_a"):
+    print(hit.source, hit.alignment_id, hit.raw, hit.payload)
+```
+
+The synthetic smoke cross-checks each public query against a *separate,
+source-scoped exhaustive scan* of native TF `annotation` nodes using
+`catss_kind`, `catss_raw`, `catss_side` and
+`catss_payload`. It also verifies that manuscript 8 does not appear
+and that this sample has no `catss_annotation_target` edge. The
+`[BN]*` fragment and `[..]` lacuna are distinct raw annotations,
+with Sirach-specific meanings; see
+[notation-reference.md](notation-reference.md) and the
+[full TF feature inventory](tf-feature-reference.md).
+
+A witness marker is **not a manuscript-to-word** attestation edge.
+A Greek word in the same editorial alignment is **not a pairwise**
+MT-to-Greek lexical association. Missing a marker in this tiny synthetic
+source does not imply the absence of the reading in a real historical
+manuscript. Source-grounded Sirach witness-to-reading research is
+tracked in [#132](https://github.com/alexsosn/CATSS-TF/issues/132).
+
 ## Further research recipes and limitations
 
 The [Libronix crosswalk](libronix-coverage.md) distinguishes
