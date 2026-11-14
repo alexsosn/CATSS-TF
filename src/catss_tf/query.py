@@ -144,6 +144,68 @@ def find_groups_with_all_forms(
         )
 
 
+def _contains_ordered_elements(
+    elements: tuple[str, ...],
+    required: Sequence[str],
+    *,
+    adjacent: bool,
+) -> bool:
+    """Match exact source spellings at distinct positions in original order."""
+
+    if not required:
+        return True
+    if adjacent:
+        width = len(required)
+        return any(
+            all(elements[start + offset] == form for offset, form in enumerate(required))
+            for start in range(len(elements) - width + 1)
+        )
+
+    position = 0
+    for form in required:
+        while position < len(elements) and elements[position] != form:
+            position += 1
+        if position == len(elements):
+            return False
+        position += 1
+    return True
+
+
+def find_groups_with_ordered_forms(
+    api: Any,
+    *,
+    mt_forms: Sequence[str] = (),
+    lxx_forms: Sequence[str] = (),
+    adjacent: bool = False,
+    source: str | None = None,
+) -> Iterator[CanonicalAlignedGroup]:
+    """Find exact ordered lexical forms within a single CATSS alignment.
+
+    Each requested spelling consumes a distinct canonical MT-A or Greek
+    element position. With adjacent=True, positions must be consecutive.
+    Never infer lexical translation pairs, adjacency across separate CATSS
+    alignment groups, normalized lemmas, or reconstructed column-B words.
+
+    Candidate discovery delegates the same source/warp/input validation to
+    find_groups_with_all_forms; final matching restores multiplicity/order.
+    """
+
+    if type(adjacent) is not bool:
+        raise ValueError("adjacent must be a boolean")
+
+    for group in find_groups_with_all_forms(
+        api,
+        mt_forms=mt_forms,
+        lxx_forms=lxx_forms,
+        source=source,
+    ):
+        if not _contains_ordered_elements(group.mt_elements, mt_forms, adjacent=adjacent):
+            continue
+        if not _contains_ordered_elements(group.lxx_elements, lxx_forms, adjacent=adjacent):
+            continue
+        yield group
+
+
 @dataclass(frozen=True, slots=True)
 class CanonicalMtBRawHit:
     """Raw reconstructed MT column-B evidence in one canonical alignment.
