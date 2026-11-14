@@ -22,17 +22,13 @@ def run_demo() -> dict[str, int]:
         root = Path(directory)
         sources = root / "sources"
         sources.mkdir()
-        (sources / "01.Genesis.par").write_text(
-            "Gen 1:1\n*HBK **HBQ\tGR\n", encoding="utf-8"
-        )
+        (sources / "01.Genesis.par").write_text("Gen 1:1\n*HBK **HBQ\tGR\n", encoding="utf-8")
         (sources / "27.Sirach.par").write_text(
             "Sir 2:13\n[..] 3\tOU)AI\\\n[BN]* >7\tLOGOS\n",
             encoding="utf-8",
         )
         materialize_corpus(sources, root / "catss")
-        api = Fabric(locations=str(root), modules=("catss",), silent="deep").loadAll(
-            silent="deep"
-        )
+        api = Fabric(locations=str(root), modules=("catss",), silent="deep").loadAll(silent="deep")
 
         mt_nodes = tuple(api.F.otype.s("mt_element"))
         primary = {node for node in mt_nodes if api.F.catss_text.v(node) == "HBK"}
@@ -85,9 +81,7 @@ def run_demo() -> dict[str, int]:
             ),
             "sirach_8_marked": len(tuple(find_sirach_witness_annotations(api, 8))),
             "sirach_lacuna_annotations": direct_count("sirach_lacuna_or_illegible", "[..]"),
-            "sirach_fragmentary_letters": direct_count(
-                "sirach_uncertain_fragmentary_letter", "*"
-            ),
+            "sirach_fragmentary_letters": direct_count("sirach_uncertain_fragmentary_letter", "*"),
             "invented_annotation_targets": target_edges,
         }
 
