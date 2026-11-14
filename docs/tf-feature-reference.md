@@ -404,6 +404,7 @@ name a kind used by the 16-name expansion above.
 | Public API | `UnclassifiedAlignment` | Python | Typed translation-technique unclassified result |
 | Public API | `find_aligned_groups` | Python | Find one MT-A form and one Greek form in the same alignment |
 | Public API | `find_groups_with_all_forms` | Python | Find conjunction of exact MT-A and LXX forms within one editorial group |
+| Public API | `find_groups_with_ordered_forms` | Python | Find exact ordered subsequences or adjacent lexical elements within a single CATSS editorial alignment; no cross-group phrase index |
 | Public API | `find_mt_b_raw_matches` | Python | Search exact case-sensitive substring of parsed reconstructed MT-B |
 | Public API | `find_sirach_witness_annotations` | Python | Return source-provenanced Sirach witness indicators |
 | Public API | `find_unclassified_alignments` | Python | Inspect unresolved translation-technique groups without guessing |
