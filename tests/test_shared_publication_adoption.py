@@ -111,7 +111,7 @@ def test_agora_preflight_delegates_to_shared_public_api(
     # the published library is listed among CATSS's install dependencies.
     package = types.ModuleType("tf_build")
     shared_agora = types.ModuleType("tf_build.agora")
-    setattr(shared_agora, "prepare_agora_output", reject_from_shared_helper)
+    monkeypatch.setattr(shared_agora, "prepare_agora_output", reject_from_shared_helper, raising=False)
     monkeypatch.setitem(sys.modules, "tf_build", package)
     monkeypatch.setitem(sys.modules, "tf_build.agora", shared_agora)
 
