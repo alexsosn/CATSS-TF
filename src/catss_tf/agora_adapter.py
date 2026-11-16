@@ -28,10 +28,9 @@ _REQUIRED_NATIVE = frozenset(
 
 
 def _check_inputs(source: pathlib.Path, output: pathlib.Path) -> None:
-    if output.is_symlink() or not output.is_dir():
-        raise ValueError("Agora CATSS output must be an existing real staging directory")
-    if any(output.iterdir()):
-        raise ValueError("Agora CATSS staging output must be empty")
+    from tf_build.agora import prepare_agora_output
+
+    prepare_agora_output(output)
     if source.is_symlink() or not source.is_dir():
         raise ValueError("CATSS source must be a real directory, not a symlink")
     source_real = source.resolve(strict=True)
