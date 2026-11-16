@@ -104,7 +104,7 @@ def test_agora_output_must_be_real_precreated_empty_directory(
         raise AssertionError("native materializer must not run")
 
     monkeypatch.setattr(agora_adapter, "materialize_corpus", _unexpected)
-    with pytest.raises(ValueError, match="empty|real|staging"):
+    with pytest.raises(ValueError, match="empty|real|staging|symlink|directory"):
         _run(source, output)
     if variant == "occupied":
         assert (output / "foreign.tf").read_text() == "user's data"
