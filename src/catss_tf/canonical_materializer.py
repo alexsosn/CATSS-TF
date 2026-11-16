@@ -8,6 +8,8 @@ import shutil
 import tempfile
 import typing
 
+from tf_build.publication import publish_path_no_clobber
+
 from catss_tf import __version__
 from catss_tf.parser import AlignmentRecord, ParallelDocument, VerseRecord, parse_parallel_text
 from catss_tf.source import (
@@ -141,7 +143,7 @@ def materialize_corpus(
 
     source_root = pathlib.Path(source_directory)
     destination = pathlib.Path(output_directory)
-    if destination.exists():
+    if destination.exists() or destination.is_symlink():
         raise CanonicalMaterializationError(f"destination already exists: {destination}")
 
     manifest, documents = _snapshot_parallel_source(source_root)
@@ -984,7 +986,7 @@ def _publish_bundle(
                 SIDECAR_COLUMNS[filename],
                 sidecars.get(filename, []),
             )
-        temp_path.replace(destination)
+        publish_path_no_clobber(temp_path, destination)
     except Exception:
         shutil.rmtree(temp_path, ignore_errors=True)
         raise
