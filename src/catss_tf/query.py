@@ -63,9 +63,7 @@ def _validate_reference(reference: tuple[str, int, int] | None) -> None:
         raise ValueError("reference must be an exact (book, chapter, verse) tuple")
 
 
-def _matches_reference(
-    api: Any, slot: int, reference: tuple[str, int, int] | None
-) -> bool:
+def _matches_reference(api: Any, slot: int, reference: tuple[str, int, int] | None) -> bool:
     """Match canonical *source header* coordinates, never Greek target labels."""
 
     return reference is None or (
