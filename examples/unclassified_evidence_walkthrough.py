@@ -29,9 +29,7 @@ def run_demo() -> dict[str, object]:
             encoding="utf-8",
         )
         materialize_corpus(source, root / "catss")
-        api = Fabric(locations=str(root), modules=("catss",), silent="deep").loadAll(
-            silent="deep"
-        )
+        api = Fabric(locations=str(root), modules=("catss",), silent="deep").loadAll(silent="deep")
 
         hits = tuple(find_unclassified_alignments(api))
         # Independent native-TF oracle: enumerate all canonical slots rather
