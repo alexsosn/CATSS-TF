@@ -66,11 +66,9 @@ def _validate_reference(reference: tuple[str, int, int] | None) -> None:
 def _matches_reference(api: Any, slot: int, reference: tuple[str, int, int] | None) -> bool:
     """Match canonical *source header* coordinates, never Greek target labels."""
 
-    return reference is None or (
-        api.F.book.v(slot),
-        api.F.chapter.v(slot),
-        api.F.verse.v(slot),
-    ) == reference
+    if reference is None:
+        return True
+    return (api.F.book.v(slot), api.F.chapter.v(slot), api.F.verse.v(slot)) == reference
 
 
 def find_aligned_groups(
