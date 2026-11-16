@@ -1,0 +1,8 @@
+# #151 phase 3 — RED-first source-uncertainty cookbook smoke
+
+Research: [issue-151-unclassified-walkthrough.md](../research/issue-151-unclassified-walkthrough.md).
+
+1. Add `tests/test_researcher_unclassified_walkthrough.py` **before** the example exists. Require a new executable script and a cookbook section `## 9. ...`. Run the script as a subprocess from a clean tmp CWD, assert deterministic JSON summary and unchanged user CWD. RED must be visible from actual pytest after Ruff/mypy pass, not an import or formatter-only failure.
+2. Implement `examples/unclassified_evidence_walkthrough.py`: same tiny accepted `Sir 2:13` source lines as `tests/test_unclassified_query.py`, plus one ordinary Genesis row; create/load native TF, run `find_unclassified_alignments` with exact source and reason substring filters. Independently exhaust all native `alignment` slots for unchanged original reasons/IDs and source lines and assert parsed source counts. Do not classify otherwise-unresolved lines.
+3. Append a source-honest `docs/researcher-cookbook.md` section explaining the synthetic JSON output, live `api` lifetime, incomplete TF feature-load exception, source-line provenance, distinctions between manuscript markers and lexical words, and existing full 46-file real-source count (102) with reference to the complete CI oracle. No licensing leakage.
+4. Exact-head Python 3.11–3.13 Ruff/mypy/pytest, release wheel, Context-Fabric, 46-file native TF/Agora E2E; independently adversarial review result and documentation **on exact final PR head**; SHA-guarded squash merge only if all green. Keep #151/#149/#126 open.
