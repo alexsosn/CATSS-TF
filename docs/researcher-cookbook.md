@@ -39,6 +39,9 @@ The JSON summary (key order may vary in other JSON implementations) is:
   "mt_greek_groups": 2,
   "multi_form_groups": 1,
   "ordered_adjacent_groups": 1,
+  "reference_genesis_1_1_groups": 1,
+  "reference_mt_b_genesis_1_2_hits": 1,
+  "reference_wrong_source_book_groups": 0,
   "reversed_greek_order_groups": 0,
   "source_documents": 2,
   "source_scoped_groups": 1
@@ -47,7 +50,8 @@ The JSON summary (key order may vary in other JSON implementations) is:
 
 These numbers are *synthetic smoke expectations*, **not corpus statistics**.
 The test `tests/test_researcher_quickstart.py` starts a separate Python
-process with an otherwise empty working directory and verifies the output.
+process with an otherwise empty working directory and verifies the output,
+including exact source-reference constraints.
 
 ## 2. Understand what the query returns
 
