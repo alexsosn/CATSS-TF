@@ -313,6 +313,52 @@ false positives. Consult [the source-level Libronix
 crosswalk](libronix-coverage.md) before describing a result as
 Libronix-equivalent.
 
+## 8. Search only one CATSS source-header reference
+
+Use the exact `reference=(book, chapter, verse)` argument when an editorial
+alignment must belong to a particular CATSS source passage. The reference is
+the **native source header**, not a Greek-side reference annotation, an
+inferred BHSA/LXX parent node, or a normalized Libronix Bible reference.
+
+With the first synthetic corpus from section 1, add the following inside
+`run_demo()` after the `api = Fabric(...).loadAll(...)` line:
+
+```python
+from catss_tf import find_groups_with_ordered_forms, find_mt_b_raw_matches
+
+genesis_hits = tuple(
+    find_groups_with_ordered_forms(
+        api,
+        mt_forms=("MLK", "DBR"),
+        lxx_forms=("BASILEU/S", "LOGOS"),
+        adjacent=True,
+        source="01.Genesis.par",
+        reference=("Gen", 1, 1),
+    )
+)
+reconstructed = tuple(
+    find_mt_b_raw_matches(api, "W/KL", reference=("Gen", 1, 2))
+)
+assert len(genesis_hits) == 1
+assert len(reconstructed) == 1
+```
+
+`find_aligned_groups` and `find_groups_with_all_forms` accept the same
+keyword. For all four queries, a supplied `source` and `reference` must
+**both** match. The book is the literal CATSS header name: `JoshB` and
+`JoshA` are distinct textual traditions, and a query for one cannot
+silently return the other. Chapter/verse must be nonnegative integers
+(booleans and floating-point numbers are rejected); verse 0 is allowed if
+the source actually contains it. A mismatched but valid reference yields
+no matches.
+
+This predicate is evaluated on canonical **alignment slots** only, and
+does not speed up the underlying lexical feature scan. It does not search
+Greek reference-target nodes, convert versification, traverse multiple
+editorial alignment groups, or tokenize reconstructed column B. The
+fresh-process synthetic demo and independent native-TF source-slot oracle
+test these distinctions in [`test_query_reference_scope.py`](../tests/test_query_reference_scope.py).
+
 ## Further research recipes and limitations
 
 The [Libronix crosswalk](libronix-coverage.md) distinguishes
