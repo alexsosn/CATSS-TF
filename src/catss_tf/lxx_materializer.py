@@ -7,6 +7,8 @@ import pathlib
 import shutil
 import tempfile
 
+from tf_build.publication import publish_path_no_clobber
+
 from catss_tf import __version__
 from catss_tf.lxx_resolver import (
     LxxMappingReport,
@@ -773,7 +775,7 @@ def _publish_bundle(
                 SIDECAR_COLUMNS[filename],
                 sidecars.get(filename, []),
             )
-        temp_path.replace(destination)
+        publish_path_no_clobber(temp_path, destination)
     except Exception:
         shutil.rmtree(temp_path, ignore_errors=True)
         raise
