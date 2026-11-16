@@ -13,9 +13,18 @@ pip install \
   "catss-tf[tf] @ git+https://github.com/alexsosn/CATSS-TF.git"
 ```
 
-The previously published v0.1.0 wheel has older dependency metadata.
-For that wheel, also install `text-fabric[github]>=13.1,<14` explicitly
-before downloading pinned BHSA/LXX parents. These corpora are not included.
+The previously published v0.1.0 wheel has older dependency metadata
+and does not contain subsequent unreleased fixes. For that wheel,
+install `text-fabric[github]>=13.1,<14` explicitly before downloading
+pinned BHSA/LXX parents. The current source install additionally pins the
+published tf-build v0.1.0rc1 wheel by SHA256 for **atomic no-clobber
+canonical output publication** and Agora host-staging preflight. Its
+transitive Text-Fabric dependency changes source-install requirements;
+no corpus data is included. Use an **absent** path for direct
+`materialize_corpus`, but an **existing empty real directory** when
+running `catss_tf.agora_adapter` from an Agora host. If a concurrent
+actor claims a direct output directory, the materializer fails instead
+of replacing it.
 
 Verify:
 

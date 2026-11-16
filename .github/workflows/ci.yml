@@ -62,7 +62,20 @@ jobs:
       - run: python -m build
       - run: python -m twine check dist/*
       - run: python -m venv /tmp/catss-tf-release-smoke
-      - run: /tmp/catss-tf-release-smoke/bin/pip install --no-deps dist/*.whl
+      - run: /tmp/catss-tf-release-smoke/bin/pip install dist/*.whl
+      - name: Clean core wheel installs pinned tf-build runtime
+        run: |
+          /tmp/catss-tf-release-smoke/bin/python - <<'PY'
+          from importlib.metadata import version
+
+          from tf_build.agora import prepare_agora_output
+          from tf_build.publication import publish_path_no_clobber
+
+          assert version("tf-build") == "0.1.0rc1"
+          assert callable(prepare_agora_output)
+          assert callable(publish_path_no_clobber)
+          print("clean_core_wheel_tf_build=True")
+          PY
       - name: Clean wheel installation exercises GitHub backend extra
         run: |
           python -m venv /tmp/catss-tf-github-extra
