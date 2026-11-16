@@ -8,8 +8,7 @@ from typing import Any
 
 import pytest
 
-from catss_tf import agora_adapter
-from catss_tf import canonical_materializer as canonical
+from catss_tf import agora_adapter, canonical_materializer as canonical
 
 
 def _source(tmp_path: pathlib.Path) -> pathlib.Path:
@@ -19,7 +18,9 @@ def _source(tmp_path: pathlib.Path) -> pathlib.Path:
     return root
 
 
-def test_concurrent_empty_directory_never_replaced(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_concurrent_empty_directory_never_replaced(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Inject a real competing mkdir after initial preflight, before the publish."""
     source = _source(tmp_path)
     output = tmp_path / "published"
