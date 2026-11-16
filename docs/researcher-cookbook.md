@@ -340,9 +340,7 @@ genesis_hits = tuple(
         reference=("Gen", 1, 1),
     )
 )
-reconstructed = tuple(
-    find_mt_b_raw_matches(api, "W/KL", reference=("Gen", 1, 2))
-)
+reconstructed = tuple(find_mt_b_raw_matches(api, "W/KL", reference=("Gen", 1, 2)))
 assert len(genesis_hits) == 1
 assert len(reconstructed) == 1
 ```
