@@ -12,6 +12,8 @@ import os
 import pathlib
 import shutil
 
+from tf_build.agora import AgoraOutputError, prepare_agora_output
+
 from catss_tf.canonical_materializer import materialize_corpus
 
 _PRIVATE_ARTIFACT = ".catss-agora-native-artifact"
@@ -28,10 +30,12 @@ _REQUIRED_NATIVE = frozenset(
 
 
 def _check_inputs(source: pathlib.Path, output: pathlib.Path) -> None:
-    if output.is_symlink() or not output.is_dir():
-        raise ValueError("Agora CATSS output must be an existing real staging directory")
-    if any(output.iterdir()):
-        raise ValueError("Agora CATSS staging output must be empty")
+    try:
+        prepare_agora_output(output)
+    except AgoraOutputError as exc:
+        raise ValueError(
+            f"Agora CATSS output must be an existing real empty staging directory: {exc}"
+        ) from exc
     if source.is_symlink() or not source.is_dir():
         raise ValueError("CATSS source must be a real directory, not a symlink")
     source_real = source.resolve(strict=True)
