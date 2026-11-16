@@ -698,6 +698,8 @@ def _publish_bundle(
     metadata: TfModuleMetadata,
     sidecars: dict[str, list[tuple[object, ...]]],
 ) -> None:
+    from tf_build.publication import publish_path_no_clobber
+
     destination.parent.mkdir(parents=True, exist_ok=True)
     temp_path = pathlib.Path(
         tempfile.mkdtemp(
@@ -718,7 +720,7 @@ def _publish_bundle(
                 SIDECAR_COLUMNS[filename],
                 sidecars.get(filename, []),
             )
-        temp_path.replace(destination)
+        publish_path_no_clobber(temp_path, destination)
     except Exception:
         shutil.rmtree(temp_path, ignore_errors=True)
         raise
