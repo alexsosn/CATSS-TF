@@ -361,6 +361,98 @@ editorial alignment groups, or tokenize reconstructed column B. The
 fresh-process synthetic demo and independent native-TF source-slot oracle
 test these distinctions in [`test_query_reference_scope.py`](../tests/test_query_reference_scope.py).
 
+## 9. Explore unclassified CATSS alignment evidence
+
+The translation-technique derivation can **fail closed** for source groups
+that do not justify a particular plus/minus, omission or addition
+classification. Query the recorded evidence and reason instead of silently
+changing the result to an MT–Greek lexical equivalence or a different
+translation technique.
+
+With the Text-Fabric extra installed, run the self-contained example:
+
+```sh
+python examples/unclassified_evidence_walkthrough.py
+```
+
+The program writes **invented**, licensed-safe Genesis and Sirach parallel
+lines in a `TemporaryDirectory`, calls `materialize_corpus`, reloads
+the standalone `catss` TF warp, and queries the public
+`find_unclassified_alignments` function. Expected JSON (object key order
+is not significant):
+
+```json
+{
+  "alignment_groups": 5,
+  "first_unclassified_greek_forms": ["QEOS"],
+  "genesis_false_hits": 0,
+  "hebrew_empty_greek_hits": 1,
+  "lxx_minus_without_mt_hits": 1,
+  "original_reasons_and_ids_verified": true,
+  "sirach_source_hits": 2,
+  "source_documents": 2,
+  "unclassified_groups": 2,
+  "unclassified_mt_lexical_elements": 0,
+  "unclassified_slots_direct_scan": 2,
+  "unclassified_source_lines": [[3, 3], [4, 4]]
+}
+```
+
+The counts and the `QEOS` spelling belong **only to this synthetic
+fixture**. The first unresolved Sirach group has Greek lexical material
+but no MT-A lexical element. This is **not a translation addition**
+merely because the MT side is empty. The second has an LXX-minus marker
+but no MT lexical material that could support interpreting it as an
+ordinary source omission. The raw Sirach manuscript `7` label is
+**not a manuscript-to-word** reading edge.
+
+To investigate the evidence in your own loaded canonical `api`,
+use explicit file identity and reason text filters:
+
+```python
+from catss_tf import find_unclassified_alignments
+
+for hit in find_unclassified_alignments(
+    api, source="27.Sirach.par", reason_contains="Hebrew-empty"
+):
+    print(
+        hit.alignment_id,
+        hit.source,
+        hit.source_line_first,
+        hit.source_line_last,
+        hit.reason,
+        [(a.kind, a.side, a.raw) for a in hit.annotations],
+    )
+```
+
+Run the snippet **inside** `run_demo()`, after the Text-Fabric
+`api = Fabric(...).loadAll(...)` assignment and before the
+`return`, or load your own lasting corpus: the script's temporary
+files are removed on exit. The returned `source_line_first` and
+`source_line_last` refer to original physical `.par` line numbers.
+`catss_tt_status="unclassified"` is a derived classification state,
+while `catss_tt_unclassified_reason` is the preserved reason from
+the **conservative derivation**, not a literal CATSS editorial
+transcription or an independently verified philological judgment.
+
+The example separately scans every native `alignment` slot to compare
+stable IDs and reasons with the public API. Do not interpret an empty
+query result from a **partially loaded** TF object as a full-corpus
+absence: the query rejects a missing `catss_tt_status` feature.
+Use `loadAll()` or load the required features explicitly, as explained
+in the [TF feature reference](tf-feature-reference.md).
+
+In the repository's existing **real 46-file** CATSS CI oracle, the
+complete source parser and conservative technique deriver account for
+**102** unclassified alignments with their original stored reasons.
+This is a snapshot-specific test finding, not a universal Hebrew or
+Greek textual count. A full witness-to-reading classification still
+requires source-grounded research, especially for Sirach
+([#132](https://github.com/alexsosn/CATSS-TF/issues/132) and
+[#136](https://github.com/alexsosn/CATSS-TF/issues/136)). The
+newcomer example does not load BHSA/LXX parent Text-Fabric modules
+or reproduce Libronix word-level indexing.
+
 ## Further research recipes and limitations
 
 The [Libronix crosswalk](libronix-coverage.md) distinguishes
