@@ -71,12 +71,7 @@ def test_exact_reference_mt_greek_and_source_are_conjunctive(
     assert len(hits) == 1
     wrong = "06.JoshB.par" if reference[0] == "Gen" else "01.Genesis.par"
     assert (
-        tuple(
-            find_aligned_groups(
-                api, "MLK", "BASILEU/S", reference=reference, source=wrong
-            )
-        )
-        == ()
+        tuple(find_aligned_groups(api, "MLK", "BASILEU/S", reference=reference, source=wrong)) == ()
     )
     assert len(tuple(find_aligned_groups(api, "MLK", "BASILEU/S"))) == 4
 
@@ -88,7 +83,9 @@ def test_all_forms_exact_reference_matches_independent_native_tf(
     api = _loaded(tmp_path)
     hits = tuple(
         find_groups_with_all_forms(
-            api, mt_forms=("MLK", "DBR"), lxx_forms=("BASILEU/S", "LOGOS"),
+            api,
+            mt_forms=("MLK", "DBR"),
+            lxx_forms=("BASILEU/S", "LOGOS"),
             reference=reference,
         )
     )
@@ -105,13 +102,14 @@ def test_ordered_source_positions_keep_exact_reference(
     api = _loaded(tmp_path)
     hits = tuple(
         find_groups_with_ordered_forms(
-            api, mt_forms=("MLK", "DBR"), lxx_forms=("BASILEU/S", "LOGOS"),
-            adjacent=True, reference=reference,
+            api,
+            mt_forms=("MLK", "DBR"),
+            lxx_forms=("BASILEU/S", "LOGOS"),
+            adjacent=True,
+            reference=reference,
         )
     )
-    expected = _native_ids(
-        api, reference, mt=("MLK", "DBR"), lxx=("BASILEU/S", "LOGOS")
-    )
+    expected = _native_ids(api, reference, mt=("MLK", "DBR"), lxx=("BASILEU/S", "LOGOS"))
     assert tuple(hit.alignment_id for hit in hits) == expected
     assert len(hits) == (1 if reference in (GEN_1_1, GEN_2_1) else 0)
 
@@ -145,9 +143,7 @@ def test_reconstructed_column_b_scope_never_becomes_mt_a(
         ("Gen", 1.0, 1),
     ),
 )
-def test_invalid_reference_rejected_consistently(
-    tmp_path: Path, invalid: Any
-) -> None:
+def test_invalid_reference_rejected_consistently(tmp_path: Path, invalid: Any) -> None:
     api = _loaded(tmp_path)
     # Cast preserves a RED test run with the old public type signature.
     for fn, args, kwargs in (
