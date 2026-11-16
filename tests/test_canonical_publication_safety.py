@@ -8,7 +8,8 @@ from typing import Any
 
 import pytest
 
-from catss_tf import agora_adapter, canonical_materializer as canonical
+from catss_tf import agora_adapter
+from catss_tf import canonical_materializer as canonical
 
 
 def _source(tmp_path: pathlib.Path) -> pathlib.Path:
