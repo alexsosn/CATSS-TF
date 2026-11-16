@@ -45,30 +45,65 @@ def _ordered_elements(api: Any, slot: int, element_type: str) -> tuple[str, ...]
     return tuple(str(api.F.catss_text.v(n)) for n in sorted(nodes, key=api.F.catss_index.v))
 
 
+def _validate_reference(reference: tuple[str, int, int] | None) -> None:
+    """Reject ambiguous source-header filters before searching any TF feature."""
+
+    if reference is None:
+        return
+    if (
+        not isinstance(reference, tuple)
+        or len(reference) != 3
+        or not isinstance(reference[0], str)
+        or not reference[0].strip()
+        or type(reference[1]) is not int
+        or reference[1] < 0
+        or type(reference[2]) is not int
+        or reference[2] < 0
+    ):
+        raise ValueError("reference must be an exact (book, chapter, verse) tuple")
+
+
+def _matches_reference(
+    api: Any, slot: int, reference: tuple[str, int, int] | None
+) -> bool:
+    """Match canonical *source header* coordinates, never Greek target labels."""
+
+    return reference is None or (
+        api.F.book.v(slot),
+        api.F.chapter.v(slot),
+        api.F.verse.v(slot),
+    ) == reference
+
+
 def find_aligned_groups(
     api: Any,
     mt_form: str,
     lxx_form: str,
     *,
     source: str | None = None,
+    reference: tuple[str, int, int] | None = None,
 ) -> Iterator[CanonicalAlignedGroup]:
     """Find canonical groups containing both exact source lexical forms.
 
     The loaded TF must use standalone alignment slots. BHSA and LXX
     projections have different node spaces and cannot use this join.
     MT search considers column A, never hypothetical column B reconstruction.
-    Source filtering uses exact .par filenames; no normalization is applied.
+    Source and reference filtering use exact CATSS filenames/header
+    coordinates; no Greek versification or edition normalization is applied.
     """
 
     if not mt_form or not lxx_form:
         raise ValueError("both MT and LXX search forms must be nonempty")
     if api.F.otype.slotType != "alignment":
         raise ValueError("find_aligned_groups requires the standalone CATSS alignment-slot warp")
+    _validate_reference(reference)
 
     mt_slots, lxx_slots = _matching_slots(api, mt_form, lxx_form)
     for slot in sorted(mt_slots & lxx_slots):
         source_name = str(api.F.catss_source.v(slot))
         if source is not None and source_name != source:
+            continue
+        if not _matches_reference(api, int(slot), reference):
             continue
         yield CanonicalAlignedGroup(
             source=source_name,
@@ -87,6 +122,7 @@ def find_groups_with_all_forms(
     mt_forms: Sequence[str] = (),
     lxx_forms: Sequence[str] = (),
     source: str | None = None,
+    reference: tuple[str, int, int] | None = None,
 ) -> Iterator[CanonicalAlignedGroup]:
     """Find alignment groups containing every requested exact lexical form.
 
@@ -96,6 +132,7 @@ def find_groups_with_all_forms(
     """
     if api.F.otype.slotType != "alignment":
         raise ValueError("all-forms query requires the standalone CATSS alignment-slot warp")
+    _validate_reference(reference)
 
     for label, forms in (("mt_forms", mt_forms), ("lxx_forms", lxx_forms)):
         if isinstance(forms, (str, bytes)) or not isinstance(forms, Sequence):
@@ -132,6 +169,8 @@ def find_groups_with_all_forms(
     for slot in sorted(slots):
         source_name = str(api.F.catss_source.v(slot))
         if source is not None and source_name != source:
+            continue
+        if not _matches_reference(api, int(slot), reference):
             continue
         yield CanonicalAlignedGroup(
             source=source_name,
@@ -178,6 +217,7 @@ def find_groups_with_ordered_forms(
     lxx_forms: Sequence[str] = (),
     adjacent: bool = False,
     source: str | None = None,
+    reference: tuple[str, int, int] | None = None,
 ) -> Iterator[CanonicalAlignedGroup]:
     """Find exact ordered lexical forms within a single CATSS alignment.
 
@@ -198,6 +238,7 @@ def find_groups_with_ordered_forms(
         mt_forms=mt_forms,
         lxx_forms=lxx_forms,
         source=source,
+        reference=reference,
     ):
         if not _contains_ordered_elements(group.mt_elements, mt_forms, adjacent=adjacent):
             continue
@@ -225,6 +266,7 @@ def find_mt_b_raw_matches(
     *,
     source: str | None = None,
     retro_kind: str | None = None,
+    reference: tuple[str, int, int] | None = None,
 ) -> Iterator[CanonicalMtBRawHit]:
     """Find exact case-sensitive substrings in raw CATSS MT column B.
 
@@ -234,6 +276,7 @@ def find_mt_b_raw_matches(
     """
     if api.F.otype.slotType != "alignment":
         raise ValueError("MT-B raw query requires the standalone CATSS alignment-slot warp")
+    _validate_reference(reference)
     if not isinstance(raw_substring, str) or not raw_substring.strip():
         raise ValueError("raw_substring must be a nonempty source text string")
     if source is not None and (not isinstance(source, str) or not source.strip()):
@@ -256,6 +299,8 @@ def find_mt_b_raw_matches(
         if not isinstance(name, str) or not name:
             raise ValueError("MT-B raw evidence has no canonical source identity")
         if source is not None and name != source:
+            continue
+        if not _matches_reference(api, int(slot), reference):
             continue
         kind = api.F.catss_retro_kind.v(slot)
         if not isinstance(kind, str) or not kind:
