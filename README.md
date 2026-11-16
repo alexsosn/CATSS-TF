@@ -36,8 +36,8 @@ and does **not** include later source changes. If using that wheel, additionally
 run `pip install "text-fabric[github]>=13.1,<14"` for BHSA/LXX downloads.
 
 **Current source only (not yet released):** canonical standalone corpus
-publication uses the published `tf-build v0.1.0rc1` atomic no-clobber
-primitive. Installing current source resolves an immutable,
+publication **and both `catss-bhsa` / `catss-lxx` module publishers** use
+the published `tf-build v0.1.0rc1` atomic no-clobber primitive. Installing current source resolves an immutable,
 SHA256-pinned tf-build wheel from the GitHub release and transitively
 installs `text-fabric>=13.1,<14` even for a core install. An output
 directory created by another process is never silently replaced, even
