@@ -31,9 +31,20 @@ pip install \\
   "catss-tf[tf] @ git+https://github.com/alexsosn/CATSS-TF.git"
 ```
 
-The already-published v0.1.0 wheel retains its original dependency metadata.
-If using that wheel, additionally run `pip install "text-fabric[github]>=13.1,<14"`
-for BHSA/LXX downloads; a future release will include the fix automatically.
+The already-published v0.1.0 wheel retains its original dependency metadata
+and does **not** include later source changes. If using that wheel, additionally
+run `pip install "text-fabric[github]>=13.1,<14"` for BHSA/LXX downloads.
+
+**Current source only (not yet released):** canonical standalone corpus
+publication uses the published `tf-build v0.1.0rc1` atomic no-clobber
+primitive. Installing current source resolves an immutable,
+SHA256-pinned tf-build wheel from the GitHub release and transitively
+installs `text-fabric>=13.1,<14` even for a core install. An output
+directory created by another process is never silently replaced, even
+if it is empty. The standalone materializer requires an **absent**
+destination; Agora's host output is instead an **existing, empty,
+non-symlink staging directory** managed through the shared tf-build
+preflight. The two contracts must not be interchanged.
 
 Verify:
 
