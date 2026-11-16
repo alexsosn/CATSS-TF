@@ -62,6 +62,32 @@ def run_demo() -> dict[str, int]:
                     )
                 )
             ),
+            "reference_genesis_1_1_groups": len(
+                tuple(
+                    find_groups_with_ordered_forms(
+                        api,
+                        mt_forms=("MLK", "DBR"),
+                        lxx_forms=("BASILEU/S", "LOGOS"),
+                        adjacent=True,
+                        source="01.Genesis.par",
+                        reference=("Gen", 1, 1),
+                    )
+                )
+            ),
+            "reference_mt_b_genesis_1_2_hits": len(
+                tuple(find_mt_b_raw_matches(api, "W/KL", reference=("Gen", 1, 2)))
+            ),
+            "reference_wrong_source_book_groups": len(
+                tuple(
+                    find_aligned_groups(
+                        api,
+                        "MLK",
+                        "BASILEU/S",
+                        source="01.Genesis.par",
+                        reference=("JoshB", 1, 1),
+                    )
+                )
+            ),
             "reversed_greek_order_groups": len(
                 tuple(
                     find_groups_with_ordered_forms(
