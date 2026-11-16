@@ -84,8 +84,11 @@ def test_parent_module_publish_must_not_replace_late_empty_directory(
     monkeypatch.setattr(materializer, "write_tf_module", claim_during_write)
     metadata = TfModuleMetadata(
         projection=projection,  # type: ignore[arg-type]
-        parent_repo="parent", parent_version="test", parent_release=None,
-        parent_commit=None, software_version="test",
+        parent_repo="parent",
+        parent_version="test",
+        parent_release=None,
+        parent_commit=None,
+        software_version="test",
     )
 
     with pytest.raises(FileExistsError):
@@ -97,7 +100,8 @@ def test_parent_module_publish_must_not_replace_late_empty_directory(
 
 
 def test_agora_preflight_delegates_to_shared_public_api(
-    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output = tmp_path / "staging"
     output.mkdir()
@@ -125,9 +129,7 @@ def test_agora_preflight_delegates_to_shared_public_api(
 
 def test_installable_package_pins_published_verified_shared_wheel() -> None:
     project = tomllib.loads(
-        (pathlib.Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(
-            encoding="utf-8"
-        )
+        (pathlib.Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
     )["project"]
     published = (
         "tf-build @ https://github.com/alexsosn/tf-build/releases/download/v0.1.0rc1/"
