@@ -24,6 +24,18 @@ pip install \\
   https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
+The **current source checkout** installs the published, SHA-256-verified
+[`tf-build v0.1.0rc1`](https://github.com/alexsosn/tf-build/releases/tag/v0.1.0rc1)
+GitHub Release wheel as a runtime dependency. This removes duplicated Agora
+staging checks and makes canonical, BHSA and LXX publication atomically
+**no-clobber**, even when another process claims the destination after initial
+validation. Because that wheel itself depends on Text-Fabric, Text-Fabric is now
+also installed by the base package. The `[tf]` extra remains useful for the
+optional **GitHub backend** of Text-Fabric. The immutable already-published
+CATSS-TF v0.1.0 wheel is unchanged and does not acquire new dependencies.
+An initial online install is required for the verified wheel, but materializing
+local source data itself remains offline.
+
 Install with Text-Fabric integration from current source (including the GitHub backend):
 
 ```sh
