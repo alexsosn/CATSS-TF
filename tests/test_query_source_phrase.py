@@ -224,7 +224,7 @@ def test_repeated_identical_source_headers_are_distinct_verse_runs(tmp_path: Pat
     source = tmp_path / "source"
     source.mkdir()
     (source / "01.Genesis.par").write_text(
-        "Gen 1:1\\nMLK\\tALFA\\nGen 1:1\\nDBR\\tBETA\\n",
+        "Gen 1:1\nMLK\tALFA\nGen 1:1\nDBR\tBETA\n",
         encoding="utf-8",
     )
     materialize_corpus(source, tmp_path / "catss")
