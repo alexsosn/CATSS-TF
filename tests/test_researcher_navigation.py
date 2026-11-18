@@ -42,8 +42,5 @@ def test_researcher_landing_local_links_resolve() -> None:
         assert target.is_file(), f"broken local link: {link}"
         if anchor:
             headings = re.findall(r"^#{1,6} +(.+)$", target.read_text(encoding="utf-8"), re.M)
-            slugs = {
-                re.sub(r"[^\w -]", "", h.lower()).strip().replace(" ", "-")
-                for h in headings
-            }
+            slugs = {re.sub(r"[^\w -]", "", h.lower()).strip().replace(" ", "-") for h in headings}
             assert anchor in slugs, f"missing heading anchor: {link}"
