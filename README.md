@@ -52,7 +52,7 @@ Verify:
 catss-tf --version
 ```
 
-Start with the [Researcher guide](docs/index.md) for the artifact decision table, 
+Start with the [Researcher guide](docs/index.md) for the artifact decision table,
 synthetic first-session commands, source provenance, and known release limits.
 Then follow the [runnable researcher quickstart](docs/researcher-cookbook.md).
 It generates a small **synthetic** native Text-Fabric corpus, runs public
