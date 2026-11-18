@@ -52,7 +52,7 @@ Verify:
 catss-tf --version
 ```
 
-Read the [runnable researcher quickstart](docs/researcher-cookbook.md) first.
+Start with the [Researcher guide](docs/index.md) for the artifact decision table,\nsynthetic first-session commands, source provenance, and known release limits.\nThen follow the [runnable researcher quickstart](docs/researcher-cookbook.md).
 It generates a small **synthetic** native Text-Fabric corpus, runs public
 queries, and requires no proprietary CATSS/BHSA/LXX data.
 
