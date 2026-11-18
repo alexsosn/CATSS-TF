@@ -15,6 +15,10 @@ CATSS-TF lets you inspect **editorial Hebrew/Aramaic–Greek alignment groups** 
 
 The three artifacts do not share numeric node IDs. The canonical `catss` warp has `alignment` slots, while `catss-bhsa` and `catss-lxx` add features to independently pinned parent warps. Never pass a parent TF API to a canonical alignment-slot query.
 
+## Example: interpretation of a complete research question
+
+The [Worked case study](researcher-case-study.md) reconstructs a question about Hebrew–Greek editorial alignment membership, gives exact synthetic output and source provenance, and tests negative controls for cross-group, source/book and reconstructed-Hebrew false positives. Read it after the first script if you want to interpret individual findings rather than just run counts.
+
 ## First session: no licensed corpus required
 
 Use a clean Python 3.11–3.13 checkout. The `[tf]` extra enables native Text-Fabric loading. Installing dependencies may require network access, but the scripts do not fetch licensed corpora:
