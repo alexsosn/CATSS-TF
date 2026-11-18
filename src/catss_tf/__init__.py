@@ -22,8 +22,8 @@ from catss_tf.query import (
     find_groups_with_all_forms,
     find_groups_with_ordered_forms,
     find_mt_b_raw_matches,
-    find_source_phrase_matches,
     find_sirach_witness_annotations,
+    find_source_phrase_matches,
     find_unclassified_alignments,
 )
 
