@@ -55,14 +55,14 @@ BHSA or CenterBLC/LXX and add the locally generated CATSS module. See
 Core:
 
 ```sh
-pip install \\
+pip install \
   https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl
 ```
 
 With Text-Fabric integration:
 
 ```sh
-pip install \\
+pip install \
   "catss-tf[tf] @ https://github.com/alexsosn/CATSS-TF/releases/download/v0.1.0/catss_tf-0.1.0-py3-none-any.whl"
 ```
 
