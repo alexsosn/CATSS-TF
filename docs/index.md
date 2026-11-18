@@ -1,6 +1,6 @@
 # CATSS-TF: researcher's starting point
 
-CATSS-TF lets you inspect **editorial Hebrew/Aramaic–Greek alignment groups** from a user-authorized CATSS/CCAT parallel source snapshot. Start with the **synthetic, offline** walkthrough below before attempting licensed data or parent projections. CATSS alignment co-membership is not a word-to-word translation link.
+CATSS-TF lets you inspect **editorial Hebrew/Aramaic–Greek alignment groups** from a user-authorized CATSS/CCAT parallel source snapshot. Start with the **synthetic, corpus-download-free** walkthrough below before attempting licensed data or parent projections. CATSS alignment co-membership is not a word-to-word translation link.
 
 ## Choose the artifact before querying
 
@@ -15,9 +15,9 @@ CATSS-TF lets you inspect **editorial Hebrew/Aramaic–Greek alignment groups** 
 
 The three artifacts do not share numeric node IDs. The canonical `catss` warp has `alignment` slots, while `catss-bhsa` and `catss-lxx` add features to independently pinned parent warps. Never pass a parent TF API to a canonical alignment-slot query.
 
-## First session: no license or network required
+## First session: no licensed corpus required
 
-Use a clean Python 3.11–3.13 checkout. The `[tf]` extra enables native Text-Fabric loading:
+Use a clean Python 3.11–3.13 checkout. The `[tf]` extra enables native Text-Fabric loading. Installing dependencies may require network access, but the scripts do not fetch licensed corpora:
 
 ```sh
 python -m pip install -e ".[tf]"
