@@ -269,7 +269,8 @@ def find_source_phrase_matches(
     """Find exact adjacent source-side words, including across CATSS alignment rows.
 
     This scans one standalone alignment-slot TF warp in source order. A phrase
-    must remain in one consecutive source-header run (filename/book/chapter/verse).
+    must remain within one physical source verse node, even if consecutive
+    headers share the same book/chapter/verse numbers.
     Editorial rows with no words on the selected side consume no lexical
     positions. MT-A never includes reconstructed column B, and Greek source
     headers do not establish LXX target-versification identity.
@@ -308,7 +309,7 @@ def find_source_phrase_matches(
     wanted = tuple(forms)
     node_type = "mt_element" if side == "mt_a" else "lxx_element"
     window: deque[tuple[str, str, int]] = deque(maxlen=len(wanted))
-    previous: tuple[str, str, int, int] | None = None
+    previous: tuple[str, str, int, int, int] | None = None
 
     for slot in api.F.otype.s("alignment"):
         source_name = api.F.catss_source.v(slot)
@@ -327,7 +328,10 @@ def find_source_phrase_matches(
                 "source phrase encountered an alignment without source/header identity"
             )
 
-        scope = (source_name, book, chapter, verse)
+        verse_nodes = tuple(api.L.u(slot, otype="verse"))
+        if len(verse_nodes) != 1:
+            raise ValueError("source phrase requires exactly one physical verse owner per alignment")
+        scope = (source_name, book, chapter, verse, int(verse_nodes[0]))
         if scope != previous:
             window.clear()
         previous = scope
