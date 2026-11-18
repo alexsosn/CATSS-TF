@@ -130,15 +130,18 @@ def test_source_phrase_matches_independent_native_tf_oracle(
     found = tuple(phrase(api, side=side, forms=forms, source=source, reference=reference))
     oracle = independent_oracle(api, side, forms, source=source, reference=reference)
     assert len(found) == expected == len(oracle)
-    assert tuple(
-        (
-            hit.source,
-            (hit.book, hit.chapter, hit.verse),
-            hit.alignment_ids,
-            hit.element_indices,
+    assert (
+        tuple(
+            (
+                hit.source,
+                (hit.book, hit.chapter, hit.verse),
+                hit.alignment_ids,
+                hit.element_indices,
+            )
+            for hit in found
         )
-        for hit in found
-    ) == oracle
+        == oracle
+    )
     assert all(hit.forms == forms and hit.side == side for hit in found)
 
 
@@ -173,8 +176,7 @@ def test_phrase_crosses_alignment_but_not_source_or_verse(api: Any) -> None:
     assert gap[1].alignment_ids[0] != gap[1].alignment_ids[1]
     assert gap[1].element_indices == (2, 1)
     assert all(
-        not any("JoshB" in alignment_id for alignment_id in match.alignment_ids)
-        for match in gap
+        not any("JoshB" in alignment_id for alignment_id in match.alignment_ids) for match in gap
     )
 
 
@@ -208,9 +210,7 @@ def test_noncanonical_warp_and_missing_features_fail_closed(api: Any, tmp_path: 
     # The caller must load all source-side sequence/provenance features.
     root = tmp_path / "source"
     root.mkdir()
-    (root / "01.Genesis.par").write_text(
-        "Gen 1:1\nMLK\tALFA\nDBR\tBETA\n", encoding="utf-8"
-    )
+    (root / "01.Genesis.par").write_text("Gen 1:1\nMLK\tALFA\nDBR\tBETA\n", encoding="utf-8")
     materialize_corpus(root, tmp_path / "catss")
     sparse = Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").load(
         "catss_alignment_id", silent="deep"
