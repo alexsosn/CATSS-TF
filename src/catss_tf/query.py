@@ -323,7 +323,9 @@ def find_source_phrase_matches(
             or type(chapter) is not int
             or type(verse) is not int
         ):
-            raise ValueError("source phrase encountered an alignment without source/header identity")
+            raise ValueError(
+                "source phrase encountered an alignment without source/header identity"
+            )
 
         scope = (source_name, book, chapter, verse)
         if scope != previous:
