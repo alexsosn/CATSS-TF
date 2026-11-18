@@ -1,0 +1,7 @@
+# #175 — implementation and release plan
+
+1. **RED:** add independent, synthetic `.par`→Text-Fabric positional oracle tests for MT-A/Greek phrases spanning groups, same-group, overlaps, duplicate forms, empty-side carriers, source/verse limits, source/ref filtering, wrong order, sparse features and noncanonical warps. New public import must fail on the unchanged branch while preexisting tests pass. Check exact CI log, not Ruff-only failures.
+2. **GREEN:** add one dataclass and a small streaming scan of canonical alignment slots and within-slot indexed source elements. Reset at source/header changes. Publicly export function/class; never fabricate an MT–Greek word pair or expose TF numeric IDs as stable evidence.
+3. **Docs and source oracle:** insert one user-task example into existing cookbook, scope row in Libronix crosswalk, and a source-parser-independent oracle on a real user-authorized transient Genesis verse in the **existing** 46-file CI job. Avoid raw source text in CI logs.
+4. Run exact-head Python 3.11/3.12/3.13 lint/mypy/pytest, release wheel, 46-file parser→native TF→Agora, Context-Fabric. Inspect frozen diff in a logically independent adversarial pass including real source boundaries and streaming complexity.
+5. Ready/merge squash only after all check conclusions green, guarded by exact head SHA. Close only #175; keep parent #126 open. No release tag as part of this PR.
