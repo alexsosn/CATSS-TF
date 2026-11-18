@@ -3,6 +3,7 @@
 Results represent complete alignment groups, not pairwise MT/Greek lexical edges.
 """
 
+from collections import deque
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -241,6 +242,130 @@ def find_groups_with_ordered_forms(
         if not _contains_ordered_elements(group.lxx_elements, lxx_forms, adjacent=adjacent):
             continue
         yield group
+
+
+@dataclass(frozen=True, slots=True)
+class CanonicalSourcePhraseMatch:
+    """One exact source-side lexical phrase, with stable per-element provenance."""
+
+    source: str
+    book: str
+    chapter: int
+    verse: int
+    side: str
+    forms: tuple[str, ...]
+    alignment_ids: tuple[str, ...]
+    element_indices: tuple[int, ...]
+
+
+def find_source_phrase_matches(
+    api: Any,
+    *,
+    side: str,
+    forms: Sequence[str],
+    source: str | None = None,
+    reference: tuple[str, int, int] | None = None,
+) -> Iterator[CanonicalSourcePhraseMatch]:
+    """Find exact adjacent source-side words, including across CATSS alignment rows.
+
+    This scans one standalone alignment-slot TF warp in source order. A phrase
+    must remain within one physical source verse node, even if consecutive
+    headers share the same book/chapter/verse numbers.
+    Editorial rows with no words on the selected side consume no lexical
+    positions. MT-A never includes reconstructed column B, and Greek source
+    headers do not establish LXX target-versification identity.
+
+    No normalized lemma, Libronix running-text index, cross-language word
+    edge or manuscript attestation is inferred. Node IDs are not returned.
+    """
+    if api.F.otype.slotType != "alignment":
+        raise ValueError("source phrase requires the standalone CATSS alignment-slot warp")
+    if side not in ("mt_a", "lxx"):
+        raise ValueError("side must be 'mt_a' or 'lxx'")
+    if (
+        isinstance(forms, (str, bytes))
+        or not isinstance(forms, Sequence)
+        or len(forms) < 2
+        or any(not isinstance(form, str) or not form.strip() for form in forms)
+    ):
+        raise ValueError("forms must contain at least two nonempty exact source spellings")
+    if source is not None and (not isinstance(source, str) or not source.strip()):
+        raise ValueError("source must be a nonempty exact CATSS filename")
+    _validate_reference(reference)
+
+    required = {
+        "catss_source",
+        "catss_alignment_id",
+        "catss_text",
+        "catss_index",
+        "book",
+        "chapter",
+        "verse",
+    }
+    missing = required - set(api.Fall())
+    if missing:
+        raise ValueError(f"source phrase requires loaded native TF features: {sorted(missing)}")
+
+    wanted = tuple(forms)
+    node_type = "mt_element" if side == "mt_a" else "lxx_element"
+    window: deque[tuple[str, str, int]] = deque(maxlen=len(wanted))
+    previous: tuple[str, str, int, int, int] | None = None
+
+    for slot in api.F.otype.s("alignment"):
+        source_name = api.F.catss_source.v(slot)
+        book = api.F.book.v(slot)
+        chapter = api.F.chapter.v(slot)
+        verse = api.F.verse.v(slot)
+        if (
+            not isinstance(source_name, str)
+            or not source_name
+            or not isinstance(book, str)
+            or not book
+            or type(chapter) is not int
+            or type(verse) is not int
+        ):
+            raise ValueError(
+                "source phrase encountered an alignment without source/header identity"
+            )
+
+        verse_nodes = tuple(api.L.u(slot, otype="verse"))
+        if len(verse_nodes) != 1:
+            raise ValueError(
+                "source phrase requires exactly one physical verse owner per alignment"
+            )
+        scope = (source_name, book, chapter, verse, int(verse_nodes[0]))
+        if scope != previous:
+            window.clear()
+        previous = scope
+        if source is not None and source_name != source:
+            continue
+        if reference is not None and (book, chapter, verse) != reference:
+            continue
+
+        alignment_id = api.F.catss_alignment_id.v(slot)
+        if not isinstance(alignment_id, str) or not alignment_id:
+            raise ValueError("source phrase encountered an alignment without stable identity")
+
+        nodes = sorted(api.L.u(slot, otype=node_type), key=api.F.catss_index.v)
+        for node in nodes:
+            token = api.F.catss_text.v(node)
+            index = api.F.catss_index.v(node)
+            if not isinstance(token, str) or not token or type(index) is not int or index < 1:
+                raise ValueError("source phrase encountered an invalid indexed lexical element")
+            window.append((token, alignment_id, index))
+            if len(window) == len(wanted) and all(
+                item[0] == spelling for item, spelling in zip(window, wanted, strict=True)
+            ):
+                yield CanonicalSourcePhraseMatch(
+                    source=source_name,
+                    book=book,
+                    chapter=chapter,
+                    verse=verse,
+                    side=side,
+                    forms=wanted,
+                    alignment_ids=tuple(item[1] for item in window),
+                    element_indices=tuple(item[2] for item in window),
+                )
 
 
 @dataclass(frozen=True, slots=True)
