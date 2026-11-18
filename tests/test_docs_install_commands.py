@@ -22,9 +22,7 @@ INSTALL_FENCES = (
 def test_installation_fences_are_copy_paste_executable(document: str, tmp_path: Path) -> None:
     markdown = (ROOT / document).read_text(encoding="utf-8")
     sh_fences = re.findall(r"```sh\n(.*?)\n```", markdown, flags=re.DOTALL)
-    install_commands = [
-        fence for fence in sh_fences if fence.strip().startswith("pip install ")
-    ]
+    install_commands = [fence for fence in sh_fences if fence.strip().startswith("pip install ")]
     assert len(install_commands) == 2, f"{document}: expected two advertised installers"
 
     for command in install_commands:
@@ -40,8 +38,7 @@ def test_installation_fences_are_copy_paste_executable(document: str, tmp_path: 
             timeout=10,
         )
         assert result.returncode == 0, (
-            f"{document}: documented installer failed as pasted:\n"
-            f"{command}\n{result.stderr}"
+            f"{document}: documented installer failed as pasted:\n{command}\n{result.stderr}"
         )
         arguments = result.stdout.splitlines()
         assert len(arguments) == 2 and arguments[0] == "install", (
