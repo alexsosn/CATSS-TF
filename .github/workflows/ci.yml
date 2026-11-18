@@ -1624,6 +1624,52 @@ jobs:
           jonah_slots = tuple(api.L.d(scope, otype='alignment'))
           assert len(jonah_slots) == 1
           assert api.F.catss_source.v(jonah_slots[0]) == '32.Jonah.par'
+          # Compare actual query output with a separately parsed, positional
+          # CATSS source oracle; this covers a real pair spanning editorial rows.
+          # No licensed spellings or source text are written to CI logs.
+          from catss_tf import find_source_phrase_matches
+
+          genesis = parse_parallel_file(Path('/tmp/catss-parallel/01.Genesis.par'))
+          selected = None
+          for source_verse in genesis.verses:
+              for left, right in zip(source_verse.alignments, source_verse.alignments[1:]):
+                  if left.mt_readings and right.mt_readings:
+                      selected = (
+                          source_verse,
+                          left.mt_readings[-1].primary,
+                          right.mt_readings[0].primary,
+                      )
+                      break
+              if selected is not None:
+                  break
+          assert selected is not None, 'No adjacent original MT-A source rows'
+          source_verse, first, second = selected
+          source_tokens = [
+              (reading.primary, row.alignment_id, index)
+              for row in source_verse.alignments
+              for index, reading in enumerate(row.mt_readings, start=1)
+          ]
+          oracle = tuple(
+              (
+                  (source_tokens[i][1], source_tokens[i + 1][1]),
+                  (source_tokens[i][2], source_tokens[i + 1][2]),
+              )
+              for i in range(len(source_tokens) - 1)
+              if (source_tokens[i][0], source_tokens[i + 1][0]) == (first, second)
+          )
+          assert oracle and any(ids[0] != ids[1] for ids, _ in oracle)
+          real_phrase_hits = tuple(find_source_phrase_matches(
+              api,
+              side='mt_a',
+              forms=(first, second),
+              source='01.Genesis.par',
+              reference=(source_verse.book, source_verse.chapter, source_verse.verse),
+          ))
+          assert tuple(
+              (hit.alignment_ids, hit.element_indices) for hit in real_phrase_hits
+          ) == oracle
+          print('CATSS_REAL_SOURCE_PHRASE_PARITY', len(real_phrase_hits), flush=True)
+
           # Independent researcher-facing Sirach marker smoke on real data:
           # compare typed Masada annotations with the complete-source count
           # from #132/#133, without assigning them to individual words.
