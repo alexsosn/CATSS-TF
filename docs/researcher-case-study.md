@@ -127,12 +127,15 @@ and before `return`, then rerun the script:
 import sys
 from catss_tf import find_aligned_groups
 
-for group in find_aligned_groups(
-    api, "MLK", "BASILEU/S", source="01.Genesis.par"
-):
+for group in find_aligned_groups(api, "MLK", "BASILEU/S", source="01.Genesis.par"):
     print(
-        group.source, group.book, group.chapter, group.verse,
-        group.alignment_id, group.mt_elements, group.lxx_elements,
+        group.source,
+        group.book,
+        group.chapter,
+        group.verse,
+        group.alignment_id,
+        group.mt_elements,
+        group.lxx_elements,
         file=sys.stderr,
     )
 ```
