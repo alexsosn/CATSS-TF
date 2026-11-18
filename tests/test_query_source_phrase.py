@@ -233,7 +233,7 @@ def test_repeated_identical_source_headers_are_distinct_verse_runs(tmp_path: Pat
     )
     assert loaded is not None
     assert len(loaded.F.otype.s("verse")) == 2
-    assert tuple(
+    matches = tuple(
         phrase(
             loaded,
             side="mt_a",
@@ -241,4 +241,5 @@ def test_repeated_identical_source_headers_are_distinct_verse_runs(tmp_path: Pat
             source="01.Genesis.par",
             reference=("Gen", 1, 1),
         )
-    ) == ()
+    )
+    assert matches == ()
