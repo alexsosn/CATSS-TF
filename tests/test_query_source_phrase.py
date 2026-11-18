@@ -218,3 +218,27 @@ def test_noncanonical_warp_and_missing_features_fail_closed(api: Any, tmp_path: 
     assert sparse is not None
     with pytest.raises(ValueError, match="loaded"):
         tuple(phrase(sparse, side="mt_a", forms=("MLK", "DBR")))
+
+
+def test_repeated_identical_source_headers_are_distinct_verse_runs(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "01.Genesis.par").write_text(
+        "Gen 1:1\\nMLK\\tALFA\\nGen 1:1\\nDBR\\tBETA\\n",
+        encoding="utf-8",
+    )
+    materialize_corpus(source, tmp_path / "catss")
+    loaded = Fabric(locations=str(tmp_path), modules=("catss",), silent="deep").loadAll(
+        silent="deep"
+    )
+    assert loaded is not None
+    assert len(loaded.F.otype.s("verse")) == 2
+    assert tuple(
+        phrase(
+            loaded,
+            side="mt_a",
+            forms=("MLK", "DBR"),
+            source="01.Genesis.par",
+            reference=("Gen", 1, 1),
+        )
+    ) == ()
