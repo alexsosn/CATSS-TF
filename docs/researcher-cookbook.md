@@ -453,6 +453,61 @@ requires source-grounded research, especially for Sirach
 newcomer example does not load BHSA/LXX parent Text-Fabric modules
 or reproduce Libronix word-level indexing.
 
+## 10. Find a source-side phrase across consecutive editorial alignments
+
+For a question about **adjacent lexical spellings in source order**, an alignment
+boundary need not be a phrase boundary. The public
+`find_source_phrase_matches` searches a single **MT-A** or **Greek**
+stream in canonical `catss`, within one consecutive CATSS
+`source/book/chapter/verse` header run. It returns stable
+`alignment_ids` and 1-based `element_indices` for **every** matched
+lexical occurrence, including when two words come from distinct alignments.
+A row without words on the selected side contributes no token. The result
+does not join MT-A words to individual Greek words.
+
+Run this example inside
+[`examples/canonical_research_walkthrough.py`](../examples/canonical_research_walkthrough.py),
+immediately after the `api = Fabric(...).loadAll(...)` line and before the
+`return` statement:
+
+```python
+import sys
+
+from catss_tf import find_source_phrase_matches
+
+hits = tuple(
+    find_source_phrase_matches(
+        api,
+        side="mt_a",
+        forms=("MLK", "DBR"),
+        source="01.Genesis.par",
+        reference=("Gen", 1, 1),
+    )
+)
+assert len(hits) == 2
+assert sum(hit.alignment_ids[0] != hit.alignment_ids[1] for hit in hits) == 1
+for hit in hits:
+    print(hit.alignment_ids, hit.element_indices, file=sys.stderr)
+```
+
+The existing **synthetic** Genesis 1:1 demo has one `MLK DBR` pair
+*inside* the first editorial group and a second pair where the `MLK`
+and `DBR` are in successive, distinct groups. The two hits are
+independent source-side positional occurrences. Requested duplicate
+spellings consume different positions; overlapping matches are retained.
+Switch to `side="lxx"` and exact Greek `catss_text` spellings for
+the Greek-side sequence.
+
+The query is case-sensitive, requires at least two words, and **never**
+uses reconstructed MT column B as MT-A. It never crosses a source file
+or CATSS header, even if the same spelling occurs on both sides of the
+boundary. The header filter is a *CATSS source coordinate*, **not** an
+LXX target-verse resolver. These lexical streams can contain editorial
+gaps and variants; adjacency is **not** proof of continuous manuscript
+attestation, lemma identity, or the full Libronix running-text phrase
+index. The [Libronix workflow matrix](libronix-coverage.md) keeps the
+remaining semantic gaps explicit.
+
 ## Further research recipes and limitations
 
 The [Libronix crosswalk](libronix-coverage.md) distinguishes
@@ -467,4 +522,4 @@ starter script. These are tracked under
 The synthetic demo is a first user-facing executable smoke. A
 different researcher-agent still needs to follow the complete
 published workflow using independently acquired pinned-parent data
-before #151 can be closed.
+to satisfy the independent pinned-parent E2E release gate.
