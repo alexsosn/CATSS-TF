@@ -172,7 +172,10 @@ def test_phrase_crosses_alignment_but_not_source_or_verse(api: Any) -> None:
     assert len(gap) == 2
     assert gap[1].alignment_ids[0] != gap[1].alignment_ids[1]
     assert gap[1].element_indices == (2, 1)
-    assert all(not any("JoshB" in alignment_id for alignment_id in match.alignment_ids) for match in gap)
+    assert all(
+        not any("JoshB" in alignment_id for alignment_id in match.alignment_ids)
+        for match in gap
+    )
 
 
 @pytest.mark.parametrize(
