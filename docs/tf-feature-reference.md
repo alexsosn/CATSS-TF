@@ -400,12 +400,14 @@ name a kind used by the 16-name expansion above.
 | Public API | `AlignmentAnnotationEvidence` | Python | Typed canonical source annotation evidence |
 | Public API | `CanonicalAlignedGroup` | Python | Typed canonical editorial alignment result |
 | Public API | `CanonicalMtBRawHit` | Python | Typed raw reconstruction evidence result |
+| Public API | `CanonicalSourcePhraseMatch` | Python | Stable per-word alignment ID and source element index for one exact same-side phrase |
 | Public API | `SirachWitnessAnnotation` | Python | Typed Sirach manuscript annotation evidence |
 | Public API | `UnclassifiedAlignment` | Python | Typed translation-technique unclassified result |
 | Public API | `find_aligned_groups` | Python | Find one MT-A form and one Greek form in the same alignment |
 | Public API | `find_groups_with_all_forms` | Python | Find conjunction of exact MT-A and LXX forms within one editorial group |
 | Public API | `find_groups_with_ordered_forms` | Python | Find exact ordered subsequences or adjacent lexical elements within a single CATSS editorial alignment; no cross-group phrase index |
 | Public API | `find_mt_b_raw_matches` | Python | Search exact case-sensitive substring of parsed reconstructed MT-B |
+| Public API | `find_source_phrase_matches` | Python | Search contiguous source-side MT-A or Greek words across editorial alignment rows inside a single source-header run; no lemma normalization |
 | Public API | `find_sirach_witness_annotations` | Python | Return source-provenanced Sirach witness indicators |
 | Public API | `find_unclassified_alignments` | Python | Inspect unresolved translation-technique groups without guessing |
 | Public API | `materialize_bhsa` | Python | Project alignment evidence onto a pinned ETCBC/BHSA parent |
