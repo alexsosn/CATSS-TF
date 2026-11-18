@@ -330,7 +330,9 @@ def find_source_phrase_matches(
 
         verse_nodes = tuple(api.L.u(slot, otype="verse"))
         if len(verse_nodes) != 1:
-            raise ValueError("source phrase requires exactly one physical verse owner per alignment")
+            raise ValueError(
+                "source phrase requires exactly one physical verse owner per alignment"
+            )
         scope = (source_name, book, chapter, verse, int(verse_nodes[0]))
         if scope != previous:
             window.clear()
