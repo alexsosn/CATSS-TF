@@ -19,6 +19,7 @@ from catss_tf import (
     find_groups_with_all_forms,
     find_groups_with_ordered_forms,
     find_mt_b_raw_matches,
+    find_source_phrase_matches,
     materialize_corpus,
 )
 
@@ -35,6 +36,25 @@ def run_demo() -> dict[str, int]:
         (source / "06.JoshB.par").write_text("JoshB 1:1\nMLK\tBASILEU/S\n", encoding="utf-8")
         materialize_corpus(source, root / "catss")
         api = Fabric(locations=str(root), modules=("catss",), silent="deep").loadAll(silent="deep")
+
+        mt_phrase_hits = tuple(
+            find_source_phrase_matches(
+                api,
+                side="mt_a",
+                forms=("MLK", "DBR"),
+                source="01.Genesis.par",
+                reference=("Gen", 1, 1),
+            )
+        )
+        greek_phrase_hits = tuple(
+            find_source_phrase_matches(
+                api,
+                side="lxx",
+                forms=("QEOS", "LOGOS"),
+                source="01.Genesis.par",
+                reference=("Gen", 1, 1),
+            )
+        )
 
         return {
             "source_documents": len(api.F.otype.s("document")),
@@ -112,6 +132,25 @@ def run_demo() -> dict[str, int]:
             ),
             # Reconstructed column B is never treated as lexical MT-A.
             "mt_b_as_mt_a_hits": len(tuple(find_aligned_groups(api, "W/KL", "LOGOS"))),
+            "mt_a_phrase_hits": len(mt_phrase_hits),
+            "mt_a_cross_group_phrase_hits": sum(
+                hit.alignment_ids[0] != hit.alignment_ids[1] for hit in mt_phrase_hits
+            ),
+            "greek_cross_group_phrase_hits": sum(
+                hit.alignment_ids[0] != hit.alignment_ids[1] for hit in greek_phrase_hits
+            ),
+            # The last Greek token of Gen 1:1 and the first of Gen 1:2
+            # are both LOGOS, but no source-header-local phrase joins them.
+            "greek_cross_header_false_hits": len(
+                tuple(
+                    find_source_phrase_matches(
+                        api,
+                        side="lxx",
+                        forms=("LOGOS", "LOGOS"),
+                        source="01.Genesis.par",
+                    )
+                )
+            ),
         }
 
 

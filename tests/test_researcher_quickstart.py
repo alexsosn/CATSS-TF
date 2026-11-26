@@ -24,6 +24,10 @@ EXPECTED = {
     "false_cross_group_matches": 0,
     "mt_b_context_hits": 1,
     "mt_b_as_mt_a_hits": 0,
+    "mt_a_phrase_hits": 2,
+    "mt_a_cross_group_phrase_hits": 1,
+    "greek_cross_group_phrase_hits": 1,
+    "greek_cross_header_false_hits": 0,
 }
 
 

@@ -26,6 +26,10 @@ licensed corpus data.
 {
   "alignment_groups": 5,
   "false_cross_group_matches": 0,
+  "greek_cross_group_phrase_hits": 1,
+  "greek_cross_header_false_hits": 0,
+  "mt_a_cross_group_phrase_hits": 1,
+  "mt_a_phrase_hits": 2,
   "mt_b_as_mt_a_hits": 0,
   "mt_b_context_hits": 1,
   "mt_greek_groups": 2,
@@ -108,6 +112,17 @@ groups, so the same-group Greek-only AND query yields **0**
 (`reference_wrong_source_book_groups`), even though `JoshB` has
 a matching pair. This exact `reference` tuple denotes a **CATSS source
 header**, not a resolved Greek target verse or an arbitrary range.
+
+The source-side phrase query asks a different question.
+`find_source_phrase_matches` finds two MT-A occurrences of `MLK DBR` in
+Genesis 1:1, one inside a group and one across groups. The Greek
+`QEOS LOGOS` phrase has one cross-group occurrence, despite the same-group
+conjunction above yielding zero. The adjacent `LOGOS` spellings on
+opposite sides of the Genesis 1:1/1:2 header boundary yield zero phrase
+hits. These four counts are produced by the same executable demo;
+see [the phrase recipe](researcher-cookbook.md#10-find-a-source-side-phrase-across-consecutive-editorial-alignments)
+for per-token provenance. Exact source-side adjacency does not establish
+continuous manuscript attestation or a bilingual translation edge.
 
 Finally, `find_mt_b_raw_matches(api, "W/KL", retro_kind="context")`
 finds **1** raw reconstructed Hebrew context. The same `W/KL` searched as

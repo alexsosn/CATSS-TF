@@ -34,6 +34,10 @@ The JSON summary (key order may vary in other JSON implementations) is:
 {
   "alignment_groups": 5,
   "false_cross_group_matches": 0,
+  "greek_cross_group_phrase_hits": 1,
+  "greek_cross_header_false_hits": 0,
+  "mt_a_cross_group_phrase_hits": 1,
+  "mt_a_phrase_hits": 2,
   "mt_b_as_mt_a_hits": 0,
   "mt_b_context_hits": 1,
   "mt_greek_groups": 2,
@@ -458,14 +462,21 @@ or reproduce Libronix word-level indexing.
 For a question about **adjacent lexical spellings in source order**, an alignment
 boundary need not be a phrase boundary. The public
 `find_source_phrase_matches` searches a single **MT-A** or **Greek**
-stream in canonical `catss`, within one consecutive CATSS
-`source/book/chapter/verse` header run. It returns stable
+stream in canonical `catss`, within one physical CATSS source header, even when two separate
+headers have identical `source/book/chapter/verse` coordinates. It returns stable
 `alignment_ids` and 1-based `element_indices` for **every** matched
 lexical occurrence, including when two words come from distinct alignments.
 A row without words on the selected side contributes no token. The result
 does not join MT-A words to individual Greek words.
 
-Run this example inside
+The command in section 1 already exercises this query. Its JSON reports
+`mt_a_phrase_hits: 2`, `mt_a_cross_group_phrase_hits: 1`,
+`greek_cross_group_phrase_hits: 1` (for `QEOS LOGOS`), and
+`greek_cross_header_false_hits: 0` (the two `LOGOS` tokens on opposite
+sides of the Genesis 1:1/1:2 header boundary must not form a match).
+No source-code edits are needed to verify these counts.
+
+To inspect the per-token provenance rather than just counts, run this example inside
 [`examples/canonical_research_walkthrough.py`](../examples/canonical_research_walkthrough.py),
 immediately after the `api = Fabric(...).loadAll(...)` line and before the
 `return` statement:
