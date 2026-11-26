@@ -105,7 +105,7 @@ jobs:
 
   complete-catss-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -1483,6 +1483,16 @@ jobs:
           assert all(tuple(api.L.u(word, otype='subverse')) == subverses for word in words)
           assert all(provider.get_span('Josh', 9, 2, label) is None for label in 'abcdef')
           PY
+      - name: Measure complete BHSA and LXX resolver coverage
+        run: |
+          git init -q /tmp/catss-bhsa-parent
+          git -C /tmp/catss-bhsa-parent remote add origin https://github.com/ETCBC/bhsa.git
+          git -C /tmp/catss-bhsa-parent fetch -q --depth 1 origin b112c161cfd21eae403d51a2733740d8743460e7
+          git -C /tmp/catss-bhsa-parent checkout -q FETCH_HEAD
+          test "$(git -C /tmp/catss-bhsa-parent rev-parse HEAD)" = "b112c161cfd21eae403d51a2733740d8743460e7"
+          test "$(git -C /tmp/centerblc-lxx rev-parse HEAD)" = "f32a98eddf7eb239aa73ab863d70381e416d5076"
+          python scripts/audit_parent_coverage.py /tmp/catss-parallel \
+            /tmp/catss-bhsa-parent/tf/2021 /tmp/centerblc-lxx/tf/1935
       - name: Assert complete notation coverage
         run: |
           set +e
